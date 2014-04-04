@@ -12,7 +12,7 @@ if(!$PoshCodeModuleRoot) {
   $PoshCodeModuleRoot = Split-Path $MyInvocation.MyCommand.Path -Parent
 }
 
-. $PoshCodeModuleRoot\Constants.ps1
+#. $PoshCodeModuleRoot\Constants.ps1
 # FULL # END FULL
 
 function New-Module {
