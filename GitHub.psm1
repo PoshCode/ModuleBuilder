@@ -127,6 +127,7 @@ function Publish-GitHub
     ## create packages
     #poshcode/nuget/chocolatey
     ipmo $modtemp
+    sleep 1
     Write-Verbose "Creating nuget package"
     $nugetfiles = Compress-Module -Module $moduleName -OutputPath $releaseFolder -Force
     
