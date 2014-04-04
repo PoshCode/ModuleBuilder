@@ -8,7 +8,7 @@
 .EXAMPLE
    Another example of how to use this cmdlet
 #>
-function Publish-Git
+function Publish-GitHub
 {
     [CmdletBinding()]
     [OutputType([int])]
@@ -20,6 +20,7 @@ function Publish-Git
                    Position=0)]
         $Path = '.',
         $Certificate,
+        $Credential,
         $title,
         $Description,
         $Remote="origin",
@@ -40,7 +41,9 @@ function Publish-Git
     #populate what info we can from the path
     $username, $repo = ((git remote -v | ?{$_ -like "*(push)"}).replace('.git','') -split '\s+')[1].split("/") | select -last 2
     $branch = git branch | ? {$_ -match "^\*\s+(.+)"} | %{$matches[1]}
+    $moduleName = Split-Path $Path -Leaf
 
+    Write-Debug "ModuleName: $moduleName"
     Write-Debug "Username: $username"
     Write-Debug "Repository: $repo"
     Write-Debug "Branch: $branch"
@@ -60,23 +63,25 @@ function Publish-Git
     ## this will be replaced, just a test for commit purposes
     $psd1 = gi ((gi $path).name + ".psd1")
     Write-Debug "PSD1: $psd1"
+
+    
+    $psd1data = (gc $psd1) | %{
+    if($_ -match 'moduleversion\s*=(.+)')
+    {
+        $version = [version]($Matches[1].trim() -replace '''|"',"")
+        Write-Verbose "Current Version: $version"
+        if($IncrementVersion){Write-Verbose "Incrementing the version";$minor = $version.Minor+1}else{$version.Minor}
+        $versionshort = "$($version.Major).$($minor)"
+        $versionfull = "$versionshort.$(Get-Date -Format "yyyyMMdd.HHmm")"
+        "ModuleVersion='$versionfull'"
+        Write-Verbose "New Versioin: $versionfull"
+ 
+    }
+    else{$_}
+    }
     if($IncrementVersion)
     {
-        Write-Verbose "Incrementing the version"
-        (gc $psd1) | %{
-        if($_ -match 'moduleversion\s*=(.+)')
-        {
-            $version = [version]($Matches[1].trim() -replace '''|"',"")
-            Write-Verbose "Current Version: $version"
-            if($IncrementVersion){$minor = $version.Minor+1}else{$version.Minor}
-            $versionshort = "$($version.Major).$($minor)"
-            $versionfull = "$versionshort.$(Get-Date -Format "yyyyMMdd.HHmm")"
-            "ModuleVersion='$versionfull'"
-            Write-Verbose "New Versioin: $versionfull"
- 
-        }
-        else{$_}
-        } | Out-File $psd1
+        $psd1data | Out-File $psd1
     }
 
     #only needed if version is updated
@@ -93,18 +98,19 @@ function Publish-Git
     $token = Get-GitToken -Credential $Credential
     
     Write-Verbose "Creating the release"
-    $GHRelease = New-GitHubRelease -username $username -repo $repo -token $token -tag $tag -branch $branch -Title $title -Description $Description -draft $draft -Prerelease $Prerelease
+    $GHRelease = New-GitHubRelease -username $username -repo $repo -token $token -tag $tag -branch $branch -Title $title -Description $Description -draft:$draft.IsPresent -Prerelease:$Prerelease.IsPresent
     
     ## create a release folder, maybe clear it first?
     
     $releaseFolder = join-path $path Release
     Write-Verbose "Creating release folder"
-    mkdir $releaseFolder -ea 0
+    mkdir $releaseFolder -ea 0 | out-null
        
     #create a folder for module files
     Write-Verbose "Creating copy of module"
-    $modtemp = join-path $releaseFolder (Split-Path $path -Leaf)
-    mkdir $modtemp -ea 0
+    $modtemp = join-path $releaseFolder $moduleName
+    Write-Debug "creating temp folder: $modtemp"
+    mkdir $modtemp -ea 0 | Out-Null
     #get all files
     $filenames = git ls-tree -r $branch --name-only | ? {$_ -notlike ".*"}
     $files = $filenames | %{join-path . $_} | gi
@@ -122,30 +128,37 @@ function Publish-Git
     #poshcode/nuget/chocolatey
     ipmo $modtemp
     Write-Verbose "Creating nuget package"
-    $nugetfiles = Compress-Module -Module (split-path $modtemp -Leaf) -OutputPath $releaseFolder -Force
+    $nugetfiles = Compress-Module -Module $moduleName -OutputPath $releaseFolder -Force
     
-    if($Certificate)
+    if($Certificate -and $nugetfiles)
     {
         Write-Verbose "Signing nuget"
-        Set-AuthenticodeSignature -FilePath $nugetfiles -Certificate $cert
+        Set-AuthenticodeSignature -FilePath $nugetfiles -Certificate $Certificate
     }
-    Write-Verbose "uploading nuget stuff"
-    $results = $nugetfiles | %{Add-GitHubReleaseAsset -token $token -id $GHRelease.id -username $username -repo $repo -file $_}
-    
+    if($nugetfiles)
+    {
+        Write-Verbose "uploading nuget stuff"
+        $results = $nugetfiles | %{Add-GitHubReleaseAsset -token $token -id $GHRelease.id -username $username -repo $repo -file $_}
+    }
+
     ## zip
     Write-Verbose "Creating zip package"
     [Reflection.Assembly]::LoadWithPartialName("System.IO.Compression.FileSystem") | Out-Null
     $compressionLevel = [System.IO.Compression.CompressionLevel]::Optimal
-    $zipfile = Join-Path $releaseFolder "$($modtemp.BaseName).zip"
+    $zipfile = Join-Path $releaseFolder "$moduleName.zip"
     [System.IO.Compression.ZipFile]::CreateFromDirectory($modtemp,$zipfile,$compressionLevel,$true)
-    if($Certificate)
+    <#
+    if($Certificate -and (Test-Path $zipfile))
     {
         Write-Verbose "Signing zip"
-        Set-AuthenticodeSignature -FilePath $zipfile -Certificate $cert
+        Set-AuthenticodeSignature -FilePath $zipfile -Certificate $Certificate
     }
-    Write-Verbose "Uploading zip"
-    $results = Add-GitHubReleaseAsset -token $token -id $GHRelease.id -username $username -repo $repo -file $zipfile
-    
+    #>
+    if(Test-Path $zipfile)
+    {
+        Write-Verbose "Uploading zip"
+        $results = Add-GitHubReleaseAsset -token $token -id $GHRelease.id -username $username -repo $repo -file $zipfile
+    }
     Pop-Location
     
 }
@@ -183,6 +196,8 @@ param($token,
         $username,
         $repo,
         $file)
+    
+    $file = gi $file
     $uploadURL = "https://uploads.github.com/repos/$username/$repo/releases/$id/assets?name=$($file.name)&access_token=$token"
     irm -Uri $uploadURL -ContentType 'application/zip' -Body ([IO.File]::ReadAllBytes($file)) -Method Post
 }
