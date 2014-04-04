@@ -32,6 +32,7 @@ function Publish-Git
     )
     ## make sure its committed and all is ok
     $path = gi $path
+    Write-Debug "Path: $path"
     Push-Location
     Set-Location $Path
     
@@ -40,9 +41,9 @@ function Publish-Git
     $username, $repo = ((git remote -v | ?{$_ -like "*(push)"}).replace('.git','') -split '\s+')[1].split("/") | select -last 2
     $branch = git branch | ? {$_ -match "^\*\s+(.+)"} | %{$matches[1]}
 
-    Write-Verbose "Username: $username"
-    Write-Verbose "Repository: $repo"
-    Write-Verbose "Branch: $branch"
+    Write-Debug "Username: $username"
+    Write-Debug "Repository: $repo"
+    Write-Debug "Branch: $branch"
     
     $status = git status --short|?{$_ -match '(.)(.)\s+(.+)'} | %{[pscustomobject]@{X=$matches[1];Y=$matches[2];File=$matches[3]}}
     if($status)
@@ -58,38 +59,50 @@ function Publish-Git
     ## update version and commit?
     ## this will be replaced, just a test for commit purposes
     $psd1 = gi ((gi $path).name + ".psd1")
-    (gc $psd1) | %{
-    if($_ -match 'moduleversion\s*=(.+)')
+    Write-Debug "PSD1: $psd1"
+    if($IncrementVersion)
     {
-        $version = [version]($Matches[1].trim() -replace '''|"',"")
-        Write-Verbose "Current Version: $version"
-        if($IncrementVersion){$minor = $version.Minor+1}else{$version.Minor}
-        $versionshort = "$($version.Major).$($minor)"
-        $versionfull = "$versionshort.$(Get-Date -Format "yyyyMMdd.HHmm")"
-        "ModuleVersion='$versionfull'"
-        Write-Verbose "New Versioin: $versionfull"
+        Write-Verbose "Incrementing the version"
+        (gc $psd1) | %{
+        if($_ -match 'moduleversion\s*=(.+)')
+        {
+            $version = [version]($Matches[1].trim() -replace '''|"',"")
+            Write-Verbose "Current Version: $version"
+            if($IncrementVersion){$minor = $version.Minor+1}else{$version.Minor}
+            $versionshort = "$($version.Major).$($minor)"
+            $versionfull = "$versionshort.$(Get-Date -Format "yyyyMMdd.HHmm")"
+            "ModuleVersion='$versionfull'"
+            Write-Verbose "New Versioin: $versionfull"
  
+        }
+        else{$_}
+        } | Out-File $psd1
     }
-    else{$_}
-    } | Out-File $psd1
 
-    #commit version change
+    #only needed if version is updated
+    Write-Verbose "Commiting version data"
     git commit -a -m "Release Commit - Version Tag $versionfull" | Out-Null
     git push origin $branch
+    
+    Write-Verbose "Creating tag"
     $tag = "V$versionshort"
     git tag -a $tag -m "Auto Release version $versionfull"
     git push --tags
 
+    Write-Verbose "Getting Github auth token"
     $token = Get-GitToken -Credential $Credential
     
+    Write-Verbose "Creating the release"
     $GHRelease = New-GitHubRelease -username $username -repo $repo -token $token -tag $tag -branch $branch -Title $title -Description $Description -draft $draft -Prerelease $Prerelease
     
     ## create a release folder, maybe clear it first?
     
     $releaseFolder = join-path $path Release
+    Write-Verbose "Creating release folder"
     mkdir $releaseFolder -ea 0
        
     #create a folder for module files
+    Write-Verbose "Creating copy of module"
     $modtemp = join-path $releaseFolder (Split-Path $path -Leaf)
     mkdir $modtemp -ea 0
     #get all files
@@ -97,10 +110,11 @@ function Publish-Git
     $files = $filenames | %{join-path . $_} | gi
     #copy files to module temp/release location
     copy $files $modtemp
-        
+    
+    Write-Verbose "Signing moved files"    
     if($Certificate)
     {
-        gci $modtemp | Set-AuthenticodeSignature -Certificate $Certificate
+        gci $modtemp | Set-AuthenticodeSignature -Certificate $Certificate | Out-Null
     }
 
     
@@ -109,8 +123,15 @@ function Publish-Git
     ipmo $modtemp
     Write-Verbose "Creating nuget package"
     $nugetfiles = Compress-Module -Module (split-path $modtemp -Leaf) -OutputPath $releaseFolder -Force
+    
+    if($Certificate)
+    {
+        Write-Verbose "Signing nuget"
+        Set-AuthenticodeSignature -FilePath $nugetfiles -Certificate $cert
+    }
     Write-Verbose "uploading nuget stuff"
-    $nugetfiles | %{Add-GitHubReleaseAsset -token $token -id $GHRelease.id -username $username -repo $repo -file $_}
+    $results = $nugetfiles | %{Add-GitHubReleaseAsset -token $token -id $GHRelease.id -username $username -repo $repo -file $_}
+    
     ## zip
     Write-Verbose "Creating zip package"
     [Reflection.Assembly]::LoadWithPartialName("System.IO.Compression.FileSystem") | Out-Null
@@ -123,7 +144,7 @@ function Publish-Git
         Set-AuthenticodeSignature -FilePath $zipfile -Certificate $cert
     }
     Write-Verbose "Uploading zip"
-    Add-GitHubReleaseAsset -token $token -id $GHRelease.id -username $username -repo $repo -file $zipfile
+    $results = Add-GitHubReleaseAsset -token $token -id $GHRelease.id -username $username -repo $repo -file $zipfile
     
     Pop-Location
     
@@ -151,8 +172,8 @@ param(  $username,
           draft= $draft.IsPresent
           prerelease= $Prerelease.IsPresent
     }
-
-    Invoke-RestMethod -Uri $url -body $json -Method Post -ContentType 'application/json'
+    Write-Debug "Details:`n$details"
+    Invoke-RestMethod -Uri $url -body $details -Method Post -ContentType 'application/json'
 }
 #part of $rtn
 Function Add-GitHubReleaseAsset
