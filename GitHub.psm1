@@ -126,11 +126,15 @@ function Publish-GitHub
     
     ## create packages
     #poshcode/nuget/chocolatey
-    ipmo $modtemp
+    ipmo $modtemp -Global
     sleep 1
     Write-Verbose "Creating nuget package"
     $nugetfiles = Compress-Module -Module $moduleName -OutputPath $releaseFolder -Force
     
+    #exclude xml
+    #todo: move packageinfo/nuspec to repo add/overwite etc
+    #todo: rename nuget file to remove extend version info
+
     if($Certificate -and $nugetfiles)
     {
         Write-Verbose "Signing nuget"
@@ -217,8 +221,8 @@ param($Credential)
     $rtn = Invoke-RestMethod @params
 
     #is looking for repo scope good enough? think so
-
-    if($auth = $rtn | ? scopes -Contains "repo")
+    # could have multiple access tokens, grab the first one that has repo access i guess
+    if($auth = $rtn | ? scopes -Contains "repo" | select -first 1)
     {
         $auth.token
     }
