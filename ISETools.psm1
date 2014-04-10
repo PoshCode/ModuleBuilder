@@ -5,33 +5,60 @@
     [validateset("InSession","NewTab","Console","ConsoleNoProfile")]
     $Startup="InSession"
     )
-    #get paths
-    $filePath = $psise.CurrentFile.FullPath
+    
+    #get module path (single file or folder)
+    $Modpath = $filePath = $psise.CurrentFile.FullPath
     $folder = split-path $filePath
+    if(gci $folder -include *.psd1)
+    {
+        $modpath = $folder
+    }
+    
     #save if not already saved
     if($psise.CurrentFile.IsUntitled){Write-Error "Must save file first! Sorry didn't feel like implementing the dialog box!" -ErrorAction Stop}
     if(-not $psise.CurrentFile.IsSaved){$psise.CurrentFile.Save()}
     $global:WorkingModule = $null
-    #import the folder or the file if its standalone
-    try{ $Global:WorkingModule = Import-Module $folder -Force -ErrorAction Stop -PassThru -Verbose:$false | select -ExpandProperty name}
-    catch{$folderFailed = $true}
     
-    if($folderFailed)
-    {
-        try {Import-Module $filePath -Force -ErrorAction Stop -Verbose:$false}
-        catch{ write-error "Not a module file!" -ErrorAction Stop}
-    } 
-    ##post processing
+    ## did they define a post processing function?
     if(Test-Path function:\PostModuleProcess)
     {
         Write-Verbose "Processing PostModuleProcess Function"
-        PostModuleProcess
+        $PostModuleProcess = (gi function:\postmoduleprocess).ScriptBlock
     }
     else
     {
         Write-Verbose "--Create a PostModuleProcess function to excute code after import--"
     }
-    #Write-Verbose "Remove -verbose tag from last cmd in this file to stop verbose messaging"
+    #start it up!
+    switch ($Startup)
+    {
+        "insession"  
+        {
+                try {Import-Module $modpath -Force -ErrorAction Stop -Verbose:$false}
+                catch{ write-error "Not a module file!" -ErrorAction Stop}
+                if($postmoduleprocess)
+                {
+                    &$Postmoduleprocess
+                }
+        }
+        "NewTab"
+        {
+            $tab = $psise.PowerShellTabs.Add()
+            $tab.Invoke({Import-Module $filePath})
+            if($PostModuleProcess)
+            {
+                $tab.Invoke($postmoduleprocess)
+            }
+        }
+        {$_ -eq "Console" -or $_ -eq "ConsoleNoProfile"}
+        {
+            $arguments = @("-command `"Import-Module $filePath;$postmoduleprocess`"")
+            if($startup -eq "ConsoleNoProfile"){$arguments += "-noprofile"}
+            $arguments += "-noexit"
+
+            start-process powershell.exe -arg $arguments
+        }
+    }
 }
 
 Function Test-Module
