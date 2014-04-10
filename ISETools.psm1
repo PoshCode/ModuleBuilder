@@ -52,21 +52,19 @@
         }
         {$_ -eq "Console" -or $_ -eq "ConsoleNoProfile"}
         {
-            $arguments = @("-command `"Import-Module $filePath;$postmoduleprocess`"")
+            $arguments = @("-command `"Import-Module $filePath;$postmoduleprocess`"","-noexit")
             if($startup -eq "ConsoleNoProfile"){$arguments += "-noprofile"}
-            $arguments += "-noexit"
 
             start-process powershell.exe -arg $arguments
         }
     }
 }
 
-Function Test-Module
-{
-    $filePath = $psise.CurrentFile.FullPath
-    $folder = split-path $filePath
-    #save if not already saved
-    if($psise.CurrentFile.IsUntitled){Write-Error "Must save file first! Sorry didn't feel like implementing the dialog box!" -ErrorAction Stop}
-    if(-not $psise.CurrentFile.IsSaved){$psise.CurrentFile.Save()}
-    start powershell -ArgumentList "-noprofile -noexit -command `"cd d:\ps;ipmo $folder`""
-}
+
+
+#create hot keys in ise, script only loads if in ISE, so no need to check
+
+$psise.CurrentPowerShellTab.AddOnsMenu.Submenus
+$MBMenu = $psISE.CurrentPowerShellTab.AddOnsMenu.Submenus.Add('Module Builder',$null,$null)
+$null=$MBMenu.Submenus.Add('Load Module',{Import-CurrentFileAsModule},"F6")
+$null=$MBMenu.Submenus.Add('Load Module Console',{Import-CurrentFileAsModule -Startup Console},"Shift+F6")
