@@ -182,6 +182,55 @@ function New-GitHubRelease {
     Write-Debug "Details:`n$details"
     Invoke-RestMethod -Uri $url -body $details -Method Post -ContentType 'application/json'
 }
+
+function New-GitHubRepo {
+    #.Synopsis
+    #   Create a new github Repository
+    [CmdletBinding(DefaultParameterSetName="User")]
+    param(
+        # The name of the Repository to create
+        [Parameter(Mandatory=$true)]
+        [String]$Name,
+        # A short description of the repository 
+        [String]$Description,
+        # A URL with more information about the repository
+        [String]$Homepage,
+        # If set, initialize the repository with a readme...
+        [switch]$Initialize,
+        # The name of the LICENSE template to apply
+        [String]$License,
+        # The Organization to create the repository under (must have rights)
+        [Parameter(ParameterSetName="Organization")]
+        [String]$Organization,
+        # UserName to create the repository under
+        [Parameter(ParameterSetName="User")]
+        [String]$username = $Script:UserName,
+
+        $token = $Script:AuthToken
+    )
+    if($Organization) {
+        $url = "https://api.github.com/orgs/$Organization/repos?access_token=$token"
+    } else {
+        $url = "https://api.github.com/user/repos?access_token=$token"
+    }
+
+    $params = @{
+        name = $Name
+    }
+    if($Description) { $params.description = $Description }
+    if($Homepage) { $params.homepage = $Homepage }
+    if($Initialize) { $params.auto_init = "true" }
+
+    $body = ConvertTo-Json $params -ErrorAction Stop
+    Write-Debug "Request: $url`n$body"
+    Invoke-RestMethod -Uri $url -body $body -Method Post -ContentType 'application/json' | % {
+        $_.PSTypeNames.Insert(0, "PoshCode.ModuleBuilder.Github.Repository")
+        $_
+    }
+}
+
+Update-TypeData -TypeName "PoshCode.ModuleBuilder.Github.Repository" -DefaultDisplayPropertySet name, html_url, ssh_url -ErrorAction SilentlyContinue
+
 #part of $rtn
 function Add-GitHubReleaseAsset {
     param(
@@ -197,8 +246,25 @@ function Add-GitHubReleaseAsset {
     irm -Uri $uploadURL -ContentType 'application/zip' -Body ([IO.File]::ReadAllBytes($file)) -Method Post
 }
 
+function Initialize-Git {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [System.Management.Automation.Credential()]
+        [System.Management.Automation.PSCredential]$Credential
+    )
+
+    $Script:UserName = $Credential.UserName
+    $Script:AuthToken = Get-GitToken $Credential
+}
+
 function Get-GitToken {
-    param($Credential)
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [System.Management.Automation.Credential()]
+        [System.Management.Automation.PSCredential]$Credential
+    )
     $params = @{
           Uri = 'https://api.github.com/authorizations';
           Headers = @{
@@ -225,7 +291,7 @@ function Get-GitToken {
         $params.add("Body",(ConvertFrom-Json $data))
         try
         {
-            (irm @params).token
+            (Invoke-RestMethod @params).token
         }
         catch
         {
