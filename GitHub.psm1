@@ -1,15 +1,8 @@
-﻿<#
-.Synopsis
-   Short description
-.DESCRIPTION
-   Long description
-.EXAMPLE
-   Example of how to use this cmdlet
-.EXAMPLE
-   Another example of how to use this cmdlet
-#>
-function Publish-GitHub
-{
+﻿function Publish-GitHub {
+    <#
+        .Synopsis
+            Publish a release to a github project
+    #>
     [CmdletBinding()]
     [OutputType([int])]
     Param
@@ -27,9 +20,6 @@ function Publish-GitHub
         [switch]$draft,
         [switch]$Prerelease,
         [switch]$IncrementVersion
-        
-
-
     )
     ## make sure its committed and all is ok
     $path = gi $path
@@ -165,12 +155,11 @@ function Publish-GitHub
         $results = Add-GitHubReleaseAsset -token $token -id $GHRelease.id -username $username -repo $repo -file $zipfile
     }
     Pop-Location
-    
 }
 
-function New-GitHubRelease
-{
-param(  $username,
+function New-GitHubRelease {
+    param(
+        $username,
         $repo,
         $token,
         $tag,
@@ -179,7 +168,7 @@ param(  $username,
         $Description,
         [switch]$draft,
         [switch]$Prerelease
-        )
+    )
     $url = "https://api.github.com/repos/$username/$repo/releases?access_token=$token"
 
     $details = ConvertTo-Json @{
@@ -194,22 +183,22 @@ param(  $username,
     Invoke-RestMethod -Uri $url -body $details -Method Post -ContentType 'application/json'
 }
 #part of $rtn
-Function Add-GitHubReleaseAsset
-{
-param($token,
+function Add-GitHubReleaseAsset {
+    param(
+        $token,
         $id,
         $username,
         $repo,
-        $file)
-    
+        $file
+    )
+
     $file = gi $file
     $uploadURL = "https://uploads.github.com/repos/$username/$repo/releases/$id/assets?name=$($file.name)&access_token=$token"
     irm -Uri $uploadURL -ContentType 'application/zip' -Body ([IO.File]::ReadAllBytes($file)) -Method Post
 }
 
-function Get-GitToken
-{
-param($Credential)
+function Get-GitToken {
+    param($Credential)
     $params = @{
           Uri = 'https://api.github.com/authorizations';
           Headers = @{
