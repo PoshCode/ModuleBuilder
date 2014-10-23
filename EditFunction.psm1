@@ -20,7 +20,7 @@ function Split-Command {
 
     for($count=$Parts.Length; $count -gt 1; $count--) {
         $Editor = ($Parts[0..$count] -join " ").Trim("'",'"')
-        if((Test-Path $Editor) -and (Get-Command $Editor -ErrorAction SilentlyContinue)) { 
+        if((Test-Path $Editor) -and (Get-Command $Editor -ErrorAction SublimePowerShell/Support/PowershellSyntax.tmLanguage)) { 
             $Editor
             $Parts[$($Count+1)..$($Parts.Length)] -join " "
             break
@@ -59,7 +59,7 @@ function Find-Editor {
             # In this test, we let the Get-Command error leak out on purpose
             if($Editor -and (Get-Command $Editor)) { break }
 
-            if ($Editor -and !(Get-Command $Editor -ErrorAction SilentlyContinue))
+            if ($Editor -and !(Get-Command $Editor -ErrorAction Ignore))
             {
                 Write-Verbose "Editor is not a valid command, split it:"
                 $Editor, $Parameters = Split-Command $Editor
@@ -74,7 +74,7 @@ function Find-Editor {
             }
 
             # If no editor is specified, try looking in git config
-            if (Get-Command Git -ErrorAction SilentlyContinue)
+            if (Get-Command Git -ErrorAction Ignore)
             {
                 Write-Verbose "PSEditor and Env:Editor not found, searching git config"
                 $Editor, $Parameters = Split-Command (git config core.editor)
@@ -100,15 +100,15 @@ function Find-Editor {
 
             # Search the slow way for sublime
             Write-Verbose "Editor still not found, getting desperate:"
-            if(($Editor = Get-Item "C:\Program Files\DevTools\Sublime Text ?\sublime_text.exe" -ErrorAction SilentlyContinue | Sort {$_.VersionInfo.FileVersion} -Descending | Select-Object -First 1) -or
-               ($Editor = Get-ChildItem C:\Program*\* -recurse -filter "sublime_text.exe" -ErrorAction SilentlyContinue | Select-Object -First 1))
+            if(($Editor = Get-Item "C:\Program Files\DevTools\Sublime Text ?\sublime_text.exe" -ErrorAction Ignore | Sort {$_.VersionInfo.FileVersion} -Descending | Select-Object -First 1) -or
+               ($Editor = Get-ChildItem C:\Program*\* -recurse -filter "sublime_text.exe" -ErrorAction Ignore | Select-Object -First 1))
             {
                 $Parameters = "-n -w"
                 break
             }
 
-            if(($Editor = Get-ChildItem "C:\Program Files\Notepad++\notepad++.exe" -recurse -filter "notepad++.exe" -ErrorAction SilentlyContinue | Select-Object -First 1) -or
-               ($Editor = Get-ChildItem C:\Program*\* -recurse -filter "notepad++.exe" -ErrorAction SilentlyContinue | Select-Object -First 1))
+            if(($Editor = Get-ChildItem "C:\Program Files\Notepad++\notepad++.exe" -recurse -filter "notepad++.exe" -ErrorAction Ignore | Select-Object -First 1) -or
+               ($Editor = Get-ChildItem C:\Program*\* -recurse -filter "notepad++.exe" -ErrorAction Ignore | Select-Object -First 1))
             {
                 $Parameters = "-multiInst"
                 break
@@ -241,14 +241,14 @@ function Edit-Code {
         # Resolve-Alias-A-la-cheap:
         $MaxDepth = 10
         if($PSCmdlet.ParameterSetName -eq "Command") {
-            while($Command = Get-Command $Name -Type Alias -ErrorAction SilentlyContinue) {
+            while($Command = Get-Command $Name -Type Alias -ErrorAction Ignore) {
                 $Name = $Command.definition
                 if(($MaxDepth--) -lt 0) { break }
             }
 
             # We know how to edit Functions, ExternalScript, and even Applications, if you're sure...
             $Files = @(
-                switch($Command = Get-Command $Name -ErrorAction "SilentlyContinue" -Type "Function", "ExternalScript", "Application" | Select-Object -First 1) {
+                switch($Command = Get-Command $Name -ErrorAction "Ignore" -Type "Function", "ExternalScript", "Application" | Select-Object -First 1) {
                     { $_.CommandType -eq "Function"}{
                         Write-Verbose "Found a function matching $Name"
                         #Creates a temporary file in your temp directory with a .tmp.ps1 extension.
@@ -279,7 +279,7 @@ function Edit-Code {
 
             if($Files.Length -eq 0) {
                 Write-Verbose "No '$Name' command found, resolving file path"
-                $Files = @(Resolve-Path $Name -ErrorAction SilentlyContinue | Select-Object -Expand Path)
+                $Files = @(Resolve-Path $Name -ErrorAction Ignore | Select-Object -Expand Path)
 
                 if($Files.Length -eq 0) {
                     Write-Verbose "Still no file found, they're probably trying to create a new function"
@@ -306,15 +306,15 @@ function Edit-Code {
             $FileName = Split-Path $Path -Leaf
             # If the folder doesn't exist, die
             $Files = @(
-                if($Folder -and -not (Resolve-Path $Folder -ErrorAction SilentlyContinue)) {
+                if($Folder -and -not (Resolve-Path $Folder -ErrorAction SublimePowerShell/Support/PowershellSyntax.tmLanguage)) {
                     Write-Error "The path '$Folder' doesn't exist, so we cannot create '$FileName' there"
                     return
                 } elseif($FileName -notmatch $NonFileCharacters) {
-                    foreach($F in Resolve-Path $Folder -ErrorAction SilentlyContinue) {
+                    foreach($F in Resolve-Path $Folder -ErrorAction Ignore) {
                         Join-Path $F $FileName
                     }
                 } else {
-                    Resolve-Path $Path -ErrorAction SilentlyContinue | Select-Object -Expand Path
+                    Resolve-Path $Path -ErrorAction SublimePowerShell/Support/PowershellSyntax.tmLanguage | Select-Object -Expand Path
                 }
             )
         }
