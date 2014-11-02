@@ -20,7 +20,7 @@ function Split-Command {
 
     for($count=$Parts.Length; $count -gt 1; $count--) {
         $Editor = ($Parts[0..$count] -join " ").Trim("'",'"')
-        if((Test-Path $Editor) -and (Get-Command $Editor -ErrorAction SublimePowerShell/Support/PowershellSyntax.tmLanguage)) { 
+        if((Test-Path $Editor) -and (Get-Command $Editor -ErrorAction Ignore)) { 
             $Editor
             $Parts[$($Count+1)..$($Parts.Length)] -join " "
             break
@@ -83,17 +83,17 @@ function Find-Editor {
 
             # Try a few common ones that might be in the path
             Write-Verbose "Editor not found, trying some others"
-            if($Editor = Get-Command "subl.exe", "sublime_text.exe" | Select-Object -Expand Path -first 1)
+            if($Editor = Get-Command "subl.exe", "sublime_text.exe" -ErrorAction Ignore| Select-Object -Expand Path -first 1)
             {
                 $Parameters = "-n -w"
                 break
             }
-            if($Editor = Get-Command "notepad++.exe" | Select-Object -Expand Path -first 1)
+            if($Editor = Get-Command "notepad++.exe" -ErrorAction Ignore | Select-Object -Expand Path -first 1)
             {
                 $Parameters = "-multiInst"
                 break
             }
-            if($Editor = Get-Command "atom.exe" | Select-Object -Expand Path -first 1)
+            if($Editor = Get-Command "atom.exe" -ErrorAction Ignore | Select-Object -Expand Path -first 1)
             {
                 break
             }
@@ -197,12 +197,12 @@ function Edit-Code {
     param (
         # Specifies the name of a function or script to create or edit. Enter a function name or pipe a function to Edit-Function.ps1. This parameter is required. If the function doesn't exist in the session, Edit-Function creates it.
         [Parameter(Position=0, Mandatory = $true, ValueFromPipelineByPropertyName = $true, ParameterSetName="Command")]
+        [Alias("PSPath")]
         [String]
-        $Name,
+        $Command,
 
         # Specifies the name of a function or script to create or edit. Enter a function name or pipe a function to Edit-Function.ps1. This parameter is required. If the function doesn't exist in the session, Edit-Function creates it.
-        [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName = $true, ParameterSetName="File")]
-        [Alias("PSPath")]
+        [Parameter(Mandatory = $true, ParameterSetName="File")]
         [String[]]
         $Path,
 
@@ -241,35 +241,35 @@ function Edit-Code {
         # Resolve-Alias-A-la-cheap:
         $MaxDepth = 10
         if($PSCmdlet.ParameterSetName -eq "Command") {
-            while($Command = Get-Command $Name -Type Alias -ErrorAction Ignore) {
-                $Name = $Command.definition
+            while($Cmd = Get-Command $Command -Type Alias -ErrorAction Ignore) {
+                $Command = $Cmd.definition
                 if(($MaxDepth--) -lt 0) { break }
             }
 
             # We know how to edit Functions, ExternalScript, and even Applications, if you're sure...
             $Files = @(
-                switch($Command = Get-Command $Name -ErrorAction "Ignore" -Type "Function", "ExternalScript", "Application" | Select-Object -First 1) {
+                switch(Get-Command $Command -ErrorAction "Ignore" -Type "Function", "ExternalScript", "Application" | Select-Object -First 1) {
                     { $_.CommandType -eq "Function"}{
-                        Write-Verbose "Found a function matching $Name"
+                        Write-Verbose "Found a function matching $Command"
                         #Creates a temporary file in your temp directory with a .tmp.ps1 extension.
                         $File = [IO.Path]::GetTempFileName() | 
                             Rename-Item -NewName { [IO.Path]::ChangeExtension($_, ".tmp.ps1") } -PassThru |
                             Select-Object -Expand FullName
 
                         #If you have a function with this name, it saves the function code in the temporary file.
-                        if (Test-Path Function:\$Name) {
-                            Set-Content -Path $File -Value $((Get-Content Function:\$Name) -Join "`n")
+                        if (Test-Path Function:\$Command) {
+                            Set-Content -Path $File -Value $((Get-Content Function:\$Command) -Join "`n")
                         }
                         $File
                     }
 
                     {$_.CommandType -eq "ExternalScript"}{
-                        Write-Verbose "Found an ExternalScript matching $Name"
+                        Write-Verbose "Found an ExternalScript matching $Command"
                         $_.Path
                     }
 
                     {$_.CommandType -eq "Application"} {
-                        Write-Verbose "Found an Application or Script matching $Name"
+                        Write-Verbose "Found an Application or Script matching $Command"
                         if(($TextApplications -contains $_.Extension) -or $Force -Or $PSCmdlet.ShouldContinue("Are you sure you want to edit '$($_.Path)' in a text editor?", "Opening '$($_.Name)'", [ref]$ConfirmAll, [ref]$RejectAll)) {
                             $_.Path
                         }
@@ -278,21 +278,21 @@ function Edit-Code {
             )
 
             if($Files.Length -eq 0) {
-                Write-Verbose "No '$Name' command found, resolving file path"
-                $Files = @(Resolve-Path $Name -ErrorAction Ignore | Select-Object -Expand Path)
+                Write-Verbose "No '$Command' command found, resolving file path"
+                $Files = @(Resolve-Path $Command -ErrorAction Ignore | Select-Object -Expand Path)
 
                 if($Files.Length -eq 0) {
                     Write-Verbose "Still no file found, they're probably trying to create a new function"
                     # If the function name is basically ok, then lets make an random empty file for them to write it
-                    if($Name -notmatch $NonFileCharacters) {
+                    if($Command -notmatch $NonFileCharacters) {
                         # Creates a temporary file in your temp directory with a .tmp.ps1 extension.
                         $File = [IO.Path]::GetTempFileName() | 
                             Rename-Item -NewName { [IO.Path]::ChangeExtension($_, ".tmp.ps1") } -PassThru |
                             Select-Object -Expand FullName
 
                         #If you have a function with this name, it saves the function code in the temporary file.
-                        if (Test-Path Function:\$Name) {
-                            Set-Content -Path $file -Value $((Get-Content Function:\$Name) -Join "`n")
+                        if (Test-Path Function:\$Command) {
+                            Set-Content -Path $file -Value $((Get-Content Function:\$Command) -Join "`n")
                         }
                         $Files = @($File)
                     }
@@ -330,22 +330,22 @@ function Edit-Code {
                 Write-Verbose "$PSEditor '$File'"
                 if ($PSEditor.Parameters)
                 {
-                    Start-Process -FilePath $PSEditor.Command -ArgumentList $PSEditor.Parameters, $file -Wait:(!$NoWait)
+                    Start-Process -FilePath $PSEditor.Command -ArgumentList $PSEditor.Parameters, """$file""" -Wait:(!$NoWait)
                 }
                 else
                 {
-                    Start-Process -FilePath $PSEditor.Command -ArgumentList $file -Wait:(!$NoWait)
+                    Start-Process -FilePath $PSEditor.Command -ArgumentList """$file""" -Wait:(!$NoWait)
                 }
                 
                 # Remove it if we created it
                 if($File.EndsWith(".tmp.ps1") -and $File.StartsWith(([IO.Path]::GetTempPath()))) {
 
                     if($LastWriteTime -ne (Get-Item $File).LastWriteTime) {
-                        Write-Verbose "Changed $Name function"
+                        Write-Verbose "Changed $Command function"
                         # Recreates the function from the code in the temporary file and then deletes the file.
-                        Set-Content -Path Function:\$Name -Value ([scriptblock]::create(((Get-Content $file) -Join "`n")))
+                        Set-Content -Path Function:\$Command -Value ([scriptblock]::create(((Get-Content $file) -Join "`n")))
                     } else {
-                        Write-Warning "No change to $Name function"
+                        Write-Warning "No change to $Command function"
                     }
 
                     Write-Verbose "Deleting temp file $File"
