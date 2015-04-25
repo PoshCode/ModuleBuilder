@@ -35,6 +35,7 @@ A PowerShell Module to help scripters write, version, sign, package, and publish
 ## Testing ##
 - Help build tests? 
 - Insert test folder with first basic test?
+- Allow for AppVeyor setup (yml file)
 
 ## Sign ##
 - Automatically sign scripts upon release
