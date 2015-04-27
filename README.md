@@ -5,7 +5,14 @@ A PowerShell Module to help scripters write, version, sign, package, and publish
 
 # Goals/Ideas #
 
-## Module Creation ##
+The primary goal of this module is to increase the ease and consistency of PowerShell module creation as well as provide a structure to the project that makes it easy for others to contribute and for the owners to integrate those changes in.  
+
+
+# Features #
+
+### Module Creation ###
+-------
+
 - Build folder, psd1/psm1
 - Create/link github repo
 - Setup GitHub
@@ -15,7 +22,7 @@ A PowerShell Module to help scripters write, version, sign, package, and publish
 	- Build Wiki
 		- Insert basic docs that represent best practice for community contributions, how to build dev env, submition formats etc
 		- Build common sections (FAQ,Contact,etc)
-	- Create Tag types for community standard
+	- Create Tag types for community standard (Some sort of indication that the issue submitter is willing to create the resolution/feature)
 	- Create ReadMe.md
 		- Inject a todo/checklist for the creator to help guide them (based on template/project type)
 - Be aware of an Icon/Logo?
@@ -24,6 +31,8 @@ A PowerShell Module to help scripters write, version, sign, package, and publish
 ## Module Management ##
 - Version management
 - Help file creation/publication (github pages?)
+	- Create a default About_*ModuleName* help file
+	- Convert Comment based help to xml/lang based help
 - Auto (cmdlet based) add functions/files to psd1/psm1 (internals ignore by naming convention?)
 	- Assume ps1's are function files and add to psm1 to load?
 
@@ -31,6 +40,7 @@ A PowerShell Module to help scripters write, version, sign, package, and publish
 - Clean files (expand alias, formatting type stuff)
 - Run against PSAnalyzer?
 - Function Builder (GUI based tool to build functions shells/params)
+	- Also spews XML based help file
 
 ## Testing ##
 - Help build tests? 
@@ -48,8 +58,9 @@ A PowerShell Module to help scripters write, version, sign, package, and publish
 - Publish as a release on github, choco, psgallery
 
 # Next Steps #
-1. Design workflow (what are the steps to build/publish)
-2. Design cmdlets to address that workflow
-3. Create Template Data
-4. Build Tests
-5. Build Functions
+1. Define workflows
+2. Design workflow (what are the steps to build/publish)
+3. Design cmdlets to address that workflow
+4. Create Template Data
+5. Build Tests
+6. Build Functions
