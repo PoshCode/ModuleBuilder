@@ -5,7 +5,9 @@ A PowerShell Module to help scripters write, version, sign, package, and publish
 
 # Goals/Ideas #
 
-The primary goal of this module is to increase the ease and consistency of PowerShell module creation as well as provide a structure to the project that makes it easy for others to contribute and for the owners to integrate those changes in.  
+The primary goal of this module is to increase the ease and consistency of PowerShell module creation as well as provide a structure to the project that makes it easy for others to contribute and for the owners to integrate those changes in.
+
+Take a look at the **[wiki](../wiki)** for more details
 
 
 # Features #
