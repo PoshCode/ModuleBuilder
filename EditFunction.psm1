@@ -222,7 +222,7 @@ function Edit-Code {
         # Skips waiting for the editor. 
         # If this switch is set, editing functions won't work, as the function won't be updated after you finish editing the file. However, you will still be able to save the function contents as a script to disk (and manually remove the function definition).
         # Perfect for when you just want to open a pre-existing text file in your editor and leave it there while you continue working in the console.
-        [Switch]$NoWait,
+        [Switch]$Wait,
 
         # Force editing "Application" scripts.
         # Files with extensions .cmd, .bat, .vbs, .pl, .rb, .py, .wsf, and .js are known to editable, others will prompt unless Force is set, because most "Application"s aren't editable (they're .exe, .cpl, .com, .msc, etc.)
@@ -330,11 +330,11 @@ function Edit-Code {
                 Write-Verbose "$PSEditor '$File'"
                 if ($PSEditor.Parameters)
                 {
-                    Start-Process -FilePath $PSEditor.Command -ArgumentList $PSEditor.Parameters, """$file""" -Wait:(!$NoWait)
+                    Start-Process -FilePath $PSEditor.Command -ArgumentList $PSEditor.Parameters, """$file""" -Wait:($Wait)
                 }
                 else
                 {
-                    Start-Process -FilePath $PSEditor.Command -ArgumentList """$file""" -Wait:(!$NoWait)
+                    Start-Process -FilePath $PSEditor.Command -ArgumentList """$file""" -Wait:($Wait)
                 }
                 
                 # Remove it if we created it
