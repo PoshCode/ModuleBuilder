@@ -20,7 +20,7 @@ function Split-Command {
 
     for($count=$Parts.Length; $count -gt 1; $count--) {
         $Editor = ($Parts[0..$count] -join " ").Trim("'",'"')
-        if((Test-Path $Editor) -and (Get-Command $Editor -ErrorAction Ignore)) { 
+        if((Test-Path $Editor) -and (Get-Command $Editor -ErrorAction Ignore)) {
             $Editor
             $Parts[$($Count+1)..$($Parts.Length)] -join " "
             break
@@ -32,28 +32,28 @@ function Find-Editor {
     #.Synopsis
     #   Find a simple code editor
     #.Description
-    #   Tries to find a text editor based on the PSEditor preference variable, the EDITOR environment variable, or your configuration for git.  As a fallback it searches for Sublime, Notepad++, or Atom, and finally falls back to Notepad. 
-    #   
+    #   Tries to find a text editor based on the PSEditor preference variable, the EDITOR environment variable, or your configuration for git.  As a fallback it searches for Sublime, Notepad++, or Atom, and finally falls back to Notepad.
+    #
     #   I have deliberately excluded PowerShell_ISE because it is a single-instance app which doesn't support "wait" if it's already running.  That is, if PowerShell_ISE is already running, issuing a command like this will return immediately:
-    #   
+    #
     #   Start-Process PowerShell_ISE $Profile -Wait
     [CmdletBinding()]
     param
     (
         # Specifies a code editor. If the editor is in the Path environment variable (Get-Command <editor>), you can enter just the editor name. Otherwise, enter the path to the executable file for the editor.
         # Defaults to the value of $PSEditor.Command or $PSEditor or Env:Editor if any of them are set.
-        [Parameter(Position=1)] 
+        [Parameter(Position=1)]
         [System.String]
         $Editor = $(if($global:PSEditor.Command){ $global:PSEditor.Command } else { $global:PSEditor } ),
 
-        # Specifies commandline parameters for the editor. 
-        # Edit-Function.ps1 passes these editor-specific parameters to the editor you select. 
+        # Specifies commandline parameters for the editor.
+        # Edit-Function.ps1 passes these editor-specific parameters to the editor you select.
         # For example, sublime uses -n -w to trigger a mode where closing the *tab* will return
         [Parameter(Position=2)]
         [System.String]
         $Parameters = $global:PSEditor.Parameters
     )
-    
+
     end {
         do { # This is the GOTO hack: use break to skip to the end once we find it:
             # In this test, we let the Get-Command error leak out on purpose
@@ -77,8 +77,10 @@ function Find-Editor {
             if (Get-Command Git -ErrorAction Ignore)
             {
                 Write-Verbose "PSEditor and Env:Editor not found, searching git config"
-                $Editor, $Parameters = Split-Command (git config core.editor)
-                if($Editor) { break }
+                if($CoreEditor = git config core.editor) {
+                    $Editor, $Parameters = Split-Command $CoreEditor
+                    if($Editor) { break }
+                }
             }
 
             # Try a few common ones that might be in the path
@@ -88,16 +90,19 @@ function Find-Editor {
                 $Parameters = "-n -w"
                 break
             }
-            if($Editor = Get-Command "notepad++.exe" -ErrorAction Ignore | Select-Object -Expand Path -first 1)
+            if($Editor = Get-Command "code.cmd", "code-insiders" -ErrorAction Ignore | Select-Object -Expand Path -first 1)
             {
-                $Parameters = "-multiInst"
                 break
             }
             if($Editor = Get-Command "atom.exe" -ErrorAction Ignore | Select-Object -Expand Path -first 1)
             {
                 break
             }
-
+            if($Editor = Get-Command "notepad++.exe" -ErrorAction Ignore | Select-Object -Expand Path -first 1)
+            {
+                $Parameters = "-multiInst"
+                break
+            }
             # Search the slow way for sublime
             Write-Verbose "Editor still not found, getting desperate:"
             if(($Editor = Get-Item "C:\Program Files\DevTools\Sublime Text ?\sublime_text.exe" -ErrorAction Ignore | Sort {$_.VersionInfo.FileVersion} -Descending | Select-Object -First 1) -or
@@ -118,9 +123,9 @@ function Find-Editor {
             Write-Verbose "Editor not found, settling for notepad"
             $Editor = "notepad"
 
-            if(!$Editor -or !(Get-Command $Editor -ErrorAction SilentlyContinue -ErrorVariable NotFound)) { 
+            if(!$Editor -or !(Get-Command $Editor -ErrorAction SilentlyContinue -ErrorVariable NotFound)) {
                 if($NotFound) { $PSCmdlet.ThrowTerminatingError( $NotFound[0] ) }
-                else { 
+                else {
                     throw "Could not find an editor (not even notepad!)"
                 }
             }
@@ -132,9 +137,9 @@ function Find-Editor {
         } | Add-Member ScriptMethod ToString -Value { "'" + $this.Command + "' " + $this.Parameters } -Force -PassThru
 
         # There are several reasons we might need to update the editor variable
-        if($PSBoundParameters.ContainsKey("Editor") -or 
-           $PSBoundParameters.ContainsKey("Parameters") -or 
-           !(Test-Path variable:global:PSeditor) -or 
+        if($PSBoundParameters.ContainsKey("Editor") -or
+           $PSBoundParameters.ContainsKey("Parameters") -or
+           !(Test-Path variable:global:PSeditor) -or
            ($PSEditor.Command -ne $Editor))
         {
             # Store it pre-parsed and everything in the current session:
@@ -156,7 +161,7 @@ function Edit-Code {
         .SYNOPSIS
             Creates and edits functions (or scripts) in the session in a script editor.
 
-        
+
         .DESCRIPTION
             The Edit-Function command lets you create or edit functions in your session in your favorite text editor.
 
@@ -164,10 +169,10 @@ function Edit-Code {
 
             Functions are tricky to edit, because most code editors require a file, and determine syntax highlighting based on the extension of that file. Edit-Function creates a temporary file with the function code.
 
-            If you have a favorite editor, you can use the Editor parameter to specify it once, and the script will save it as your preference. If you don't specify an editor, it tries to determine an editor using the PSEditor preference variable, the EDITOR environment variable, or your configuration for git.  As a fallback it searches for Sublime, and finally falls back to Notepad. 
+            If you have a favorite editor, you can use the Editor parameter to specify it once, and the script will save it as your preference. If you don't specify an editor, it tries to determine an editor using the PSEditor preference variable, the EDITOR environment variable, or your configuration for git.  As a fallback it searches for Sublime, and finally falls back to Notepad.
 
             REMEMBER: Because functions are specific to a session, your function edits are lost when you close the session unless you save them in a permanent file, such as your Windows PowerShell profile.
-        
+
         .EXAMPLE
             Edit-Function Prompt
 
@@ -180,19 +185,20 @@ function Edit-Code {
 
         .EXAMPLE
             Get-Command TabExpan* | Edit-Function -Editor 'C:\Program Files\SAPIEN Technologies, Inc\PowerShell Studio 2014\PowerShell Studio.exe
-            
+
             Edits the TabExpansion and/or TabExpansion2 (whichever exists) in PowerShell Studio 2014 using the full path to the .exe file.
             Note that this also sets PowerShell Studio as your default editor for future calls.
 
         .NOTES
             By Joel Bennett (@Jaykul) and June Blender (@juneb_get_help)
-            
+
             If you'd like anything changed  ... feel free to push new version on PoshCode, or tweet at me :-)
             - Do you not like that I make every editor the default?
             - Think I should detect notepad2 or notepad++ or something?
-            
+
             About ISE: it doesn't support waiting for the editor to close, sorry.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSShouldProcess","")]
     [CmdletBinding(DefaultParameterSetName="Command")]
     param (
         # Specifies the name of a function or script to create or edit. Enter a function name or pipe a function to Edit-Function.ps1. This parameter is required. If the function doesn't exist in the session, Edit-Function creates it.
@@ -202,35 +208,35 @@ function Edit-Code {
         $Command,
 
         # Specifies the name of a function or script to create or edit. Enter a function name or pipe a function to Edit-Function.ps1. This parameter is required. If the function doesn't exist in the session, Edit-Function creates it.
-        [Parameter(Mandatory = $true, ParameterSetName="File")]
+        [Parameter(Mandatory = $true, ParameterSetName="File", ValueFromPipelineByPropertyName = $true)]
         [String[]]
         $Path,
 
         # Specifies a code editor. If the editor is in the Path environment variable (Get-Command <editor>), you can enter just the editor name. Otherwise, enter the path to the executable file for the editor.
         # Defaults to the value of $PSEditor.Command or $PSEditor or Env:Editor if any of them are set.
-        [Parameter(Position=1)] 
+        [Parameter(Position=1)]
         [String]
         $Editor = $(if($global:PSEditor.Command){ $global:PSEditor.Command } else { $global:PSEditor } ),
 
-        # Specifies commandline parameters for the editor. 
-        # Edit-Function.ps1 passes these editor-specific parameters to the editor you select. 
+        # Specifies commandline parameters for the editor.
+        # Edit-Function.ps1 passes these editor-specific parameters to the editor you select.
         # For example, sublime uses -n -w to trigger a mode where closing the *tab* will return
         [Parameter(Position=2)]
         [String]
         $Parameters = $global:PSEditor.Parameters,
 
-        # Skips waiting for the editor. 
+        # Skips waiting for the editor.
         # If this switch is set, editing functions won't work, as the function won't be updated after you finish editing the file. However, you will still be able to save the function contents as a script to disk (and manually remove the function definition).
         # Perfect for when you just want to open a pre-existing text file in your editor and leave it there while you continue working in the console.
-        [Switch]$NoWait,
+        [Switch]$Wait,
 
         # Force editing "Application" scripts.
         # Files with extensions .cmd, .bat, .vbs, .pl, .rb, .py, .wsf, and .js are known to editable, others will prompt unless Force is set, because most "Application"s aren't editable (they're .exe, .cpl, .com, .msc, etc.)
         [Switch]$Force
     )
     begin {
-        # This is a terrible idea ... 
-        $TextApplications  = ".cmd",".bat",".vbs",".pl",".rb",".py",".wsf",".js"
+        # This is a terrible idea ...
+        $TextApplications  = ".cmd",".bat",".vbs",".pl",".rb",".py",".wsf",".js",".ps1"
         $NonFileCharacters = "[$(([IO.Path]::GetInvalidFileNameChars() | %{ [regex]::escape($_) }) -join '|')]"
 
         $RejectAll = $false;
@@ -252,7 +258,7 @@ function Edit-Code {
                     { $_.CommandType -eq "Function"}{
                         Write-Verbose "Found a function matching $Command"
                         #Creates a temporary file in your temp directory with a .tmp.ps1 extension.
-                        $File = [IO.Path]::GetTempFileName() | 
+                        $File = [IO.Path]::GetTempFileName() |
                             Rename-Item -NewName { [IO.Path]::ChangeExtension($_, ".tmp.ps1") } -PassThru |
                             Select-Object -Expand FullName
 
@@ -286,7 +292,7 @@ function Edit-Code {
                     # If the function name is basically ok, then lets make an random empty file for them to write it
                     if($Command -notmatch $NonFileCharacters) {
                         # Creates a temporary file in your temp directory with a .tmp.ps1 extension.
-                        $File = [IO.Path]::GetTempFileName() | 
+                        $File = [IO.Path]::GetTempFileName() |
                             Rename-Item -NewName { [IO.Path]::ChangeExtension($_, ".tmp.ps1") } -PassThru |
                             Select-Object -Expand FullName
 
@@ -306,7 +312,7 @@ function Edit-Code {
             $FileName = Split-Path $Path -Leaf
             # If the folder doesn't exist, die
             $Files = @(
-                if($Folder -and -not (Resolve-Path $Folder -ErrorAction SublimePowerShell/Support/PowershellSyntax.tmLanguage)) {
+                if($Folder -and -not (Resolve-Path $Folder -ErrorAction Ignore)) {
                     Write-Error "The path '$Folder' doesn't exist, so we cannot create '$FileName' there"
                     return
                 } elseif($FileName -notmatch $NonFileCharacters) {
@@ -314,12 +320,12 @@ function Edit-Code {
                         Join-Path $F $FileName
                     }
                 } else {
-                    Resolve-Path $Path -ErrorAction SublimePowerShell/Support/PowershellSyntax.tmLanguage | Select-Object -Expand Path
+                    Resolve-Path $Path -ErrorAction Ignore | Select-Object -Expand Path
                 }
             )
         }
 
-        $PSEditor = Find-Editor 
+        $PSEditor = Find-Editor
 
         # Finally, edit the file!
         foreach($File in @($Files)) {
@@ -330,13 +336,13 @@ function Edit-Code {
                 Write-Verbose "$PSEditor '$File'"
                 if ($PSEditor.Parameters)
                 {
-                    Start-Process -FilePath $PSEditor.Command -ArgumentList $PSEditor.Parameters, """$file""" -Wait:(!$NoWait)
+                    Start-Process -FilePath $PSEditor.Command -ArgumentList $PSEditor.Parameters, """$file""" -Wait:($Wait)
                 }
                 else
                 {
-                    Start-Process -FilePath $PSEditor.Command -ArgumentList """$file""" -Wait:(!$NoWait)
+                    Start-Process -FilePath $PSEditor.Command -ArgumentList """$file""" -Wait:($Wait)
                 }
-                
+
                 # Remove it if we created it
                 if($File.EndsWith(".tmp.ps1") -and $File.StartsWith(([IO.Path]::GetTempPath()))) {
 
