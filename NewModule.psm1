@@ -15,33 +15,33 @@ if(!$PoshCodeModuleRoot) {
 #. $PoshCodeModuleRoot\Constants.ps1
 # FULL # END FULL
 
-function New-Module {
+function Create-Module {
    <#
       .Synopsis
          Generate a new module from some script files
       .Description
-         New-Module serves two ways of creating modules, but in either case, it can generate the psd1 and psm1 necessary for a module based on script files.
+         Create-Module serves two ways of creating modules, but in either case, it can generate the psd1 and psm1 necessary for a module based on script files.
          
          In one use case, it's just a simplified wrapper for New-ModuleManifest which answers some of the parameters based on the files already in the module folder.
          
          In the second use case, it allows you to collect one or more scripts and put them into a new module folder.
       .Example
-         New-Module FileUtilities *.ps1 -Author "Joel Bennett" -Description "My collection of file utility functions"
+         Create-Module FileUtilities *.ps1 -Author "Joel Bennett" -Description "My collection of file utility functions"
          
-         This example shows the recommended way to run the New-Module cmdlet, providing a full Author name, and a real description. It collecta all the script files in the present working directory and generates a new module "MyUtility" ...
+         This example shows the recommended way to run the Create-Module cmdlet, providing a full Author name, and a real description. It collecta all the script files in the present working directory and generates a new module "MyUtility" ...
       .Example
-         New-Module MyUtility *.ps1 -recurse 
+         Create-Module MyUtility *.ps1 -recurse 
          
          This example shows how to collect all the script files in the folder and it's subfolders to recursively generate a new module "MyUtility" with the default values for everything else.
       .Example
-         New-Module ~\Documents\WindowsPowerShell\Modules\MyUtility -Upgrade
+         Create-Module ~\Documents\WindowsPowerShell\Modules\MyUtility -Upgrade
       
          This example shows how to (re)generate the MyUtility module from all the files that have already been moved to that folder. 
          If you use the first example to generate a module, and then you add some files to it, this is the simplest way to update it after adding new script files.  However, you can also create the module and move files there by hand, and then call this command-line to generate the psd1 and psm1 files...
       
          Note: the Upgrade parameter keeps the module GUID, increments the ModuleVersion, updates the FileList, TypesToProcess, FormatsToProcess, and NestedModules from the files in the directory, and overwrites the convention-based values: RootModule, FunctionsToExport, AliasesToExport, VariablesToExport, and CmdletsToExport.  You may provide additional parameters (like AuthorName) and overwrite those as well.
       .Example
-         Get-ChildItem *.ps1,*.psd1 -Recurse | New-Module MyUtility
+         Get-ChildItem *.ps1,*.psd1 -Recurse | Create-Module MyUtility
          
          This example shows how to pipe the files into the New-Module, and yet another approach to collecting the files needed.
    #>
@@ -200,22 +200,22 @@ function New-Module {
          # Create the RootModule if it doesn't exist yet
          if(!$Upgrade -Or !(Test-Path "${ModuleName}.psm1")) {
             if($Force -Or !(Test-Path "${ModuleName}.psm1") -or $PSCmdlet.ShouldContinue("The specified '${ModuleName}.psm1' already exists in '$ModulePath'. Do you want to overwrite it?", "Creating new '${ModuleName}.psm1'")) {
-               Set-Content "${ModuleName}.psm1" 'Push-Location $PSScriptRoot' +
+               Set-Content "${ModuleName}.psm1" ('Push-Location $PSScriptRoot' +
                   'Import-LocalizedData -BindingVariable ModuleManifest' +
                   '$ModuleManifest.FileList -like "*.ps1" | % {' +
                   '    $Script = Resolve-Path $_ -Relative' +
                   '    Write-Verbose "Loading $Script"' +
                   '    . $Script' +
                   '}' +
-                  'Pop-Location'
+                  'Pop-Location')
             } else {
                throw "The specified Module '${ModuleName}.psm1' already exists in '$ModulePath'. Please create a new Module, or specify -Force to overwrite the existing one."
             }
          }
 
-         if($Force -Or $Upgrade -or !(Test-Path "${ModuleName}$ModuleManifestExtension") -or $PSCmdlet.ShouldContinue("The specified '${ModuleName}$ModuleManifestExtension' already exists in '$ModulePath'. Do you want to update it?", "Creating new '${ModuleName}$ModuleManifestExtension'")) {
-            if($Upgrade -and (Test-Path "${ModuleName}$ModuleManifestExtension")) {
-               $ModuleInfo = Import-Metadata (Join-Path $ModulePath "${ModuleName}$ModuleManifestExtension" )
+         if($Force -Or $Upgrade -or !(Test-Path "${ModuleName}.psd1") -or $PSCmdlet.ShouldContinue("The specified '${ModuleName}.psd1' already exists in '$ModulePath'. Do you want to update it?", "Creating new '${ModuleName}.psd1'")) {
+            if($Upgrade -and (Test-Path "${ModuleName}.psd1")) {
+               $ModuleInfo = Import-Metadata (Join-Path $ModulePath "${ModuleName}.psd1" )
             } else {
                # If there's no upgrade, then we want to use all the parameter (default) values, not just the PSBoundParameters:
                $ModuleInfo = @{
@@ -238,7 +238,7 @@ function New-Module {
 
             $ModuleVersion = [Math]::Floor(1.0 + $ModuleInfo.ModuleVersion).ToString("F1")
             # Overwrite existing values with the new truth ;)
-            $ModuleInfo.Path = Resolve-Path "${ModuleName}$ModuleManifestExtension"
+            $ModuleInfo.Path = (Join-Path $ModulePath "${ModuleName}.psd1" )
             $ModuleInfo.RootModule = "${ModuleName}.psm1"
             $ModuleInfo.ModuleVersion = $ModuleVersion
             $ModuleInfo.FileList = $FileList
@@ -263,11 +263,11 @@ function New-Module {
             New-ModuleManifest @ModuleInfo
             Get-Item $ModulePath
          }  else {
-            throw "The specified Module Manifest '${ModuleName}$ModuleManifestExtension' already exists in '$ModulePath'. Please create a new Module, or specify -Force to overwrite the existing one."
+            throw "The specified Module Manifest '${ModuleName}.psd1' already exists in '$ModulePath'. Please create a new Module, or specify -Force to overwrite the existing one."
          }
 
          if($Force -Or !(Test-Path "${ModuleName}${PackageInfoExtension}")) {
-            Set-Content "${ModuleName}${PackageInfoExtension}" '@{' +
+            Set-Content "${ModuleName}${PackageInfoExtension}" ('@{' +
                "   ModuleName     = `"${ModuleName}`"" +
                "   ModuleVersion  = `"${ModuleVersion}`"" +
                '   ' +
@@ -286,7 +286,7 @@ function New-Module {
                '   # This version number is here so users can check for the latest version' +
                '   # It should be incremented with each package, and should match the one in your module psd1.' +
                '   ModuleVersion = "2.0.0.6"' +
-               '}'
+               '}')
          }         
       } catch {
          throw

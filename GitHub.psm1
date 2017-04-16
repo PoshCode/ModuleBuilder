@@ -169,7 +169,13 @@ function New-GitHubRelease {
         [switch]$draft,
         [switch]$Prerelease
     )
-    $url = "https://api.github.com/repos/$username/$repo/releases?access_token=$token"
+    $url = "https://api.github.com/repos/$username/$repo/releases"
+
+        $HAuth = @{
+            Authorization = 'Basic ' + [Convert]::ToBase64String(
+              [Text.Encoding]::ASCII.GetBytes("$($username):$($token)"));
+              }
+
 
     $details = ConvertTo-Json @{
           tag_name = $tag
@@ -180,7 +186,7 @@ function New-GitHubRelease {
           prerelease= $Prerelease.IsPresent
     }
     Write-Debug "Details:`n$details"
-    Invoke-RestMethod -Uri $url -body $details -Method Post -ContentType 'application/json'
+    Invoke-RestMethod -Uri $url -Headers $HAuth -body $details -Method Post -ContentType 'application/json'
 }
 
 function New-GitHubRepo {
@@ -209,21 +215,27 @@ function New-GitHubRepo {
         $token = $Script:AuthToken
     )
     if($Organization) {
-        $url = "https://api.github.com/orgs/$Organization/repos?access_token=$token"
+        $url = "https://api.github.com/orgs/$Organization/repos"
     } else {
-        $url = "https://api.github.com/user/repos?access_token=$token"
+        $url = "https://api.github.com/user/repos"
     }
 
     $params = @{
         name = $Name
     }
+
+            $HAuth = @{
+            Authorization = 'Basic ' + [Convert]::ToBase64String(
+              [Text.Encoding]::ASCII.GetBytes("$($username):$($token)"));
+              }
+
     if($Description) { $params.description = $Description }
     if($Homepage) { $params.homepage = $Homepage }
     if($Initialize) { $params.auto_init = "true" }
 
     $body = ConvertTo-Json $params -ErrorAction Stop
     Write-Debug "Request: $url`n$body"
-    Invoke-RestMethod -Uri $url -body $body -Method Post -ContentType 'application/json' | % {
+    Invoke-RestMethod -Uri $url -Headers $HAuth -body $body -Method Post -ContentType 'application/json' | % {
         $_.PSTypeNames.Insert(0, "PoshCode.ModuleBuilder.Github.Repository")
         $_
     }
@@ -250,52 +262,37 @@ function Initialize-Git {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
-        [System.Management.Automation.Credential()]
-        [System.Management.Automation.PSCredential]$Credential
+        [string]$GBUserName,
+        [Parameter(Mandatory=$false)]
+        [string]$GBToken
     )
 
-    $Script:UserName = $Credential.UserName
-    $Script:AuthToken = Get-GitToken $Credential
+    $Script:UserName = $GBUserName
+    $Script:AuthToken = Get-GitToken $GBToken
+    $Script:AuthToken = $GBToken
+
 }
 
 function Get-GitToken {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
-        [System.Management.Automation.Credential()]
-        [System.Management.Automation.PSCredential]$Credential
+        $username,
+        [Parameter(Mandatory=$false)]
+        [string]$GBToken
     )
+
+    $githuburi = 'https://api.github.com/user' 
+
     $params = @{
-          Uri = 'https://api.github.com/authorizations';
+          Uri = $githuburi;
           Headers = @{
             Authorization = 'Basic ' + [Convert]::ToBase64String(
-              [Text.Encoding]::ASCII.GetBytes("$($Credential.UserName):$($Credential.GetNetworkCredential().Password)"));
+              [Text.Encoding]::ASCII.GetBytes("$($username):$($GBToken)"));
           }
-
         }
+
+
     $rtn = Invoke-RestMethod @params
 
-    #is looking for repo scope good enough? think so
-    # could have multiple access tokens, grab the first one that has repo access i guess
-    if($auth = $rtn | ? scopes -Contains "repo" | select -first 1)
-    {
-        $auth.token
-    }
-    else #create token
-    {
-        $data = @{
-            scopes = @('repo')
-            Note = "Created by ModuleBuilder"
-            }
-        $params.Add("ContentType",'application/json')
-        $params.add("Body",(ConvertFrom-Json $data))
-        try
-        {
-            (Invoke-RestMethod @params).token
-        }
-        catch
-        {
-            Write-Error "An unexpected error occurred (bad user/password?) $($Error[0])"
-        }
-    }
+
 }
