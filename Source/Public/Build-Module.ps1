@@ -1,4 +1,4 @@
-function Optimize-Module {
+function Build-Module {
     <#
         .Synopsis
             Compile a module from ps1 files to a single psm1
@@ -6,7 +6,7 @@ function Optimize-Module {
             Compiles modules from source according to conventions:
             1. A single ModuleName.psd1 manifest file with metadata
             2. Source subfolders in the same directory as the manifest:
-               Classes, Private, Public contain ps1 files
+               Enum, Classes, Private, Public contain ps1 files
             3. Optionally, a build.psd1 file containing settings for this function
 
             The optimization process:
@@ -16,6 +16,7 @@ function Optimize-Module {
             4. The ModuleName.psm1 will be generated (overwritten completely) by concatenating all .ps1 files in subdirectories (that aren't specified in CopySubdirectories)
             5. The ModuleName.psd1 will be updated (based on existing data)
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Build is approved now")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
     param(
         # The path to the module folder, manifest or build.psd1
@@ -41,6 +42,10 @@ function Optimize-Module {
         # Can be relative to the  module folder
         [AllowEmptyCollection()]
         [string[]]$CopyDirectories = @(),
+
+        [string[]]$SourceDirectories = @(
+            "Enum", "Classes", "Private", "Public"
+        ),
 
         # A Filter (relative to the module folder) for public functions
         # If non-empty, ExportedFunctions will be set with the file BaseNames of matching files
@@ -148,10 +153,15 @@ function Optimize-Module {
 
             # Ensure OutputDirectory
             if (!$ModuleInfo.OutputDirectory) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) $ModuleInfo.Version
+                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) "Output\$($ModuleInfo.Name)"
+                Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
+            } elseif (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
+                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) $ModuleInfo.OutputDirectory
                 Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
             }
+
             $OutputDirectory = $ModuleInfo.OutputDirectory
+
             Write-Progress "Building $($ModuleInfo.ModuleBase)" -Status "Use -Verbose for more information"
             Write-Verbose  "Building $($ModuleInfo.ModuleBase)"
             Write-Verbose  "         Output to: $OutputDirectory"
@@ -179,6 +189,9 @@ function Optimize-Module {
             }
             $null = mkdir $OutputDirectory -Force
 
+            # Note that this requires that the module manifest be in the "root" of the source directories
+            Set-Location $ModuleInfo.ModuleBase
+
             Write-Verbose "Copy files to $OutputDirectory"
             # Copy the files and folders which won't be processed
             Copy-Item *.psm1, *.psd1, *.ps1xml -Exclude "build.psd1" -Destination $OutputDirectory -Force
@@ -194,8 +207,8 @@ function Optimize-Module {
             Write-Verbose "Combine scripts to $RootModule"
             # Prefer pipeline to speed for the sake of memory and file IO
             # SilentlyContinue because there don't *HAVE* to be functions at all
-            $AllScripts = Get-ChildItem -Path $ModuleInfo.ModuleBase -Exclude $ModuleInfo.CopyDirectories -Directory -ErrorAction SilentlyContinue |
-                Get-ChildItem -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
+
+            $AllScripts = Get-ChildItem -Path $SourceDirectories.ForEach{Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
 
             if ($AllScripts) {
                 $AllScripts | ForEach-Object {
@@ -214,15 +227,12 @@ function Optimize-Module {
                 if ($ModuleInfo.PublicFilter) {
                     # SilentlyContinue because there don't *HAVE* to be public functions
                     if ($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty BaseName) {
-                        # TODO: Remove the _Public hack
-                        Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value ($PublicFunctions -replace "_Public$")
+                        Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
                     }
                 }
             }
 
             Write-Verbose "Update Manifest to $OutputManifest"
-
-            Update-Metadata -Path $OutputManifest -PropertyName Copyright -Value ($ModuleInfo.Copyright -replace "20\d\d", (Get-Date).Year)
 
             if ($ModuleVersion) {
                 Update-Metadata -Path $OutputManifest -PropertyName ModuleVersion -Value $ModuleVersion
