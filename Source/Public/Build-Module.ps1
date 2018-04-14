@@ -29,7 +29,7 @@ function Build-Module {
                 }
             } )]
         [Alias("ModuleManifest")]
-        [string]$Path,
+        [string]$Path = $(Get-Location -PSProvider FileSystem),
 
         # Where to build the module.
         # Defaults to a version number folder, adjacent to the module folder
@@ -73,60 +73,19 @@ function Build-Module {
 
     process {
         try {
-            # If a path is $passed, use that
-            if ($Path) {
-                $ModuleBase = Split-Path $Path -Parent
-                # Do not use GetFileNameWithoutExtension, some module names have dots in them
-                $ModuleName = (Split-Path $Path -Leaf) -replace ".psd1$"
+            $ModuleBase = ResolveModuleBase $Path
+            Push-Location $ModuleBase -StackName Optimize-Module
 
-                # Support passing the path to a module folder
-                if (Test-Path $Path -PathType Container) {
-                    if ( (Test-Path (Join-Path $Path build.psd1)) -or
-                        (Test-Path (Join-Path $Path "$ModuleName.psd1"))
-                    ) {
-                        $ModuleBase = $Path
-                        $Path = Join-Path $Path "$ModuleName.psd1"
-                        if (Test-Path $Path) {
-                            $PSBoundParameters["Path"] = $Path
-                        } else {
-                            $null = $PSBoundParameters.Remove("Path")
-                        }
-                    } else {
-                        throw "Module not found in $Path. Try passing the full path to the manifest file."
-                    }
-                }
+            # Read a build.psd1 configuration file for default parameter values
+            $BuildInfo = @{} + (Import-LocalizedData -BaseDirectory $ModuleBase -FileName Build -ErrorAction SilentlyContinue)
+            # Then update it from PSBoundParameters + default parameter values
+            $BuildInfo = UpdateHashtable $BuildInfo $MyInvocation.ParameterValues
+            $BuildInfo.Path = ResolveModuleManifest $ModuleBase $BuildInfo.Path
 
-                # Add support for passing the path to a build.psd1
-                if ( (Test-Path $Path -PathType Leaf) -and ($ModuleName -eq "build") ) {
-                    $null = $PSBoundParameters.Remove("Path")
-                }
-
-                Push-Location $ModuleBase -StackName Optimize-Module
-                # Otherwise, look for a local build.psd1
-            } elseif (Test-Path Build.psd1) {
-                Push-Location -StackName Optimize-Module
-            } else {
-                throw "Build.psd1 not found in PWD. You must specify the -Path to the build"
-            }
-
-            # Read build.psd1 for defaults
-            if (Test-Path Build.psd1) {
-                $BuildInfo = Import-LocalizedData -BaseDirectory $Pwd.Path -FileName Build
-            } else {
-                $BuildInfo = @{}
-            }
-
-            # Overwrite with parameter values
-            foreach ($property in $PSBoundParameters.Keys) {
-                $BuildInfo.$property = $PSBoundParameters.$property
-            }
-
-            $BuildInfo.Path = Resolve-Path $BuildInfo.Path
-
-            # Read Module Manifest for details
+            # Read the Module Manifest
             $ModuleInfo = Get-Module $BuildInfo.Path -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
             if ($Problems) {
-                $Problems = $Problems.Where{ $_.FullyQualifiedErrorId -notmatch "^Modules_InvalidRequiredModulesinModuleManifest"}
+                $Problems = $Problems.Where{ $_.FullyQualifiedErrorId -notmatch "^Modules_InvalidRequiredModulesinModuleManifest|^Modules_InvalidRootModuleInModuleManifest"}
                 if ($Problems) {
                     foreach ($problem in $Problems) {
                         Write-Error $problem
@@ -134,36 +93,22 @@ function Build-Module {
                     throw "Unresolvable problems in module manifest"
                 }
             }
-            foreach ($property in $BuildInfo.Keys) {
-                # Note:we can't overwrite the Path from the Build.psd1
-                Add-Member -Input $ModuleInfo -Type NoteProperty -Name $property -Value $BuildInfo.$property -ErrorAction SilentlyContinue
-            }
-
-            # Copy in default parameters
-            if (!(Get-Member -InputObject $ModuleInfo -Name PublicFilter)) {
-                Add-Member -Input $ModuleInfo -Type NoteProperty -Name PublicFilter -Value $PublicFilter
-            }
-            if (!(Get-Member -InputObject $ModuleInfo -Name Encoding)) {
-                Add-Member -Input $ModuleInfo -Type NoteProperty -Name Encoding -Value $Encoding
-            }
-            # Fix the version before making the folder
-            if ($ModuleVersion) {
-                Add-Member -Input $ModuleInfo -Type NoteProperty -Name Version -Value $ModuleVersion -Force
-            }
+            # Update the ModuleManifest with our build configuration
+            $ModuleInfo = UpdateObject -InputObject $ModuleInfo -UpdateObject $BuildInfo
 
             # Ensure OutputDirectory
             if (!$ModuleInfo.OutputDirectory) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) "Output\$($ModuleInfo.Name)"
+                $OutputDirectory = Join-Path (Split-Path $ModuleBase -Parent) "Output\$($ModuleInfo.Name)"
                 Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
             } elseif (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) $ModuleInfo.OutputDirectory
+                $OutputDirectory = Join-Path (Split-Path $ModuleBase -Parent) $ModuleInfo.OutputDirectory
                 Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
             }
 
             $OutputDirectory = $ModuleInfo.OutputDirectory
 
-            Write-Progress "Building $($ModuleInfo.ModuleBase)" -Status "Use -Verbose for more information"
-            Write-Verbose  "Building $($ModuleInfo.ModuleBase)"
+            Write-Progress "Building $ModuleBase" -Status "Use -Verbose for more information"
+            Write-Verbose  "Building $ModuleBase"
             Write-Verbose  "         Output to: $OutputDirectory"
 
             if ($Target -match "Clean") {

@@ -1,0 +1,3 @@
+@{
+    Path = "ModuleBuilder.psd1"
+}
