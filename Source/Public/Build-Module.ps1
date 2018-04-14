@@ -1,3 +1,7 @@
+if(!(Get-Verb Build)) {
+    Write-Warning "The verb 'Build' was approved recently, but PowerShell $($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor) doesn't know. You will be warned about Build-Module"
+}
+
 function Build-Module {
     <#
         .Synopsis
@@ -66,8 +70,9 @@ function Build-Module {
         [string[]]$PublicFilter = "Public\*.ps1",
 
         # File encoding for output RootModule (defaults to UTF8)
-        [Microsoft.PowerShell.Commands.FileSystemCmdletProviderEncoding]
-        $Encoding = "UTF8",
+        # Converted to System.Text.Encoding for PowerShell 6 (and something else for PowerShell 5)
+        [ValidateSet("UTF8","UTF7","ASCII","Unicode","UTF32")]
+        [string]$Encoding = "UTF8",
 
         # The prefix is either the path to a file (relative to the module folder) or text to put at the top of the file.
         # If the value of prefix resolves to a file, that file will be read in, otherwise, the value will be used.
@@ -87,6 +92,11 @@ function Build-Module {
         [switch]$Passthru
     )
 
+    begin {
+        if($Encoding -ne "UTF8") {
+            Write-Warning "We strongly recommend you build your script modules with UTF8 encoding for maximum cross-platform compatibility."
+        }
+    }
     process {
         try {
             $ModuleBase = ResolveModuleBase $Path
@@ -211,7 +221,9 @@ function Build-Module {
                         }
                     }
                 }
-            } | Set-Content -Path $RootModule -Encoding $ModuleInfo.Encoding
+            } |
+            # BUGBUG: Note that the encoding value *MUST* be in quotes for PowerShell 6
+            Set-Content -Path $RootModule -Encoding "$($ModuleInfo.Encoding)"
 
 
             # If there is a PublicFilter, update ExportedFunctions
