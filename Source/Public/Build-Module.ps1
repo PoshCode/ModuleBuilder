@@ -11,10 +11,20 @@ function Build-Module {
 
             The optimization process:
             1. The OutputDirectory is created
-            2. All psd1/psm1/ps1xml files in the root will be copied to the output
+            2. All psd1/psm1/ps1xml files (except build.psd1) in the root will be copied to the output
             3. If specified, $CopyDirectories will be copied to the output
-            4. The ModuleName.psm1 will be generated (overwritten completely) by concatenating all .ps1 files in subdirectories (that aren't specified in CopySubdirectories)
-            5. The ModuleName.psd1 will be updated (based on existing data)
+            4. The ModuleName.psm1 will be generated (overwritten completely) by concatenating all .ps1 files in the $SourceDirectories subdirectories
+            5. The ModuleVersion and ExportedFunctions in the ModuleName.psd1 may be updated (depending on parameters)
+
+        .Example
+            Build-Module -Postfix "Export-ModuleMember -Function *-* -Variable PreferenceVariable"
+
+            This example shows how to build a simple module from it's manifest, adding an Export-ModuleMember as a postfix
+
+        .Example
+            Build-Module -Prefix "using namespace System.Management.Automation"
+
+            This example shows how to build a simple module from it's manifest, adding a using statement at the top as a prefix
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Build is approved now")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
@@ -43,6 +53,8 @@ function Build-Module {
         [AllowEmptyCollection()]
         [string[]]$CopyDirectories = @(),
 
+        # Folders which contain source .ps1 scripts to be concatenated into the module
+        # Defaults to Enum, Classes, Private, Public
         [string[]]$SourceDirectories = @(
             "Enum", "Classes", "Private", "Public"
         ),
@@ -57,11 +69,15 @@ function Build-Module {
         [Microsoft.PowerShell.Commands.FileSystemCmdletProviderEncoding]
         $Encoding = "UTF8",
 
-        # A line which will be added at the bottom of the psm1. The intention is to allow you to add an export like:
-        # Export-ModuleMember -Alias *-QM* -Functions * -Variables QMConstant_*
-        #
-        # The default is nothing
-        $ExportModuleMember,
+        # The prefix is either the path to a file (relative to the module folder) or text to put at the top of the file.
+        # If the value of prefix resolves to a file, that file will be read in, otherwise, the value will be used.
+        # The default is nothing. See examples for more details.
+        $Prefix,
+
+        # The postfix is either the path to a file (relative to the module folder) or text to put at the bottom of the file.
+        # If the value of postfix resolves to a file, that file will be read in, otherwise, the value will be used.
+        # The default is nothing. See examples for more details.
+        $Postfix,
 
         # Controls whether or not there is a build or cleanup performed
         [ValidateSet("Clean", "Build", "CleanBuild")]
@@ -153,27 +169,56 @@ function Build-Module {
             # Prefer pipeline to speed for the sake of memory and file IO
             # SilentlyContinue because there don't *HAVE* to be functions at all
 
-            $AllScripts = Get-ChildItem -Path $SourceDirectories.ForEach{Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
+            $AllScripts = Get-ChildItem -Path $SourceDirectories.ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
 
-            if ($AllScripts) {
-                $AllScripts | ForEach-Object {
-                    $SourceName = Resolve-Path $_.FullName -Relative
-                    Write-Verbose "Adding $SourceName"
-                    "# BEGIN $SourceName"
-                    Get-Content $SourceName
-                    "# END $SourceName"
-                } | Set-Content -Path $RootModule -Encoding $ModuleInfo.Encoding
-
-                if ($ModuleInfo.ExportModuleMember) {
-                    Add-Content -Path $RootModule -Value $ModuleInfo.ExportModuleMember -Encoding $ModuleInfo.Encoding
-                }
-
-                # If there is a PublicFilter, update ExportedFunctions
-                if ($ModuleInfo.PublicFilter) {
-                    # SilentlyContinue because there don't *HAVE* to be public functions
-                    if ($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty BaseName) {
-                        Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
+            & {
+                begin {
+                    if ($ModuleInfo.Prefix) {
+                        if (Test-Path $ModuleInfo.Prefix) {
+                            $SourceName = Resolve-Path $ModuleInfo.Prefix -Relative
+                            "# BEGIN $SourceName"
+                            Get-Content $SourceName
+                            "# END $SourceName"
+                        } else {
+                            "# BEGIN PREFIX"
+                            $ModuleInfo.Prefix
+                            "# END PREFIX"
+                        }
                     }
+                }
+                process {
+                    if ($AllScripts) {
+                        $AllScripts | ForEach-Object {
+                            $SourceName = Resolve-Path $_.FullName -Relative
+                            Write-Verbose "Adding $SourceName"
+                            "# BEGIN $SourceName"
+                            Get-Content $SourceName
+                            "# END $SourceName"
+                        }
+                    }
+                }
+                end {
+                    if ($ModuleInfo.Postfix) {
+                        if (Test-Path $ModuleInfo.Postfix) {
+                            $SourceName = Resolve-Path $ModuleInfo.Postfix -Relative
+                            "# BEGIN $SourceName"
+                            Get-Content $SourceName
+                            "# END $SourceName"
+                        } else {
+                            "# BEGIN POSTFIX"
+                            $ModuleInfo.Postfix
+                            "# END POSTFIX"
+                        }
+                    }
+                }
+            } | Set-Content -Path $RootModule -Encoding $ModuleInfo.Encoding
+
+
+            # If there is a PublicFilter, update ExportedFunctions
+            if ($ModuleInfo.PublicFilter) {
+                # SilentlyContinue because there don't *HAVE* to be public functions
+                if ($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty BaseName) {
+                    Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
                 }
             }
 
