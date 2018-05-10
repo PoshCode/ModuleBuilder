@@ -26,7 +26,9 @@ try {
 
 
     # Restore dependencies
-    Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository (Get-PSRepository)[0].Name -Force
+    if (-not (Get-Module PSDepend -ListAvailable)) {
+        Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository PSGallery -Force
+    }
     Invoke-PSDepend -Path $PSScriptRoot\build.depend.psd1 -Confirm:$false
     Import-Module Configuration
 
