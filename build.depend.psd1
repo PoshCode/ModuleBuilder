@@ -1,7 +1,8 @@
 @{
-    Configuration = @{
-        Name = 'Configuration'
+    PSDependOptions = @{
         Target = 'CurrentUser'
-        Version = 'latest'
     }
+
+    Configuration = 'latest'
+    Pester = 'latest'
 }
