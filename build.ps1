@@ -25,7 +25,12 @@ try {
     ").Invoke() | Import-Module -Verbose:$false
 
 
-    # Restore dependencies (None)
+    # Restore dependencies
+    if (-not (Get-Module PSDepend -ListAvailable)) {
+        Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository PSGallery -Force
+    }
+    Invoke-PSDepend -Path $PSScriptRoot\build.depend.psd1 -Confirm:$false
+    Import-Module Configuration
 
     # Clean output if necessary (always)
     Write-Verbose "Cleaning output from $OutputDirectory"
