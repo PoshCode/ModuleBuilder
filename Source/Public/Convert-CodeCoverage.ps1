@@ -40,11 +40,12 @@ function Convert-CodeCoverage {
         try {
             foreach ($miss in $InputObject.CodeCoverage.MissedCommands ) {
                 if (!$filemap.ContainsKey($miss.File)) {
-                    $matches = Select-String "# BEGIN (?<path>.*)" -Path $miss.file
+                    # Note: the new pattern is #Region but the old one was # BEGIN
+                    $matches = Select-String '^(?:#Region|# BEGIN) (?<ScriptName>.*) (?<LineNumber>\d+)?$' -Path $miss.file
                     $filemap[$miss.File] = @($matches.ForEach( {
                                 [PSCustomObject]@{
                                     Line = $_.LineNumber
-                                    Path = $_.Matches[0].Groups["path"].Value | Resolve
+                                    Path = $_.Matches[0].Groups["ScriptName"].Value.Trim("'") | Resolve
                                 }
                             }))
                 }

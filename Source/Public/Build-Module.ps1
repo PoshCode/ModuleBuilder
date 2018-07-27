@@ -82,11 +82,19 @@ function Build-Module {
         # The postfix is either the path to a file (relative to the module folder) or text to put at the bottom of the file.
         # If the value of postfix resolves to a file, that file will be read in, otherwise, the value will be used.
         # The default is nothing. See examples for more details.
+        [Alias("ExportModuleMember")]
         $Postfix,
 
         # Controls whether or not there is a build or cleanup performed
         [ValidateSet("Clean", "Build", "CleanBuild")]
         [string]$Target = "CleanBuild",
+
+        # The default language is your current UICulture and is used for help
+        [Globalization.CultureInfo]$DefaultLanguage = $((Get-Culture).Name),
+
+        # The Readme or About is the path to a file (relative to the module folder) to include as the about_Module.help.txt
+        [Alias("AboutPath")]
+        $ReadMe,
 
         # Output the ModuleInfo of the "built" module
         [switch]$Passthru
@@ -137,6 +145,10 @@ function Build-Module {
             Write-Verbose  "Building $ModuleBase"
             Write-Verbose  "         Output to: $OutputDirectory"
 
+            # File names
+            $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
+            $OutputManifest = Join-Path $OutputDirectory "$($ModuleInfo.Name).psd1"
+
             if ($Target -match "Clean") {
                 Write-Verbose "Cleaning $OutputDirectory"
                 if (Test-Path $OutputDirectory) {
@@ -148,9 +160,7 @@ function Build-Module {
             } else {
                 # If we're not cleaning, skip the build if it's up to date already
                 Write-Verbose "Target $Target"
-                $NewestBuild = Get-ChildItem $OutputDirectory -Recurse |
-                    Sort-Object LastWriteTime -Descending |
-                    Select-Object -First 1 -ExpandProperty LastWriteTime
+                $NewestBuild = (Get-Item $RootModule -ErrorAction SilentlyContinue).LastWriteTime
                 $IsNew = Get-ChildItem $ModuleInfo.ModuleBase -Recurse |
                     Where-Object LastWriteTime -gt $NewestBuild |
                     Select-Object -First 1 -ExpandProperty LastWriteTime
@@ -171,9 +181,24 @@ function Build-Module {
                 Copy-Item -Path $ModuleInfo.CopyDirectories -Recurse -Destination $OutputDirectory -Force
             }
 
-            # Output psm1
-            $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
-            $OutputManifest = Join-Path $OutputDirectory "$($ModuleInfo.Name).psd1"
+            # Copy the readme file as an about_ help file
+            Write-Verbose "Test for ReadMe: $Pwd\$($ModuleInfo.ReadMe)"
+            if($ModuleInfo.ReadMe -and (Test-Path $ModuleInfo.ReadMe -PathType Leaf)) {
+                # Make sure there's a language path
+                $LanguagePath = Join-Path $OutputDirectory $DefaultLanguage
+                if(!(Test-Path $LanguagePath -PathType Container)) {
+                    $null = New-Item $LanguagePath -Type Directory -Force
+                }
+                Write-Verbose "Copy ReadMe to: $LanguagePath"
+
+                $about_module = Join-Path $LanguagePath "about_$($ModuleInfo.Name).help.txt"
+                if(!(Test-Path $about_module)) {
+                    Trace-Message "Turn readme into about_module"
+                    Copy-Item -LiteralPath $ModuleInfo.ReadMe -Destination $about_module
+                }
+            }
+
+
 
             Write-Verbose "Combine scripts to $RootModule"
             # Prefer pipeline to speed for the sake of memory and file IO
@@ -186,13 +211,13 @@ function Build-Module {
                     if ($ModuleInfo.Prefix) {
                         if (Test-Path $ModuleInfo.Prefix) {
                             $SourceName = Resolve-Path $ModuleInfo.Prefix -Relative
-                            "# BEGIN $SourceName"
+                            "#Region '$SourceName' 0"
                             Get-Content $SourceName
-                            "# END $SourceName"
+                            "#EndRegion '$SourceName'"
                         } else {
-                            "# BEGIN PREFIX"
+                            "#Region 'PREFIX' 0"
                             $ModuleInfo.Prefix
-                            "# END PREFIX"
+                            "#EndRegion 'PREFIX'"
                         }
                     }
                 }
@@ -201,9 +226,9 @@ function Build-Module {
                         $AllScripts | ForEach-Object {
                             $SourceName = Resolve-Path $_.FullName -Relative
                             Write-Verbose "Adding $SourceName"
-                            "# BEGIN $SourceName"
+                            "#Region '$SourceName' 0"
                             Get-Content $SourceName
-                            "# END $SourceName"
+                            "#EndRegion '$SourceName'"
                         }
                     }
                 }
@@ -211,13 +236,13 @@ function Build-Module {
                     if ($ModuleInfo.Postfix) {
                         if (Test-Path $ModuleInfo.Postfix) {
                             $SourceName = Resolve-Path $ModuleInfo.Postfix -Relative
-                            "# BEGIN $SourceName"
+                            "#Region '$SourceName' 0"
                             Get-Content $SourceName
-                            "# END $SourceName"
+                            "#EndRegion '$SourceName'"
                         } else {
-                            "# BEGIN POSTFIX"
+                            "#Region 'POSTFIX' 0"
                             $ModuleInfo.Postfix
-                            "# END POSTFIX"
+                            "#EndRegion 'POSTFIX'"
                         }
                     }
                 }
