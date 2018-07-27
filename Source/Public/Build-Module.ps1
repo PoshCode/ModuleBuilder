@@ -212,8 +212,8 @@ function Build-Module {
                         if (Test-Path $ModuleInfo.Prefix) {
                             $SourceName = Resolve-Path $ModuleInfo.Prefix -Relative
                             "#Region '$SourceName' 0"
-                            Get-Content $SourceName
-                            "#EndRegion '$SourceName'"
+                            Get-Content $SourceName -OutVariable source
+                            "#EndRegion '$SourceName' $($Source.Count)"
                         } else {
                             "#Region 'PREFIX' 0"
                             $ModuleInfo.Prefix
