@@ -89,8 +89,8 @@ function Build-Module {
         [ValidateSet("Clean", "Build", "CleanBuild")]
         [string]$Target = "CleanBuild",
 
-        # The default language is your current UICulture and is used for help
-        [Globalization.CultureInfo]$DefaultLanguage = $((Get-Culture).Name),
+        # Your CultureInfo is, by default, the current UICulture and is used to determine the language of the ReadMe.
+        [Globalization.CultureInfo]$Culture = $(Get-UICulture),
 
         # The Readme or About is the path to a file (relative to the module folder) to include as the about_Module.help.txt
         [Alias("AboutPath")]
@@ -181,24 +181,7 @@ function Build-Module {
                 Copy-Item -Path $ModuleInfo.CopyDirectories -Recurse -Destination $OutputDirectory -Force
             }
 
-            # Copy the readme file as an about_ help file
-            Write-Verbose "Test for ReadMe: $Pwd\$($ModuleInfo.ReadMe)"
-            if($ModuleInfo.ReadMe -and (Test-Path $ModuleInfo.ReadMe -PathType Leaf)) {
-                # Make sure there's a language path
-                $LanguagePath = Join-Path $OutputDirectory $DefaultLanguage
-                if(!(Test-Path $LanguagePath -PathType Container)) {
-                    $null = New-Item $LanguagePath -Type Directory -Force
-                }
-                Write-Verbose "Copy ReadMe to: $LanguagePath"
-
-                $about_module = Join-Path $LanguagePath "about_$($ModuleInfo.Name).help.txt"
-                if(!(Test-Path $about_module)) {
-                    Trace-Message "Turn readme into about_module"
-                    Copy-Item -LiteralPath $ModuleInfo.ReadMe -Destination $about_module
-                }
-            }
-
-
+            $ModuleInfo | CopyReadMe
 
             Write-Verbose "Combine scripts to $RootModule"
             # Prefer pipeline to speed for the sake of memory and file IO
