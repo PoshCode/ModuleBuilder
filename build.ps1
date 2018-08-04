@@ -2,7 +2,12 @@
 param(
     $OutputDirectory = "Output\ModuleBuilder",
 
-    $ModuleVersion = "1.0.0"
+    $ModuleVersion = "1.0.0",
+
+    [switch]
+    $SaveTools,
+
+    $GalleryToBootstrapFrom = 'PSGallery'
 )
 Write-Verbose "BUILDING $(Split-Path $PSScriptRoot -Leaf) VERSION $ModuleVersion" -Verbose
 $ErrorActionPreference = "Stop"
@@ -24,10 +29,19 @@ try {
         }
     ").Invoke() | Import-Module -Verbose:$false
 
-
     # Restore dependencies
     if (-not (Get-Module PSDepend -ListAvailable)) {
-        Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository PSGallery -Force
+        Write-Verbose "PSDepend not available, bootstrapping from Gallery '$GalleryToBootstrapFrom'"
+        if(-not $SaveTools) {
+            Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository $GalleryToBootstrapFrom -Force
+        } else {
+            $ToolsPath = Join-Path $PSScriptRoot 'Tools'
+            Write-Debug "    Saving the PSDepend Module in '$ToolsPath"
+            $null = New-Item -Name Tools -ItemType Directory -ErrorAction SilentlyContinue
+            Save-Module -Name PSDepend -Repository $GalleryToBootstrapFrom -Confirm:$false -Path $ToolsPath -ErrorAction Stop
+            Write-Debug "    Adding $ToolsPath to `$Env:PSModulePath"
+            $env:PSModulePath = $ToolsPath + ';' + $env:PSModulePath
+        }
     }
     Invoke-PSDepend -Path $PSScriptRoot\build.depend.psd1 -Confirm:$false
     Import-Module Configuration
