@@ -32,7 +32,7 @@ try {
     # Restore dependencies
     if (-not (Get-Module PSDepend -ListAvailable)) {
         Write-Verbose "PSDepend not available, bootstrapping from Gallery '$GalleryToBootstrapFrom'"
-        if(-not $SaveTools) {
+        if (-not $SaveTools) {
             Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository $GalleryToBootstrapFrom -Force
         } else {
             $ToolsPath = Join-Path $PSScriptRoot 'Tools'
@@ -40,7 +40,7 @@ try {
             $null = New-Item -Name Tools -ItemType Directory -ErrorAction SilentlyContinue
             Save-Module -Name PSDepend -Repository $GalleryToBootstrapFrom -Confirm:$false -Path $ToolsPath -ErrorAction Stop
             Write-Debug "    Adding $ToolsPath to `$Env:PSModulePath"
-            if($env:PSModulePath -split ';' -notcontains $ToolsPath) {
+            if ($env:PSModulePath -split ';' -notcontains $ToolsPath) {
                 $env:PSModulePath = $ToolsPath + ';' + $env:PSModulePath
             }
         }
