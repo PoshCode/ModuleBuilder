@@ -40,7 +40,9 @@ try {
             $null = New-Item -Name Tools -ItemType Directory -ErrorAction SilentlyContinue
             Save-Module -Name PSDepend -Repository $GalleryToBootstrapFrom -Confirm:$false -Path $ToolsPath -ErrorAction Stop
             Write-Debug "    Adding $ToolsPath to `$Env:PSModulePath"
-            $env:PSModulePath = $ToolsPath + ';' + $env:PSModulePath
+            if($env:PSModulePath -split ';' -notcontains $ToolsPath) {
+                $env:PSModulePath = $ToolsPath + ';' + $env:PSModulePath
+            }
         }
     }
     Invoke-PSDepend -Path $PSScriptRoot\build.depend.psd1 -Confirm:$false
