@@ -17,7 +17,7 @@ Describe "Convert-LineNumber" {
         for($i=0; $i -lt 5; $i++) {
 
             $lineNumber = Get-Random -min 2 -max $ModuleSource.Count
-            while($ModuleSource[$lineNumber] -match "^# BEGIN") {
+            while($ModuleSource[$lineNumber] -match "^#REGION") {
                 $lineNumber++
             }
 
