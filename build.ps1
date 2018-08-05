@@ -5,7 +5,7 @@ param(
     $ModuleVersion = "1.0.0",
 
     [switch]
-    $SaveTools,
+    $UseLocalTools,
 
     $GalleryToBootstrapFrom = 'PSGallery'
 )
@@ -32,7 +32,7 @@ try {
     # Restore dependencies
     if (-not (Get-Module PSDepend -ListAvailable)) {
         Write-Verbose "PSDepend not available, bootstrapping from Gallery '$GalleryToBootstrapFrom'"
-        if (-not $SaveTools) {
+        if (-not $UseLocalTools) {
             Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository $GalleryToBootstrapFrom -Force
         } else {
             $ToolsPath = Join-Path $PSScriptRoot 'Tools'
