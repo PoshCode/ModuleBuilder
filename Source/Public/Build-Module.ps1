@@ -21,9 +21,9 @@ function Build-Module {
             5. The ModuleVersion and ExportedFunctions in the ModuleName.psd1 may be updated (depending on parameters)
 
         .Example
-            Build-Module -Postfix "Export-ModuleMember -Function *-* -Variable PreferenceVariable"
+            Build-Module -Suffix "Export-ModuleMember -Function *-* -Variable PreferenceVariable"
 
-            This example shows how to build a simple module from it's manifest, adding an Export-ModuleMember as a postfix
+            This example shows how to build a simple module from it's manifest, adding an Export-ModuleMember as a Suffix
 
         .Example
             Build-Module -Prefix "using namespace System.Management.Automation"
@@ -79,11 +79,11 @@ function Build-Module {
         # The default is nothing. See examples for more details.
         $Prefix,
 
-        # The postfix is either the path to a file (relative to the module folder) or text to put at the bottom of the file.
-        # If the value of postfix resolves to a file, that file will be read in, otherwise, the value will be used.
+        # The Suffix is either the path to a file (relative to the module folder) or text to put at the bottom of the file.
+        # If the value of Suffix resolves to a file, that file will be read in, otherwise, the value will be used.
         # The default is nothing. See examples for more details.
-        [Alias("ExportModuleMember")]
-        $Postfix,
+        [Alias("ExportModuleMember","Postfix")]
+        $Suffix,
 
         # Controls whether or not there is a build or cleanup performed
         [ValidateSet("Clean", "Build", "CleanBuild")]
@@ -216,16 +216,16 @@ function Build-Module {
                     }
                 }
                 end {
-                    if ($ModuleInfo.Postfix) {
-                        if (Test-Path $ModuleInfo.Postfix) {
-                            $SourceName = Resolve-Path $ModuleInfo.Postfix -Relative
+                    if ($ModuleInfo.Suffix) {
+                        if (Test-Path $ModuleInfo.Suffix) {
+                            $SourceName = Resolve-Path $ModuleInfo.Suffix -Relative
                             "#Region '$SourceName' 0"
                             Get-Content $SourceName
                             "#EndRegion '$SourceName'"
                         } else {
-                            "#Region 'POSTFIX' 0"
-                            $ModuleInfo.Postfix
-                            "#EndRegion 'POSTFIX'"
+                            "#Region 'SUFFIX' 0"
+                            $ModuleInfo.Suffix
+                            "#EndRegion 'SUFFIX'"
                         }
                     }
                 }
