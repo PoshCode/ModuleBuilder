@@ -184,55 +184,7 @@ function Build-Module {
             $ModuleInfo | CopyReadMe
 
             Write-Verbose "Combine scripts to $RootModule"
-            # Prefer pipeline to speed for the sake of memory and file IO
-            # SilentlyContinue because there don't *HAVE* to be functions at all
-
-            $AllScripts = Get-ChildItem -Path $SourceDirectories.ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
-
-            & {
-                begin {
-                    if ($ModuleInfo.Prefix) {
-                        if (Test-Path $ModuleInfo.Prefix) {
-                            $SourceName = Resolve-Path $ModuleInfo.Prefix -Relative
-                            "#Region '$SourceName' 0"
-                            Get-Content $SourceName -OutVariable source
-                            "#EndRegion '$SourceName' $($Source.Count)"
-                        } else {
-                            "#Region 'PREFIX' 0"
-                            $ModuleInfo.Prefix
-                            "#EndRegion 'PREFIX'"
-                        }
-                    }
-                }
-                process {
-                    if ($AllScripts) {
-                        $AllScripts | ForEach-Object {
-                            $SourceName = Resolve-Path $_.FullName -Relative
-                            Write-Verbose "Adding $SourceName"
-                            "#Region '$SourceName' 0"
-                            Get-Content $SourceName
-                            "#EndRegion '$SourceName'"
-                        }
-                    }
-                }
-                end {
-                    if ($ModuleInfo.Suffix) {
-                        if (Test-Path $ModuleInfo.Suffix) {
-                            $SourceName = Resolve-Path $ModuleInfo.Suffix -Relative
-                            "#Region '$SourceName' 0"
-                            Get-Content $SourceName
-                            "#EndRegion '$SourceName'"
-                        } else {
-                            "#Region 'SUFFIX' 0"
-                            $ModuleInfo.Suffix
-                            "#EndRegion 'SUFFIX'"
-                        }
-                    }
-                }
-            } |
-            # BUGBUG: Note that the encoding value *MUST* be in quotes for PowerShell 6
-            Set-Content -Path $RootModule -Encoding "$($ModuleInfo.Encoding)"
-
+            MergeIntoModule -ModuleInfo $ModuleInfo -RootModule $RootModule
 
             # If there is a PublicFilter, update ExportedFunctions
             if ($ModuleInfo.PublicFilter) {
