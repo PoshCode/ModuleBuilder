@@ -7,7 +7,7 @@ param(
     [switch]
     $UseLocalTools,
 
-    $GalleryToBootstrapFrom = 'PSGallery'
+    $Repository = 'PSGallery'
 )
 Write-Verbose "BUILDING $(Split-Path $PSScriptRoot -Leaf) VERSION $ModuleVersion" -Verbose
 $ErrorActionPreference = "Stop"
@@ -31,14 +31,14 @@ try {
 
     # Restore dependencies
     if (-not (Get-Module PSDepend -ListAvailable)) {
-        Write-Verbose "PSDepend not available, bootstrapping from Gallery '$GalleryToBootstrapFrom'"
+        Write-Verbose "PSDepend not available, bootstrapping from Repository '$Repository'"
         if (-not $UseLocalTools) {
-            Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository $GalleryToBootstrapFrom -Force
+            Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository $Repository -Force
         } else {
             $ToolsPath = Join-Path $PSScriptRoot 'Tools'
             Write-Debug "    Saving the PSDepend Module in '$ToolsPath"
             $null = New-Item -Name Tools -ItemType Directory -ErrorAction SilentlyContinue
-            Save-Module -Name PSDepend -Repository $GalleryToBootstrapFrom -Confirm:$false -Path $ToolsPath -ErrorAction Stop
+            Save-Module -Name PSDepend -Repository $Repository -Confirm:$false -Path $ToolsPath -ErrorAction Stop
             Write-Debug "    Adding $ToolsPath to `$Env:PSModulePath"
             if ($env:PSModulePath -split ';' -notcontains $ToolsPath) {
                 $env:PSModulePath = $ToolsPath + ';' + $env:PSModulePath
