@@ -50,7 +50,8 @@ function Build-Module {
         [Alias("Destination")]
         [string]$OutputDirectory,
 
-        [version]$ModuleVersion,
+        [Alias("ModuleVersion")]
+        [version]$Version,
 
         # Folders which should be copied intact to the module output
         # Can be relative to the  module folder
@@ -132,7 +133,7 @@ function Build-Module {
 
             # Ensure OutputDirectory
             if (!$ModuleInfo.OutputDirectory) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleBase -Parent) "Output\$($ModuleInfo.Name)"
+                $OutputDirectory = Join-Path (Split-Path $ModuleBase -Parent) "$($ModuleInfo.Version)"
                 Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
             } elseif (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
                 $OutputDirectory = Join-Path (Split-Path $ModuleBase -Parent) $ModuleInfo.OutputDirectory
@@ -244,8 +245,8 @@ function Build-Module {
 
             Write-Verbose "Update Manifest to $OutputManifest"
 
-            if ($ModuleVersion) {
-                Update-Metadata -Path $OutputManifest -PropertyName ModuleVersion -Value $ModuleVersion
+            if ($Version) {
+                Update-Metadata -Path $OutputManifest -PropertyName ModuleVersion -Value $Version
             }
 
             # This is mostly for testing ...
