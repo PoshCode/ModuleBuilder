@@ -1,34 +1,25 @@
 [CmdletBinding()]
 param(
-    $OutputDirectory = "Output\ModuleBuilder",
+    $OutputDirectory,
 
-    $ModuleVersion = "1.0.0",
+    $ModuleVersion,
 
-    [switch]
-    $UseLocalTools,
+    $Repository = 'PSGallery',
 
-    $Repository = 'PSGallery'
+    [switch]$UseLocalTools,
+
+    [switch]$Test
 )
+# Sanitize parameters to pass to Build-Module
+$null = $PSBoundParameters.Remove('Repository')
+$null = $PSBoundParameters.Remove('Test')
+$null = $PSBoundParameters.Remove('UseLocalTools')
+$ParameterString = $PSBoundParameters.GetEnumerator().ForEach{ '-' + $_.Key + " '" + $_.Value + "'" } -join " "
+
 Write-Verbose "BUILDING $(Split-Path $PSScriptRoot -Leaf) VERSION $ModuleVersion" -Verbose
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
-
-    # This is a bootstrap hack:
-    Write-Verbose "Bootstrap hack for building ModuleBuilder with ModuleBuilder"
-    $OFS = "`n`n"
-    $Source = Get-ChildItem Source -Directory | Sort-Object Name |
-        Get-ChildItem -File -Filter *.ps1 -Recurse |
-        Get-Content
-
-    Get-Module ModuleBuilderBootStrap | Remove-Module
-    [ScriptBlock]::Create("
-        New-Module ModuleBuilderBootStrap {
-            $Source
-            Export-ModuleMember -Function *-*
-        }
-    ").Invoke() | Import-Module -Verbose:$false
-
     # Restore dependencies
     if (-not (Get-Module PSDepend -ListAvailable)) {
         Write-Verbose "PSDepend not available, bootstrapping from Repository '$Repository'"
@@ -45,28 +36,38 @@ try {
             }
         }
     }
-    Invoke-PSDepend -Path $PSScriptRoot\build.depend.psd1 -Confirm:$false
+    # PSDepend has a bug where it outputs empty strings for no obvious reason. This is to suppress that:
+    Invoke-PSDepend -Path $PSScriptRoot\build.depend.psd1 -Confirm:$false | Where-Object { $_ }
     Import-Module Configuration
 
-    # Clean output if necessary (always)
-    Write-Verbose "Cleaning output from $OutputDirectory"
-    Get-Item $OutputDirectory -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+    # This is a bootstrapping hack: how do you build ModuleBuilder with ModuleBuilder?
+    Write-Verbose "Generating ModuleBuilderBootstrap Module"
+    $OFS = "`n`n"
+    $Source = Get-ChildItem Source -File -Recurse -Filter *.ps1 |
+        Sort-Object DirectoryName, Name |
+        Get-Content -Encoding UTF8 -Delimiter ([char]0)
+    $Source += "`nExport-ModuleMember -Function *-*"
+
+    Get-Module ModuleBuilderBootstrap -ErrorAction Ignore | Remove-Module
+    New-Module ModuleBuilderBootstrap ([ScriptBlock]::Create($Source)) |
+        Import-Module -Verbose:$false -DisableNameChecking
 
     # Build new output
-    Write-Verbose "Build-Module ModuleBuilder\Source\build.psd1 -OutputDirectory '$OutputDirectory' -ModuleVersion '$ModuleVersion'"
-    ModuleBuilderBootStrap\Build-Module Source\build.psd1 -OutputDirectory $OutputDirectory -ModuleVersion $ModuleVersion
+    Write-Verbose "Build-Module Source\build.psd1 $($ParameterString) -Target CleanBuild"
+    ModuleBuilderBootstrap\Build-Module Source\build.psd1 @PSBoundParameters -Target CleanBuild -Passthru -OutVariable BuildOutput | Split-Path
+    Write-Verbose "Module build output in $(Split-Path $BuildOutput.Path)"
 
     # Test module
-    $ModulePath = (Get-Item $OutputDirectory -Filter *.psd1).FullName
-    Write-Verbose "Invoke-Pester after importing module from $ModulePath"
-    Remove-Module ModuleBuilderBootStrap, ModuleBuilder -ErrorAction SilentlyContinue  -Verbose:$false
-    Import-Module $ModulePath -Verbose:$false
+    if($Test) {
+        Write-Verbose "Invoke-Pester after importing $($BuildOutput.Path)" -Verbose
+        Remove-Module ModuleBuilderBootstrap, ModuleBuilder -ErrorAction SilentlyContinue -Verbose:$false
+        $BuildOutput | Import-Module -Verbose:$false -DisableNameChecking
+        Invoke-Pester
+    }
 
-    Invoke-Pester
+    # Clean up environment after tests
+    Remove-Module ModuleBuilderBootStrap, ModuleBuilder -ErrorAction SilentlyContinue -Verbose:$false
 
-    # Clean environment after tests
-    Remove-Module ModuleBuilderBootStrap, ModuleBuilder -ErrorAction SilentlyContinue
-
-} catch {
+} finally {
     Pop-Location -StackName BuildBuildModule
 }
