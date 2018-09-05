@@ -3,28 +3,28 @@
     ModuleVersion          = "1.0.0"
 
     # PrivateData is where all third-party metadata goes
-    PrivateData = @{
+    PrivateData            = @{
         # PrivateData.PSData is the PowerShell Gallery data
-        PSData = @{
+        PSData             = @{
             # Prerelease string of this module
-            Prerelease = '-beta01'
+            Prerelease     = '-beta01'
 
             # ReleaseNotes of this module
-            ReleaseNotes = '
+            ReleaseNotes   = '
             1.0.0-beta01: Pre-release version of Build-Module
             '
 
             # Tags applied to this module. These help with module discovery in online galleries.
-            Tags = 'Authoring','Build','Development','BestPractices'
+            Tags           = 'Authoring','Build','Development','BestPractices'
 
             # A URL to the license for this module.
-            LicenseUri = 'https://github.com/PoshCode/ModuleBuilder/blob/master/LICENSE'
+            LicenseUri     = 'https://github.com/PoshCode/ModuleBuilder/blob/master/LICENSE'
 
             # A URL to the main website for this project.
-            ProjectUri = 'https://github.com/PoshCode/ModuleBuilder'
+            ProjectUri     = 'https://github.com/PoshCode/ModuleBuilder'
 
             # A URL to an icon representing this module.
-            IconUri = 'https://github.com/PoshCode/ModuleBuilder/blob/resources/ModuleBuilder.png?raw=true'
+            IconUri        = 'https://github.com/PoshCode/ModuleBuilder/blob/resources/ModuleBuilder.png?raw=true'
         } # End of PSData
     } # End of PrivateData
 
