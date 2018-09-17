@@ -27,7 +27,7 @@ try {
         Invoke-PSDepend -Force -ErrorAction Stop
         Invoke-PSDepend -Import -Force -ErrorAction Stop
     } catch {
-        Write-Warning "Missing dependency. Please call 'dotnet restore'"
+        Write-Warning "Unable to restore dependencies. Please review errors:"
         throw
     }
 
