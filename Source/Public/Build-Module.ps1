@@ -42,8 +42,8 @@ function Build-Module {
                     throw "Source must point to a valid module"
                 }
             } )]
-        [Alias("ModuleManifest")]
-        [string]$Path = $(Get-Location -PSProvider FileSystem),
+        [Alias("ModuleManifest", "Path")]
+        [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
 
         # Where to build the module.
         # Defaults to a version number folder, adjacent to the module folder
@@ -108,14 +108,14 @@ function Build-Module {
     }
     process {
         try {
-            $ModuleBase = ResolveModuleBase $Path
-            Push-Location $ModuleBase -StackName Optimize-Module
+            $ModuleSource = ResolveModuleSource $SourcePath
+            Push-Location $ModuleSource -StackName Optimize-Module
 
             # Read a build.psd1 configuration file for default parameter values
-            $BuildInfo = @{} + (Import-LocalizedData -BaseDirectory $ModuleBase -FileName Build -ErrorAction SilentlyContinue)
+            $BuildInfo = @{} + (Import-LocalizedData -BaseDirectory $ModuleSource -FileName Build -ErrorAction SilentlyContinue)
             # Then update it from PSBoundParameters + default parameter values
             $BuildInfo = UpdateHashtable $BuildInfo $MyInvocation.ParameterValues
-            $BuildInfo.Path = ResolveModuleManifest $ModuleBase $BuildInfo.Path
+            $BuildInfo.Path = ResolveModuleManifest $ModuleSource $BuildInfo.Path
 
             # Read the Module Manifest
             $ModuleInfo = Get-Module $BuildInfo.Path -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
@@ -133,17 +133,17 @@ function Build-Module {
 
             # Ensure OutputDirectory
             if (!$ModuleInfo.OutputDirectory) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleBase -Parent) "$($ModuleInfo.Version)"
+                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) "$($ModuleInfo.Version)"
                 Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
             } elseif (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleBase -Parent) $ModuleInfo.OutputDirectory
+                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) $ModuleInfo.OutputDirectory
                 Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
             }
 
             $OutputDirectory = $ModuleInfo.OutputDirectory
 
-            Write-Progress "Building $ModuleBase" -Status "Use -Verbose for more information"
-            Write-Verbose  "Building $ModuleBase"
+            Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
+            Write-Verbose  "Building $($ModuleInfo.Name)"
             Write-Verbose  "         Output to: $OutputDirectory"
 
             # File names

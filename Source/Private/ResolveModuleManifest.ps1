@@ -19,17 +19,20 @@ function ResolveModuleManifest {
 
         [Parameter(Position = 1, ValueFromPipelineByPropertyName)]
         [AllowNull()]
+        [Alias("ModuleName")]
         [string]$Name
     )
     Push-Location $ModuleBase -StackName ResolveModuleManifest
 
-    if(!$PSBoundParameters.ContainsKey("ModuleName")) {
+    if(!$PSBoundParameters.ContainsKey("Name") -or !$Name) {
         # Do not use GetFileNameWithoutExtension, because some module names have dots in them
         $Name = (Split-Path $ModuleBase -Leaf) -replace "\.psd1$"
         # If we're in a "well known" source folder, look higher for a name
         if ($Name -in "Source", "src") {
             $Name = Split-Path (Split-Path $ModuleBase) -Leaf
         }
+    } else {
+        $Name = (Split-Path $Name -Leaf) -replace "\.psd1$"
     }
 
     $Manifest = Join-Path $ModuleBase "$Name.psd1"

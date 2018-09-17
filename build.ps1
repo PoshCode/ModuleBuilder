@@ -2,7 +2,9 @@
 param(
     $OutputDirectory,
 
-    $ModuleVersion,
+    # The version of the output module
+    [Alias("ModuleVersion")]
+    [version]$Version,
 
     $Repository = 'PSGallery',
 
@@ -10,7 +12,7 @@ param(
 
     [switch]$Test
 )
-Write-Verbose "BUILDING $(Split-Path $PSScriptRoot -Leaf) VERSION $ModuleVersion" -Verbose
+
 # Sanitize parameters to pass to Build-Module
 $null = $PSBoundParameters.Remove('Repository')
 $null = $PSBoundParameters.Remove('Test')
@@ -21,9 +23,9 @@ Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
 
     try {
-    if($UseLocalTools) {
-        $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "Tools"
-    }
+        if($UseLocalTools) {
+            $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "Tools"
+        }
         Invoke-PSDepend -Force -ErrorAction Stop
         Invoke-PSDepend -Import -Force -ErrorAction Stop
     } catch {
