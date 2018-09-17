@@ -1,4 +1,4 @@
-function ResolveModuleBase {
+function ResolveModuleSource {
     <#
         .Synopsis
             Resolve the module base path to the root of the module source code.

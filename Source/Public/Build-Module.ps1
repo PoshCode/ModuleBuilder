@@ -42,15 +42,16 @@ function Build-Module {
                     throw "Source must point to a valid module"
                 }
             } )]
-        [Alias("ModuleManifest")]
-        [string]$Path = $(Get-Location -PSProvider FileSystem),
+        [Alias("ModuleManifest", "Path")]
+        [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
 
         # Where to build the module.
         # Defaults to a version number folder, adjacent to the module folder
         [Alias("Destination")]
         [string]$OutputDirectory,
 
-        [version]$ModuleVersion,
+        [Alias("ModuleVersion")]
+        [version]$Version,
 
         # Folders which should be copied intact to the module output
         # Can be relative to the  module folder
@@ -107,14 +108,14 @@ function Build-Module {
     }
     process {
         try {
-            $ModuleBase = ResolveModuleBase $Path
-            Push-Location $ModuleBase -StackName Optimize-Module
+            $ModuleSource = ResolveModuleSource $SourcePath
+            Push-Location $ModuleSource -StackName Optimize-Module
 
             # Read a build.psd1 configuration file for default parameter values
-            $BuildInfo = @{} + (Import-LocalizedData -BaseDirectory $ModuleBase -FileName Build -ErrorAction SilentlyContinue)
+            $BuildInfo = @{} + (Import-LocalizedData -BaseDirectory $ModuleSource -FileName Build -ErrorAction SilentlyContinue)
             # Then update it from PSBoundParameters + default parameter values
             $BuildInfo = UpdateHashtable $BuildInfo $MyInvocation.ParameterValues
-            $BuildInfo.Path = ResolveModuleManifest $ModuleBase $BuildInfo.Path
+            $BuildInfo.Path = ResolveModuleManifest $ModuleSource $BuildInfo.Path
 
             # Read the Module Manifest
             $ModuleInfo = Get-Module $BuildInfo.Path -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
@@ -132,17 +133,17 @@ function Build-Module {
 
             # Ensure OutputDirectory
             if (!$ModuleInfo.OutputDirectory) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleBase -Parent) "Output\$($ModuleInfo.Name)"
+                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) "$($ModuleInfo.Version)"
                 Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
             } elseif (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleBase -Parent) $ModuleInfo.OutputDirectory
+                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) $ModuleInfo.OutputDirectory
                 Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
             }
 
             $OutputDirectory = $ModuleInfo.OutputDirectory
 
-            Write-Progress "Building $ModuleBase" -Status "Use -Verbose for more information"
-            Write-Verbose  "Building $ModuleBase"
+            Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
+            Write-Verbose  "Building $($ModuleInfo.Name)"
             Write-Verbose  "         Output to: $OutputDirectory"
 
             # File names
@@ -244,8 +245,8 @@ function Build-Module {
 
             Write-Verbose "Update Manifest to $OutputManifest"
 
-            if ($ModuleVersion) {
-                Update-Metadata -Path $OutputManifest -PropertyName ModuleVersion -Value $ModuleVersion
+            if ($Version) {
+                Update-Metadata -Path $OutputManifest -PropertyName ModuleVersion -Value $Version
             }
 
             # This is mostly for testing ...

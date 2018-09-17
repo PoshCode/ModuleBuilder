@@ -1,8 +1,9 @@
 @{
-    PSDependOptions = @{
-        Target = 'CurrentUser'
-    }
-
     Configuration = 'latest'
-    Pester = 'latest'
+    Pester = @{
+        version = 'latest'
+        Parameters = @{
+            SkipPublisherCheck = $true
+        }
+    }
 }

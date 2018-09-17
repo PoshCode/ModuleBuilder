@@ -1,72 +1,67 @@
 [CmdletBinding()]
 param(
-    $OutputDirectory = "Output\ModuleBuilder",
+    $OutputDirectory,
 
-    $ModuleVersion = "1.0.0",
+    # The version of the output module
+    [Alias("ModuleVersion")]
+    [version]$Version,
 
-    [switch]
-    $UseLocalTools,
+    $Repository = 'PSGallery',
 
-    $Repository = 'PSGallery'
+    [switch]$UseLocalTools,
+
+    [switch]$Test
 )
-Write-Verbose "BUILDING $(Split-Path $PSScriptRoot -Leaf) VERSION $ModuleVersion" -Verbose
+
+# Sanitize parameters to pass to Build-Module
+$null = $PSBoundParameters.Remove('Repository')
+$null = $PSBoundParameters.Remove('Test')
+$null = $PSBoundParameters.Remove('UseLocalTools')
+
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
 
-    # This is a bootstrap hack:
-    Write-Verbose "Bootstrap hack for building ModuleBuilder with ModuleBuilder"
-    $OFS = "`n`n"
-    $Source = Get-ChildItem Source -Directory | Sort-Object Name |
-        Get-ChildItem -File -Filter *.ps1 -Recurse |
-        Get-Content
-
-    Get-Module ModuleBuilderBootStrap | Remove-Module
-    [ScriptBlock]::Create("
-        New-Module ModuleBuilderBootStrap {
-            $Source
-            Export-ModuleMember -Function *-*
+    try {
+        if($UseLocalTools) {
+            $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "Tools"
         }
-    ").Invoke() | Import-Module -Verbose:$false
-
-    # Restore dependencies
-    if (-not (Get-Module PSDepend -ListAvailable)) {
-        Write-Verbose "PSDepend not available, bootstrapping from Repository '$Repository'"
-        if (-not $UseLocalTools) {
-            Install-Module -Name PSDepend -Scope CurrentUser -Confirm:$False -Repository $Repository -Force
-        } else {
-            $ToolsPath = Join-Path $PSScriptRoot 'Tools'
-            Write-Debug "    Saving the PSDepend Module in '$ToolsPath"
-            $null = New-Item -Name Tools -ItemType Directory -ErrorAction SilentlyContinue
-            Save-Module -Name PSDepend -Repository $Repository -Confirm:$false -Path $ToolsPath -ErrorAction Stop
-            Write-Debug "    Adding $ToolsPath to `$Env:PSModulePath"
-            if ($env:PSModulePath -split ';' -notcontains $ToolsPath) {
-                $env:PSModulePath = $ToolsPath + ';' + $env:PSModulePath
-            }
-        }
+        Invoke-PSDepend -Force -ErrorAction Stop
+        Invoke-PSDepend -Import -Force -ErrorAction Stop
+    } catch {
+        Write-Warning "Unable to restore dependencies. Please review errors:"
+        throw
     }
-    Invoke-PSDepend -Path $PSScriptRoot\build.depend.psd1 -Confirm:$false
-    Import-Module Configuration
 
-    # Clean output if necessary (always)
-    Write-Verbose "Cleaning output from $OutputDirectory"
-    Get-Item $OutputDirectory -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+    # Build ModuleBuilder with ModuleBuilder:
+    Write-Verbose "Compiling ModuleBuilderBootstrap module"
+    $OFS = "`n`n"
+    $Source = Get-ChildItem Source -File -Recurse -Filter *.ps1 |
+        Sort-Object DirectoryName, Name |
+        Get-Content -Encoding UTF8 -Delimiter ([char]0)
+    $Source += "`nExport-ModuleMember -Function *-*"
+
+    Get-Module ModuleBuilderBootstrap -ErrorAction Ignore | Remove-Module
+    New-Module ModuleBuilderBootstrap ([ScriptBlock]::Create($Source)) |
+        Import-Module -Verbose:$false -DisableNameChecking
 
     # Build new output
-    Write-Verbose "Build-Module ModuleBuilder\Source\build.psd1 -OutputDirectory '$OutputDirectory' -ModuleVersion '$ModuleVersion'"
-    ModuleBuilderBootStrap\Build-Module Source\build.psd1 -OutputDirectory $OutputDirectory -ModuleVersion $ModuleVersion
+    $ParameterString = $PSBoundParameters.GetEnumerator().ForEach{ '-' + $_.Key + " '" + $_.Value + "'" } -join " "
+    Write-Verbose "Build-Module Source\build.psd1 $($ParameterString) -Target CleanBuild"
+    ModuleBuilderBootstrap\Build-Module Source\build.psd1 @PSBoundParameters -Target CleanBuild -Passthru -OutVariable BuildOutput | Split-Path
+    Write-Verbose "Module build output in $(Split-Path $BuildOutput.Path)"
 
     # Test module
-    $ModulePath = (Get-Item $OutputDirectory -Filter *.psd1).FullName
-    Write-Verbose "Invoke-Pester after importing module from $ModulePath"
-    Remove-Module ModuleBuilderBootStrap, ModuleBuilder -ErrorAction SilentlyContinue  -Verbose:$false
-    Import-Module $ModulePath -Verbose:$false
+    if($Test) {
+        Write-Verbose "Invoke-Pester after importing $($BuildOutput.Path)" -Verbose
+        Remove-Module ModuleBuilderBootstrap, ModuleBuilder -ErrorAction SilentlyContinue -Verbose:$false
+        $BuildOutput | Import-Module -Verbose:$false -DisableNameChecking
+        Invoke-Pester
+    }
 
-    Invoke-Pester
+    # Clean up environment after tests
+    Remove-Module ModuleBuilderBootStrap, ModuleBuilder -ErrorAction SilentlyContinue -Verbose:$false
 
-    # Clean environment after tests
-    Remove-Module ModuleBuilderBootStrap, ModuleBuilder -ErrorAction SilentlyContinue
-
-} catch {
+} finally {
     Pop-Location -StackName BuildBuildModule
 }
