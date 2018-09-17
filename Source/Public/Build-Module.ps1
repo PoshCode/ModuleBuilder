@@ -1,4 +1,4 @@
-if(!(Get-Verb Build)) {
+if (!(Get-Verb Build)) {
     Write-Warning "The verb 'Build' was approved recently, but PowerShell $($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor) doesn't know. You will be warned about Build-Module"
 }
 
@@ -102,7 +102,7 @@ function Build-Module {
     )
 
     begin {
-        if($Encoding -ne "UTF8") {
+        if ($Encoding -ne "UTF8") {
             Write-Warning "We strongly recommend you build your script modules with UTF8 encoding for maximum cross-platform compatibility."
         }
     }
