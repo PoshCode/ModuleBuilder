@@ -37,6 +37,7 @@ function ResolveModuleManifest {
 
     $Manifest = Join-Path $ModuleBase "$Name.psd1"
     if (!(Test-Path $Manifest)) {
+        Pop-Location -StackName ResolveModuleManifest
         throw "Can't find module manifest $Manifest"
     }
 

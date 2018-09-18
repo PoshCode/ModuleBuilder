@@ -1,4 +1,7 @@
 Describe "UpdateHashtable" {
+
+    Import-Module ModuleBuilder
+
     BeforeEach {
         ${Global:Test Values in Spanish} = @{
             One  = "Uno"

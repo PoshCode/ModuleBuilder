@@ -1,4 +1,6 @@
 Describe "ResolveModuleSource" {
+    Import-Module ModuleBuilder
+
     [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot\..\Source
 
     It "Should return the folder name when passed a module folder" {

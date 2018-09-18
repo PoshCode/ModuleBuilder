@@ -1,4 +1,6 @@
 Describe "ParseLineNumber" {
+    Import-Module ModuleBuilder
+
     It 'Should get the ScriptName and LineNumber from stack trace messages with modules' {
         $Source = InModuleScope ModuleBuilder { ParseLineNumber "at Test-Throw<End>, C:\Test\Path\Modules\ErrorMaker\ErrorMaker.psm1: line 27" }
         $Source.ScriptName | Should -Be "C:\Test\Path\Modules\ErrorMaker\ErrorMaker.psm1"

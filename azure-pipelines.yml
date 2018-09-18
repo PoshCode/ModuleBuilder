@@ -13,16 +13,17 @@ steps:
 - powershell: .\bootstrap.ps1
   displayName: 'Restore pre-requisites'
 
-- powershell: .\build.ps1 -OutputDirectory $(Build.ArtifactStagingDirectory) -Version $(GitVersion.AssemblySemVer) -Verbose
+- powershell: .\build.ps1 -OutputDirectory $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName) -Version $(GitVersion.AssemblySemVer) -Verbose
   displayName: 'Run build script'
 
 - task: richardfennellBM.BM-VSTS-PesterRunner-Task.Pester-Task.Pester@8
+  continueOnError: true
   displayName: 'Pester Tests'
   inputs:
-    resultsFile: '$(Common.TestResultsDirectory)\Test-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
-    CodeCoverageOutputFile: '$(Common.TestResultsDirectory)\Coverage-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
     additionalModulePath: '$(Build.ArtifactStagingDirectory)'
     CodeCoverageFolder: '$(Build.ArtifactStagingDirectory)'
+    resultsFile: '$(Common.TestResultsDirectory)\Test-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
+    CodeCoverageOutputFile: '$(Common.TestResultsDirectory)\Coverage-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
 
 - task: PublishTestResults@2
   displayName: 'Publish Test Results'
@@ -30,7 +31,7 @@ steps:
     testRunner: NUnit
     searchFolder: '$(Common.TestResultsDirectory)'
 
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact: Module'
-  inputs:
-    ArtifactName: Module
+# - task: PublishBuildArtifacts@1
+#   displayName: 'Publish Artifact: Module'
+#   inputs:
+#     ArtifactName: Module
