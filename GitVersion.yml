@@ -1,0 +1,9 @@
+assembly-versioning-scheme: MajorMinorPatchTag
+mode: ContinuousDeployment
+branches:
+  develop:
+    tag: alpha
+  master:
+    tag: beta
+ignore:
+  sha: []
