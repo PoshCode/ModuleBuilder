@@ -1,7 +1,7 @@
 function ResolveModuleSource {
     <#
         .Synopsis
-            Resolve the module base path to the root of the module source code.
+            Resolve the module source path to the root of the module source code.
     #>
     [OutputType([string])]
     param(

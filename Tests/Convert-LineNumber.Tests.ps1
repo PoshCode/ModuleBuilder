@@ -1,6 +1,6 @@
 Describe "Convert-LineNumber" {
 
-    $ModulePath = Resolve-Path "$PSScriptRoot\..\Output\ModuleBuilder\ModuleBuilder.psm1"
+    $ModulePath = Join-Path (Import-Module ModuleBuilder -Passthru).ModuleBase ModuleBuilder.psm1
     $ModuleRoot = Resolve-Path "$PSScriptRoot\..\Source"
 
     $ModuleFiles = Get-ChildItem $ModuleRoot -File -Recurse -Filter *.ps1

@@ -1,4 +1,6 @@
 Describe "UpdateObject" {
+    Import-Module ModuleBuilder
+
     BeforeEach {
         ${Global:Test Values in Spanish} = [PSCustomObject]@{
             One  = "Uno"
