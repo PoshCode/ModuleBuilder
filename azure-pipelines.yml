@@ -17,7 +17,6 @@ steps:
   displayName: 'Run build script'
 
 - task: richardfennellBM.BM-VSTS-PesterRunner-Task.Pester-Task.Pester@8
-  continueOnError: true
   displayName: 'Pester Tests'
   inputs:
     additionalModulePath: '$(Build.ArtifactStagingDirectory)'
@@ -27,6 +26,7 @@ steps:
 
 - task: PublishTestResults@2
   displayName: 'Publish Test Results'
+  condition: always()
   inputs:
     testRunner: NUnit
     searchFolder: '$(Common.TestResultsDirectory)'
