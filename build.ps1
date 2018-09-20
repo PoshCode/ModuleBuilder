@@ -23,6 +23,7 @@ Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
 
     try {
+        Write-Verbose "Updating dependencies"
         if($UseLocalTools) {
             $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "Tools"
         }
@@ -55,7 +56,7 @@ try {
     if($Test) {
         Write-Verbose "Invoke-Pester after importing $($BuildOutput.Path)" -Verbose
         Remove-Module ModuleBuilderBootstrap, ModuleBuilder -ErrorAction SilentlyContinue -Verbose:$false
-        $BuildOutput | Import-Module -Verbose:$false -DisableNameChecking
+        Import-Module $BuildOutput.Path -Verbose:$false -DisableNameChecking
         Invoke-Pester
     }
 

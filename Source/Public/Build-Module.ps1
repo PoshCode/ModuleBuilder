@@ -1,5 +1,5 @@
-if (!(Get-Verb Build)) {
-    Write-Warning "The verb 'Build' was approved recently, but PowerShell $($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor) doesn't know. You will be warned about Build-Module"
+if (!(Get-Verb Build) -and $MyInvocation.Line -notmatch "DisableNameChecking") {
+    Write-Warning "The verb 'Build' was approved recently, but PowerShell $($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor) doesn't know. You will be warned about Build-Module."
 }
 
 function Build-Module {
