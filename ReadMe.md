@@ -21,6 +21,7 @@ This module is the first concrete step in the project (although it currently con
 
 ### Building from source
 
+[![Build Status](https://poshcode.visualstudio.com/ModuleBuilder/_apis/build/status/ModuleBuilder)](https://poshcode.visualstudio.com/ModuleBuilder/_build/latest?definitionId=1)
 
 #### 1. Get the source, obviously
 
