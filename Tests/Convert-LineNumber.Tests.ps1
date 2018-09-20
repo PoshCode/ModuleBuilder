@@ -1,6 +1,7 @@
 Describe "Convert-LineNumber" {
+    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
-    $ModulePath = Join-Path (Import-Module ModuleBuilder -Passthru).ModuleBase ModuleBuilder.psm1
+    $ModulePath = Join-Path (Get-Module ModuleBuilder).ModuleBase ModuleBuilder.psm1
     $ModuleRoot = Resolve-Path "$PSScriptRoot\..\Source"
 
     $ModuleFiles = Get-ChildItem $ModuleRoot -File -Recurse -Filter *.ps1
@@ -24,7 +25,11 @@ Describe "Convert-LineNumber" {
             $SourceLocation = Convert-LineNumber $ModulePath $lineNumber
 
             $line = (Get-Content (Join-Path $ModuleRoot $SourceLocation.ScriptName))[$SourceLocation.ScriptLineNumber]
-            $ModuleSource[$lineNumber] | Should -Be $line
+            try {
+                $ModuleSource[$lineNumber] | Should -Be $line
+            } catch {
+                throw "Failed to match ModuleSource line $lineNumber to $($SourceLocation.ScriptName) line $($SourceLocation.ScriptLineNumber).`nExpected $Line`nBut got  $($ModuleSource[$lineNumber])"
+            }
         }
     }
 

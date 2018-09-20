@@ -1,6 +1,5 @@
 Describe "UpdateHashtable" {
-
-    Import-Module ModuleBuilder
+    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     BeforeEach {
         ${Global:Test Values in Spanish} = @{

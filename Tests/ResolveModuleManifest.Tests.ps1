@@ -1,5 +1,5 @@
 Describe "ResolveModuleManifest" {
-    Import-Module ModuleBuilder
+    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot\..\Source
 
