@@ -3,78 +3,80 @@ function Convert-LineNumber {
         .SYNOPSIS
             Convert the line number in a built module to a file and line number in source
         .EXAMPLE
-            Convert-LineNumber -ScriptName ~\ErrorMaker.psm1 -ScriptLineNumber 27
+            Convert-LineNumber -SourceFile ~\ErrorMaker.psm1 -SourceLineNumber 27
         .EXAMPLE
             Convert-LineNumber -PositionMessage "At C:\Users\Joel\OneDrive\Documents\PowerShell\Modules\ErrorMaker\ErrorMaker.psm1:27 char:4"
     #>
-    [CmdletBinding(DefaultParameterSetName="FromInvocationInfo")]
+    [CmdletBinding(DefaultParameterSetName="FromString")]
     param(
         # A position message as found in PowerShell's error messages, ScriptStackTrace, or InvocationInfo
         [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName="FromString")]
         [string]$PositionMessage,
 
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, Position=0, ParameterSetName="FromInvocationInfo")]
-        [Alias("PSCommandPath")]
-        [string]$ScriptName,
+        [Alias("PSCommandPath", "File", "ScriptName")]
+        [string]$SourceFile,
 
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, Position=1, ParameterSetName="FromInvocationInfo")]
-        [Alias("LineNumber")]
-        [int]$ScriptLineNumber,
+        [Alias("LineNumber", "Line", "ScriptLineNumber")]
+        [int]$SourceLineNumber,
+
+        [Parameter(ValueFromPipeline, DontShow, ParameterSetName="FromInvocationInfo")]
+        [psobject]$InputObject,
+
+        [Parameter(ParameterSetName="FromInvocationInfo")]
+        [switch]$Passthru,
 
         # Output paths as short paths, relative to the SourceRoot
         [switch]$Relative
     )
     begin {
         $filemap = @{}
-        # # Conditionally define the Resolve function as either Convert-Path or Resolve-Path
-        # ${function:Resolve} = if ($Relative) {
-        #     { process {
-        #             $_ | Resolve-Path -Relative
-        #         } }
-        # } else {
-        #     { process {
-        #             $_ | Convert-Path
-        #         } }
-        # }
     }
     process {
         if($PSCmdlet.ParameterSetName -eq "FromString") {
             $Invocation = ParseLineNumber $PositionMessage
-            $ScriptName = $Invocation.ScriptName
-            $ScriptLineNumber = $Invocation.ScriptLineNumber
+            $SourceFile = $Invocation.SourceFile
+            $SourceLineNumber = $Invocation.SourceLineNumber
         }
-        $PSScriptRoot = Split-Path $ScriptName
+        $PSScriptRoot = Split-Path $SourceFile
 
-        if(!(Test-Path $ScriptName)) {
-            throw "'$ScriptName' does not exist"
+        if(!(Test-Path $SourceFile)) {
+            throw "'$SourceFile' does not exist"
         }
 
         Push-Location $PSScriptRoot
         try {
-            if (!$filemap.ContainsKey($ScriptName)) {
+            if (!$filemap.ContainsKey($SourceFile)) {
                 # Note: the new pattern is #Region but the old one was # BEGIN
-                $matches = Select-String '^(?:#Region|# BEGIN) (?<ScriptName>.*) (?<LineNumber>\d+)?$' -Path $ScriptName
-                $filemap[$ScriptName] = @($matches.ForEach{
+                $matches = Select-String '^(?:#Region|# BEGIN) (?<SourceFile>.*) (?<LineNumber>\d+)?$' -Path $SourceFile
+                $filemap[$SourceFile] = @($matches.ForEach{
                         [PSCustomObject]@{
                             PSTypeName = "BuildSourceMapping"
-                            ScriptName = $_.Matches[0].Groups["ScriptName"].Value.Trim("'")
+                            SourceFile = $_.Matches[0].Groups["SourceFile"].Value.Trim("'")
                             StartLineNumber = $_.LineNumber
                         }
                     })
             }
 
-            $hit = $filemap[$ScriptName]
+            $hit = $filemap[$SourceFile]
 
             # These are all negative, because BinarySearch returns the match *after* the line we're searching for
             # We need the match *before* the line we're searching for
             # And we need it as a zero-based index:
-            $index = -2 - [Array]::BinarySearch($hit.StartLineNumber, $ScriptLineNumber)
+            $index = -2 - [Array]::BinarySearch($hit.StartLineNumber, $SourceLineNumber)
             $Source = $hit[$index]
 
-            [PSCustomObject]@{
-                PSTypeName = "SourceLocation"
-                ScriptName = $Source.ScriptName
-                ScriptLineNumber = $ScriptLineNumber - $Source.StartLineNumber
+            if($Passthru) {
+                $InputObject |
+                    Add-Member -MemberType NoteProperty -Name SourceFile -Value $Source.SourceFile -PassThru -Force |
+                    Add-Member -MemberType NoteProperty -Name SourceLineNumber -Value ($SourceLineNumber - $Source.StartLineNumber) -PassThru -Force
+            } else {
+                [PSCustomObject]@{
+                    PSTypeName = "SourceLocation"
+                    SourceFile = $Source.SourceFile
+                    SourceLineNumber = $SourceLineNumber - $Source.StartLineNumber
+                }
             }
         } finally {
             Pop-Location

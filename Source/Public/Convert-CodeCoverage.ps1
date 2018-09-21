@@ -38,28 +38,8 @@ function Convert-CodeCoverage {
     process {
         Push-Location $SourceRoot
         try {
-            foreach ($miss in $InputObject.CodeCoverage.MissedCommands ) {
-                if (!$filemap.ContainsKey($miss.File)) {
-                    # Note: the new pattern is #Region but the old one was # BEGIN
-                    $matches = Select-String '^(?:#Region|# BEGIN) (?<ScriptName>.*)(?: (?<LineNumber>\d+))?$' -Path $miss.file
-                    $filemap[$miss.File] = @($matches.ForEach( {
-                                [PSCustomObject]@{
-                                    Line = $_.LineNumber
-                                    Path = $_.Matches[0].Groups["ScriptName"].Value.Trim("'") | Resolve
-                                }
-                            }))
-                }
-                $hit = $filemap[$miss.file]
-
-                # These are all negative, indicating they are the match *after* the line we're searching for
-                # We need the match *before* the line we're searching for
-                # And we need it as a zero-based index:
-                $index = -2 - [Array]::BinarySearch($filemap[$miss.file].Line, $miss.Line)
-                $Source = $filemap[$miss.file][$index]
-                $miss.File = $Source.Path
-                $miss.Line = $miss.Line - $Source.Line
-                $miss
-            }
+            $InputObject.CodeCoverage.MissedCommands | Convert-LineNumber -Passthru |
+                Select-Object SourceFile, @{Name="Line"; Expr={$_.SourceLineNumber}}, Command
         } finally {
             Pop-Location
         }
