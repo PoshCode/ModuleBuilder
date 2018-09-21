@@ -57,7 +57,8 @@ try {
         Write-Verbose "Invoke-Pester after importing $($BuildOutput.Path)" -Verbose
         Remove-Module ModuleBuilderBootstrap, ModuleBuilder -ErrorAction SilentlyContinue -Verbose:$false
         Import-Module $BuildOutput.Path -Verbose:$false -DisableNameChecking
-        Invoke-Pester
+        Invoke-Pester -CodeCoverage (Join-Path $BuildOutput.ModuleBase $BuildOutput.RootModule) -PassThru |
+            Convert-CodeCoverage -SourceRoot .\Source -Relative
     }
 
     # Clean up environment after tests
