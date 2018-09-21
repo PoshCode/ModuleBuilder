@@ -1,7 +1,7 @@
 Describe "ResolveModuleManifest" {
     Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
-    [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot\..\Source
+    [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot\..\..\Source
 
     It "Should return the ModuleBuilder path when passed just a module folder" {
         $Expected = InModuleScope ModuleBuilder { ResolveModuleManifest ${Global:Test Root Path} }
