@@ -1,7 +1,7 @@
 Describe "ResolveModuleSource" {
     Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
-    [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot\..\Source
+    [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot\..\..\Source
 
     It "Should return the folder name when passed a module folder" {
         $Expected = InModuleScope ModuleBuilder { ResolveModuleSource ${Global:Test Root Path} }
