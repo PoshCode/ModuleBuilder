@@ -11,14 +11,16 @@ function CopyReadme {
         [Alias("Name")]
         [string]$ModuleName,
 
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]
+        [string]$OutputDirectory,
+
         # The culture (language) to store the ReadMe as (defaults to "en")
-        [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
-        [Globalization.CultureInfo]$Culture = "en",
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [Globalization.CultureInfo]$Culture = $(Get-UICulture),
 
         # If set, overwrite the existing readme
         [Switch]$Force
     )
-
 
     # Copy the readme file as an about_ help file
     Write-Verbose "Test for ReadMe: $Pwd\$($ReadMe)"
@@ -32,7 +34,7 @@ function CopyReadme {
 
         $about_module = Join-Path $LanguagePath "about_$($ModuleName).help.txt"
         if(!(Test-Path $about_module)) {
-            Trace-Message "Turn readme into about_module"
+            Write-Verbose "Turn readme into about_module"
             Copy-Item -LiteralPath $ReadMe -Destination $about_module
         }
     }
