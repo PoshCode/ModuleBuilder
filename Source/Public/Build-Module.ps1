@@ -114,7 +114,7 @@ function Build-Module {
             # Read a build.psd1 configuration file for default parameter values
             $BuildInfo = @{} + (Import-LocalizedData -BaseDirectory $ModuleSource -FileName Build -ErrorAction SilentlyContinue)
             # Then update it from PSBoundParameters + default parameter values
-            $BuildInfo = UpdateHashtable $BuildInfo $MyInvocation.ParameterValues
+            $BuildInfo = $BuildInfo | Update-Object $MyInvocation.ParameterValues
             $BuildInfo.Path = ResolveModuleManifest $ModuleSource $BuildInfo.Path
 
             # Read the Module Manifest
@@ -129,7 +129,7 @@ function Build-Module {
                 }
             }
             # Update the ModuleManifest with our build configuration
-            $ModuleInfo = UpdateObject -InputObject $ModuleInfo -UpdateObject $BuildInfo
+            $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
 
             # Ensure OutputDirectory
             if (!$ModuleInfo.OutputDirectory) {
