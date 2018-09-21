@@ -1,7 +1,7 @@
 function ParseLineNumber {
     <#
         .SYNOPSIS
-            Parses the ScriptName and ScriptLineNumber from a position message
+            Parses the SourceFile and SourceLineNumber from a position message
         .DESCRIPTION
             Parses messages like:
                 at <ScriptBlock>, <No file>: line 1
@@ -16,15 +16,16 @@ function ParseLineNumber {
     )
     process {
         foreach($line in $PositionMessage -split "\r?\n") {
-            if ($line -match "at(?: (?<InvocationBlock>[^,]+),)?\s+(?<ScriptName>.+):(?<!char:)(?: line )?(?<ScriptLineNumber>\d+)(?: char:(?<OffsetInLine>\d+))?") {
+            # At (optional invocation,) <source file>:(maybe " line ") number
+            if ($line -match "at(?: (?<InvocationBlock>[^,]+),)?\s+(?<SourceFile>.+):(?<!char:)(?: line )?(?<SourceLineNumber>\d+)(?: char:(?<OffsetInLine>\d+))?") {
                 [PSCustomObject]@{
                     PSTypeName       = "Position"
-                    ScriptName       = $matches.ScriptName
-                    ScriptLineNumber = $matches.ScriptLineNumber
+                    SourceFile       = $matches.SourceFile
+                    SourceLineNumber = $matches.SourceLineNumber
                     OffsetInLine     = $matches.OffsetInLine
                     PositionMessage  = $line
-                    PSScriptRoot     = Split-Path $matches.ScriptName
-                    PSCommandPath    = $matches.ScriptName
+                    PSScriptRoot     = Split-Path $matches.SourceFile
+                    PSCommandPath    = $matches.SourceFile
                     InvocationBlock  = $matches.InvocationBlock
                 }
             } elseif($line -notmatch "\s*\+") {
