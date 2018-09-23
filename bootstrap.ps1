@@ -14,9 +14,9 @@ Push-Location $PSScriptRoot
 $Policy = (Get-PSRepository PSGallery).InstallationPolicy
 Set-PSRepository PSGallery -InstallationPolicy Trusted
 try {
-    Install-Module PSDepend -RequiredVersion 0.2.5 -Scope:$Scope -Repository PSGallery -ErrorAction Stop
+    Install-Module PSDepend -RequiredVersion 0.3.0 -Scope:$Scope -Repository PSGallery -ErrorAction Stop
 } finally {
     # Make sure we didn't change anything permanently
     Set-PSRepository PSGallery -InstallationPolicy:$Policy
 }
-Import-Module  PSDepend -RequiredVersion 0.2.5
+Import-Module  PSDepend -RequiredVersion 0.3.0
