@@ -22,19 +22,6 @@ function Convert-CodeCoverage {
         # Output paths as short paths, relative to the SourceRoot
         [switch]$Relative
     )
-    begin {
-        $filemap = @{}
-        # Conditionally define the Resolve function as either Convert-Path or Resolve-Path
-        ${function:Resolve} = if ($Relative) {
-            { process {
-                    $_ | Resolve-Path -Relative
-                } }
-        } else {
-            { process {
-                    $_ | Convert-Path
-                } }
-        }
-    }
     process {
         Push-Location $SourceRoot
         try {
