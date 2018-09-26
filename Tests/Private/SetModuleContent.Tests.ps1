@@ -1,7 +1,7 @@
-Describe "JoinScript" {
+Describe "SetModuleContent" {
 
     Context "Necessary Parameters" {
-        $CommandInfo = InModuleScope ModuleBuilder { Get-Command JoinScript }
+        $CommandInfo = InModuleScope ModuleBuilder { Get-Command SetModuleContent }
 
         It "has a mandatory string OutputPath parameter" {
             $OutputPath = $CommandInfo.Parameters['OutputPath']
@@ -54,7 +54,7 @@ Describe "JoinScript" {
             $Files = "TestDrive:\Private\First.ps1",
                      "TestDrive:\Private\Second.ps1",
                      "TestDrive:\Public\Third.ps1"
-            JoinScript -Source $Files -Output TestDrive:\Output.psm1
+            SetModuleContent -Source $Files -Output TestDrive:\Output.psm1
         }
 
         It "Calls get-content on every source file" {
@@ -100,7 +100,7 @@ Describe "JoinScript" {
                      "TestDrive:\Private\Second.ps1",
                      "TestDrive:\Public\Third.ps1",
                      "Export-ModuleMember Stuff"
-            JoinScript -Source $Files -Output TestDrive:\Output.psm1
+            SetModuleContent -Source $Files -Output TestDrive:\Output.psm1
         }
 
         It "Calls get-content on every source file" {
