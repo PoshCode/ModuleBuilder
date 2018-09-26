@@ -2,7 +2,7 @@
 # Start with a minimal pipeline that you can customize to build and deploy your code.
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
-name: $(Build.DefinitionName)_$(GitVersion_FullSemVer)
+name: $(Build.DefinitionName)_$(GitVersion_InformationalVersion)
 pool:
   vmImage: 'VS2017-Win2016' #  options: 'Ubuntu 16.04', 'macOS 10.13', 'VS2017-Win2016'
 
