@@ -1,9 +1,17 @@
-assembly-versioning-scheme: MajorMinorPatchTag
 mode: ContinuousDeployment
+assembly-versioning-scheme: 'MajorMinorPatchTag'
+assembly-informational-format: '{Major}.{Minor}.{Patch}{PreReleaseTagWithDash}+Sha.{Sha}.Date.{CommitDate}'
+commit-message-incrementing: MergeMessageOnly
 branches:
   develop:
     tag: alpha
   master:
     tag: beta
+    increment: Minor
+  features?[/-]:
+    increment: Minor
+  releases?[/-]:
+    increment: None
+
 ignore:
   sha: []
