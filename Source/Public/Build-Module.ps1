@@ -35,13 +35,13 @@ function Build-Module {
     param(
         # The path to the module folder, manifest or build.psd1
         [Parameter(Position = 0, ValueFromPipelineByPropertyName)]
-        [ValidateScript( {
-                if (Test-Path $_) {
-                    $true
-                } else {
-                    throw "Source must point to a valid module"
-                }
-            } )]
+        [ValidateScript({
+            if (Test-Path $_) {
+                $true
+            } else {
+                throw "Source must point to a valid module"
+            }
+        })]
         [Alias("ModuleManifest", "Path")]
         [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
 
@@ -78,24 +78,17 @@ function Build-Module {
         # The prefix is either the path to a file (relative to the module folder) or text to put at the top of the file.
         # If the value of prefix resolves to a file, that file will be read in, otherwise, the value will be used.
         # The default is nothing. See examples for more details.
-        $Prefix,
+        [string]$Prefix,
 
         # The Suffix is either the path to a file (relative to the module folder) or text to put at the bottom of the file.
         # If the value of Suffix resolves to a file, that file will be read in, otherwise, the value will be used.
         # The default is nothing. See examples for more details.
         [Alias("ExportModuleMember","Postfix")]
-        $Suffix,
+        [string]$Suffix,
 
         # Controls whether or not there is a build or cleanup performed
         [ValidateSet("Clean", "Build", "CleanBuild")]
         [string]$Target = "CleanBuild",
-
-        # Your CultureInfo is, by default, the current UICulture and is used to determine the language of the ReadMe.
-        [Globalization.CultureInfo]$Culture = $(Get-UICulture),
-
-        # The Readme or About is the path to a file (relative to the module folder) to include as the about_Module.help.txt
-        [Alias("AboutPath")]
-        $ReadMe,
 
         # Output the ModuleInfo of the "built" module
         [switch]$Passthru
@@ -138,7 +131,7 @@ function Build-Module {
                     return # Skip the build
                 }
             }
-            $null = mkdir $OutputDirectory -Force
+            $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
 
             # Note that this requires that the module manifest be in the "root" of the source directories
             Set-Location $ModuleInfo.ModuleBase
@@ -150,8 +143,6 @@ function Build-Module {
                 Write-Verbose "Copy Entire Directories: $($ModuleInfo.CopyDirectories)"
                 Copy-Item -Path $ModuleInfo.CopyDirectories -Recurse -Destination $OutputDirectory -Force
             }
-
-            $ModuleInfo | CopyReadMe
 
             Write-Verbose "Combine scripts to $RootModule"
 
@@ -179,7 +170,7 @@ function Build-Module {
                 Get-Module $OutputManifest -ListAvailable
             }
         } finally {
-            Pop-Location -StackName Optimize-Module -ErrorAction SilentlyContinue
+            Pop-Location -StackName Build-Module -ErrorAction SilentlyContinue
         }
     }
 }
