@@ -10,11 +10,11 @@ Describe "Convert-LineNumber" {
     for($i=0; $i -lt 5; $i++) {
 
         $lineNumber = Get-Random -min 2 -max $ModuleSource.Count
-        while($ModuleSource[$lineNumber] -match "^#(END)?REGION") {
+        while($ModuleSource[$lineNumber] -match "^\s*$|^#(END)?REGION") {
             $lineNumber += 5
         }
 
-        It 'Should map line number $lineNumber in the Module to the matching line the Source' {
+        It "Should map line number $lineNumber in the Module to the matching line the Source" {
             $SourceLocation = Convert-LineNumber $ModulePath $lineNumber
 
             $line = (Get-Content (Join-Path $ModuleRoot $SourceLocation.SourceFile))[$SourceLocation.SourceLineNumber]
@@ -30,7 +30,6 @@ Describe "Convert-LineNumber" {
         $line = Select-String -Path $ModulePath 'function ParseLineNumber {' | % LineNumber
 
         $SourceLocation = "At ${ModulePath}:$line char:17" | Convert-LineNumber
-        Write-Verbose "At ${ModulePath}:$line char:17" -Verbose
         $SourceLocation.SourceFile | Should -Be ".\Private\ParseLineNumber.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 1
     }
@@ -56,7 +55,6 @@ Describe "Convert-LineNumber" {
         }
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru
-
         $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 24
         $SourceLocation.Function | Should -Be 'CopyReadme'
