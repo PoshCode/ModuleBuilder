@@ -15,30 +15,30 @@ function ResolveModuleSource {
                 }
             })]
         [Alias("ModuleManifest")]
-        [string]$Path = $(Get-Location -PSProvider FileSystem)
+        [string]$SourcePath = $(Get-Location -PSProvider FileSystem)
     )
 
-    $ModuleBase = Split-Path $Path -Parent
+    $ModuleBase = Split-Path $SourcePath -Parent
     # Do not use GetFileNameWithoutExtension, because some module names have dots in them
-    $ModuleName = (Split-Path $Path -Leaf) -replace "\.psd1$"
+    $ModuleName = (Split-Path $SourcePath -Leaf) -replace "\.psd1$"
 
-    # If $Path points to a build file, switch to the manifest
-    if (Test-Path $Path -PathType Leaf) {
+    # If $SourcePath points to a build file, switch to the manifest
+    if (Test-Path $SourcePath -PathType Leaf) {
         if ($ModuleName -eq "Build") {
-            $Path = $ModuleBase
+            $SourcePath = $ModuleBase
         }
     }
 
-    # If $Path is a folder, check for a matching module manifest or build.psd1
-    if (Test-Path $Path -PathType Container) {
+    # If $SourcePath is a folder, check for a matching module manifest or build.psd1
+    if (Test-Path $SourcePath -PathType Container) {
         # If we're in a "well known" source folder, look higher for a name
         if ($ModuleName -in "Source", "src") {
             $ModuleName = Split-Path $ModuleBase -Leaf
         }
-        if ( (Test-Path (Join-Path $Path build.psd1)) -or (Test-Path (Join-Path $Path "$ModuleName.psd1")) ) {
-            $ModuleBase = $Path
+        if ( (Test-Path (Join-Path $SourcePath build.psd1)) -or (Test-Path (Join-Path $SourcePath "$ModuleName.psd1")) ) {
+            $ModuleBase = $SourcePath
         } else {
-            throw "No module found in $Path. Try passing the full path to the module manifest file."
+            throw "No module found in $SourcePath. Try passing the full path to the module manifest file."
         }
     }
 
