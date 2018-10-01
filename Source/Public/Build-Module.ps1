@@ -108,47 +108,16 @@ function Build-Module {
     }
     process {
         try {
-            $ModuleSource = ResolveModuleSource $SourcePath
-            Push-Location $ModuleSource -StackName Optimize-Module
-
-            # Read a build.psd1 configuration file for default parameter values
-            $BuildInfo = @{} + (Import-LocalizedData -BaseDirectory $ModuleSource -FileName Build -ErrorAction SilentlyContinue)
-            # Then update it from PSBoundParameters + default parameter values
-            $BuildInfo = $BuildInfo | Update-Object $MyInvocation.ParameterValues
-            $BuildInfo.Path = ResolveModuleManifest $ModuleSource $BuildInfo.Path
-
-            # Read the Module Manifest
-            $ModuleInfo = Get-Module $BuildInfo.Path -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
-            if ($Problems) {
-                $Problems = $Problems.Where{ $_.FullyQualifiedErrorId -notmatch "^Modules_InvalidRequiredModulesinModuleManifest|^Modules_InvalidRootModuleInModuleManifest"}
-                if ($Problems) {
-                    foreach ($problem in $Problems) {
-                        Write-Error $problem
-                    }
-                    throw "Unresolvable problems in module manifest"
-                }
-            }
-            # Update the ModuleManifest with our build configuration
-            $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
-
-            # Ensure OutputDirectory
-            if (!$ModuleInfo.OutputDirectory) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) "$($ModuleInfo.Version)"
-                Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
-            } elseif (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
-                $OutputDirectory = Join-Path (Split-Path $ModuleInfo.ModuleBase -Parent) $ModuleInfo.OutputDirectory
-                Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
-            }
-
+            # Push into the module source (it may be a subfolder)
+            $ModuleInfo = InitializeBuild $SourcePath
+            # Output file names
             $OutputDirectory = $ModuleInfo.OutputDirectory
+            $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
+            $OutputManifest = Join-Path $OutputDirectory "$($ModuleInfo.Name).psd1"
 
             Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
             Write-Verbose  "Building $($ModuleInfo.Name)"
-            Write-Verbose  "         Output to: $OutputDirectory"
-
-            # File names
-            $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
-            $OutputManifest = Join-Path $OutputDirectory "$($ModuleInfo.Name).psd1"
+            Write-Verbose  "Output to: $OutputDirectory"
 
             if ($Target -match "Clean") {
                 Write-Verbose "Cleaning $OutputDirectory"
