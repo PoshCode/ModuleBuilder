@@ -8,7 +8,8 @@ param(
 
     $Repository = 'PSGallery',
 
-    [switch]$UseLocalTools,
+    [ValidateSet("User", "Machine", "Project")]
+    $InstallToolScope = "User",
 
     [switch]$Test
 )
@@ -16,7 +17,7 @@ param(
 # Sanitize parameters to pass to Build-Module
 $null = $PSBoundParameters.Remove('Repository')
 $null = $PSBoundParameters.Remove('Test')
-$null = $PSBoundParameters.Remove('UseLocalTools')
+$null = $PSBoundParameters.Remove('InstallToolScope')
 
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot -StackName BuildBuildModule
@@ -24,8 +25,16 @@ try {
 
     try {
         Write-Verbose "Updating dependencies"
-        if($UseLocalTools) {
-            $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "Tools"
+        switch($InstallToolScope) {
+            "Project" {
+                $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "Tools"
+            }
+            "Machine" {
+                $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "AllUsers"
+            }
+            default {
+                $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "CurrentUser"
+            }
         }
         Invoke-PSDepend -Force -ErrorAction Stop
         Invoke-PSDepend -Import -Force -ErrorAction Stop
