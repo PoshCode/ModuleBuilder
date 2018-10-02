@@ -36,7 +36,7 @@ if (!(Get-Module PSDepends -ListAvailable)) {
 try {
     Write-Verbose "Updating dependencies"
     Import-Module PSDepend -ErrorAction Stop
-    Invoke-PSDepend -Import -Force -ErrorAction Stop
+    Invoke-PSDepend -Import -Force -ErrorAction Stop -Verbose
 } catch {
     Write-Warning "Unable to restore dependencies. Please review errors:"
     throw

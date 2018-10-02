@@ -22,7 +22,7 @@ $null = $PSBoundParameters.Remove('InstallToolScope')
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
-    & "$PSScriptRoot\bootstrap.ps1" -Scope $InstallToolScope
+    Import-Module Configuration
 
     # Build ModuleBuilder with ModuleBuilder:
     Write-Verbose "Compiling ModuleBuilderBootstrap module"
