@@ -8,8 +8,8 @@ param(
 
     $Repository = 'PSGallery',
 
-    [ValidateSet("User", "Machine", "Project")]
-    $InstallToolScope = "User",
+    [ValidateSet("CurrentUser", "AllUsers", "LocalTools")]
+    $InstallToolScope = "CurrentUser",
 
     [switch]$Test
 )
@@ -22,26 +22,7 @@ $null = $PSBoundParameters.Remove('InstallToolScope')
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
-
-    try {
-        Write-Verbose "Updating dependencies"
-        switch($InstallToolScope) {
-            "Project" {
-                $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "Tools"
-            }
-            "Machine" {
-                $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "AllUsers"
-            }
-            default {
-                $PSDefaultParameterValues["Invoke-PSDepend:Target"] = Join-Path $PSScriptRoot "CurrentUser"
-            }
-        }
-        Invoke-PSDepend -Force -ErrorAction Stop
-        Invoke-PSDepend -Import -Force -ErrorAction Stop
-    } catch {
-        Write-Warning "Unable to restore dependencies. Please review errors:"
-        throw
-    }
+    & "$PSScriptRoot\bootstrap.ps1" -Scope $InstallToolScope
 
     # Build ModuleBuilder with ModuleBuilder:
     Write-Verbose "Compiling ModuleBuilderBootstrap module"
