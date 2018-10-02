@@ -10,8 +10,9 @@ steps:
 - task: gittools.gitversion.gitversion-task.GitVersion@3
   displayName: GitVersion
 
-- powershell: .\bootstrap.ps1
-  displayName: 'Restore pre-requisites'
+## As long as we're calling build.ps1, we don't need to bootstrap separately
+# - powershell: .\bootstrap.ps1
+#   displayName: 'Restore pre-requisites'
 
 - powershell: .\build.ps1 -OutputDirectory $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName) -Version $(GitVersion.AssemblySemVer) -Verbose
   displayName: 'Run build script'
