@@ -10,7 +10,7 @@ Push-Location $PSScriptRoot -StackName bootstrap-stack
 # # This would probably work, if the default gallery was trusted ...
 # Install-Module Pester        -RequiredVersion 4.4.0 -Scope CurrentUser -Repository PSGallery -SkipPublisherCheck
 # Install-Module Configuration -RequiredVersion 1.3.1 -Scope CurrentUser -Repository PSGallery -SkipPublisherCheck
-if (!(Get-Module PSDepends -ListAvailable)) {
+if (!(Get-Module PSDepend -ListAvailable)) {
     $Policy = (Get-PSRepository PSGallery).InstallationPolicy
     try {
         Set-PSRepository PSGallery -InstallationPolicy Trusted
