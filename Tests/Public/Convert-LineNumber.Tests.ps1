@@ -9,8 +9,10 @@ Describe "Convert-LineNumber" {
 
     for($i=0; $i -lt 5; $i++) {
 
+        # I don't know why I keep trying to do this using random numbers
         $lineNumber = Get-Random -min 2 -max $ModuleSource.Count
-        while($ModuleSource[$lineNumber] -match "^\s*$|^#(END)?REGION") {
+        # but I have to keep avoiding the lines that don't make sense
+        while($ModuleSource[$lineNumber] -match "^\s*$|^#(END)?REGION|^\s*function\s") {
             $lineNumber += 5
         }
 
