@@ -32,7 +32,7 @@ cd Modulebuilder
 
 #### 2. Install dependencies
 
-PowerShellGet has problems updating modules, and the sheer number of parameters needed to do so without errors and warnings is ridiculous, so we use PSDepend. If you don't have PSDepend, _you'll need to install it_ first. Run the `.\bootstrap.ps1` script --it defaults to CurrentUser scope, but has a `-Scope` switch should you want to change it.
+We have a few modules which are required for building. They're listed in `RequiredModules.psd1` -- the `.\bootstrap.ps1` script installs them (it defaults to CurrentUser scope, but has a `-Scope` parameter if you're running elevated and want to install them for the `AllUsers`). They only change rarely, so you won't need to run this repeatedly.
 
 ```powershell
 .\bootstrap.ps1
@@ -40,11 +40,17 @@ PowerShellGet has problems updating modules, and the sheer number of parameters 
 
 #### 3. Run the `build.ps1` script.
 
-If you want to avoid installing these _additional_ dependencies (i.e. my Configuration module, and Pester 4.4.0+) in your user scope, you can add the `-UseLocalTools` switch to make sure they are only downloaded to a local "Tools" folder.
-
 ```powershell
 .\build.ps1
 ```
+
+
+#### 4. Run tests with Pester
+
+```powershell
+Invoke-Pester
+```
+
 
 ### What's in the module, so far:
 
