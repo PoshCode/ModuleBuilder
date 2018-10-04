@@ -1,28 +1,24 @@
+#requires -Module Configuration
+<#
+    .Synopsis
+        This is just a bootstrapping build, for when ModuleBuilder can't be used to build ModuleBuilder
+#>
 [CmdletBinding()]
 param(
+    # A specific folder to build into
     $OutputDirectory,
 
     # The version of the output module
     [Alias("ModuleVersion")]
-    [version]$Version,
-
-    $Repository = 'PSGallery',
-
-    [ValidateSet("CurrentUser", "AllUsers", "LocalTools")]
-    $InstallToolScope = "CurrentUser",
-
-    [switch]$Test
+    [version]$Version
 )
 
 # Sanitize parameters to pass to Build-Module
-$null = $PSBoundParameters.Remove('Repository')
 $null = $PSBoundParameters.Remove('Test')
-$null = $PSBoundParameters.Remove('InstallToolScope')
 
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
-    Import-Module Configuration
 
     # Build ModuleBuilder with ModuleBuilder:
     Write-Verbose "Compiling ModuleBuilderBootstrap module"
@@ -42,17 +38,8 @@ try {
     ModuleBuilderBootstrap\Build-Module Source\build.psd1 @PSBoundParameters -Target CleanBuild -Passthru -OutVariable BuildOutput | Split-Path
     Write-Verbose "Module build output in $(Split-Path $BuildOutput.Path)"
 
-    # Test module
-    if($Test) {
-        Write-Verbose "Invoke-Pester after importing $($BuildOutput.Path)" -Verbose
-        Remove-Module ModuleBuilderBootstrap, ModuleBuilder -ErrorAction SilentlyContinue -Verbose:$false
-        Import-Module $BuildOutput.Path -Verbose:$false -DisableNameChecking
-        Invoke-Pester -CodeCoverage (Join-Path $BuildOutput.ModuleBase $BuildOutput.RootModule) -PassThru |
-            Convert-CodeCoverage -SourceRoot .\Source -Relative
-    }
-
-    # Clean up environment after tests
-    Remove-Module ModuleBuilderBootStrap, ModuleBuilder -ErrorAction SilentlyContinue -Verbose:$false
+    # Clean up environment
+    Remove-Module ModuleBuilderBootStrap -ErrorAction SilentlyContinue -Verbose:$false
 
 } finally {
     Pop-Location -StackName BuildBuildModule

@@ -1,33 +1,35 @@
 Describe "InitializeBuild" {
-    Context "It collects the initial data" {
-        Mock ResolveModuleSource -ModuleName ModuleBuilder { $SourcePath }
-        Mock ResolveModuleManifest -ModuleName ModuleBuilder { "TestDrive:\Source\MyModule.psd1" }
-        Mock Push-Location -ModuleName ModuleBuilder {}
-        Mock Import-Metadata -ModuleName ModuleBuilder { @{Path = "MyModule.psd1"} }
-        #Mock Update-Object -ModuleName ModuleBuilder { $InputObject }
-        Mock Get-Variable -ParameterFilter {
-            $Name -eq "MyInvocation"
-        } -ModuleName ModuleBuilder {
-            @{
-                MyCommand = @{
-                    Parameters = @{
-                        Encoding = @{ParameterType = "string"}
-                        Target = @{ParameterType = "string"}
-                        SourcePath = @{ParameterType = "string"}
-                        SourceDirectories = @{ParameterType = "string[]"}
-                    }
+    Mock ResolveModuleSource -ModuleName ModuleBuilder { $SourcePath }
+    Mock ResolveModuleManifest -ModuleName ModuleBuilder { "TestDrive:\Source\MyModule.psd1" }
+    Mock Push-Location -ModuleName ModuleBuilder {}
+    Mock Import-Metadata -ModuleName ModuleBuilder { @{Path = "MyModule.psd1"} }
+    #Mock Update-Object -ModuleName ModuleBuilder { $InputObject }
+    Mock Get-Variable -ParameterFilter {
+        $Name -eq "MyInvocation"
+    } -ModuleName ModuleBuilder {
+        @{
+            MyCommand = @{
+                Parameters = @{
+                    Encoding = @{ParameterType = "string"}
+                    Target = @{ParameterType = "string"}
+                    SourcePath = @{ParameterType = "string"}
+                    SourceDirectories = @{ParameterType = "string[]"}
                 }
             }
         }
-        Mock Get-Module -ModuleName ModuleBuilder {
-            [PSCustomObject]@{
-                ModuleBase = "TestDrive:\Source\"
-                Author = "Test Manager"
-                Version = [Version]"1.0.0"
-                Name = "MyModule"
-                RootModule = "MyModule.psm1"
-            }
+    }
+    Mock Get-Module -ModuleName ModuleBuilder {
+        [PSCustomObject]@{
+            ModuleBase = "TestDrive:\Source\"
+            Author = "Test Manager"
+            Version = [Version]"1.0.0"
+            Name = "MyModule"
+            RootModule = "MyModule.psm1"
         }
+    }
+
+    Context "It collects the initial data" {
+
         New-Item "TestDrive:\Source\" -Type Directory
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
@@ -62,6 +64,96 @@ Describe "InitializeBuild" {
             $Result.ModuleBase | Should -be "TestDrive:\Source\"
             $Result.Path | Should -be "TestDrive:\Source\MyModule.psd1"
             $Result.OutputDirectory | Should -be "TestDrive:\1.0.0"
+        }
+    }
+
+    Context "Invalid module manifest" {
+        # In the current PowerShell 5.1 and 6.1
+        # I can't make Get-Module -ListAvailable throw on a manifest
+        # So I can't test the if($Problems = ... code
+    }
+
+    Context "Build with specified relative output path" {
+        New-Item "TestDrive:\Source\" -Type Directory
+
+        Mock Get-Variable -ModuleName ModuleBuilder {
+            if($Name -eq "OutputDirectory" -and $ValueOnly) {
+                ".\Output"
+            }
+        }
+
+        Mock Get-Variable -ParameterFilter {
+            $Name -eq "MyInvocation" -and $ValueOnly
+        } -ModuleName ModuleBuilder {
+            @{
+                MyCommand = @{
+                    Parameters = @{
+                        Encoding = @{ParameterType = "string"}
+                        Target = @{ParameterType = "string"}
+                        SourcePath = @{ParameterType = "string"}
+                        SourceDirectories = @{ParameterType = "string[]"}
+                        OutputDirectory = @{ParameterType = "string"}
+                    }
+                }
+            }
+        }
+
+        $Result = InModuleScope -ModuleName ModuleBuilder {
+            InitializeBuild -SourcePath TestDrive:\Source\
+        }
+
+        It "Treats the output path as relative to the (parent of the) ModuleSource" {
+            $Result.ModuleBase | Should -be "TestDrive:\Source\"
+            $Result.Path | Should -be "TestDrive:\Source\MyModule.psd1"
+            $Result.OutputDirectory | Should -be "TestDrive:\.\Output"
+        }
+    }
+
+
+
+
+    Context "Does not fall over if you build from the drive root" {
+        Mock Get-Variable -ModuleName ModuleBuilder {
+            if($Name -eq "OutputDirectory" -and $ValueOnly) {
+                ".\Output"
+            }
+        }
+
+        Mock ResolveModuleManifest -ModuleName ModuleBuilder { "TestDrive:\MyModule.psd1" }
+
+        Mock Get-Variable -ParameterFilter {
+            $Name -eq "MyInvocation" -and $ValueOnly
+        } -ModuleName ModuleBuilder {
+            @{
+                MyCommand = @{
+                    Parameters = @{
+                        Encoding = @{ParameterType = "string"}
+                        Target = @{ParameterType = "string"}
+                        SourcePath = @{ParameterType = "string"}
+                        SourceDirectories = @{ParameterType = "string[]"}
+                        OutputDirectory = @{ParameterType = "string"}
+                    }
+                }
+            }
+        }
+
+        Mock Get-Module -ModuleName ModuleBuilder {
+            [PSCustomObject]@{
+                ModuleBase = "TestDrive:\"
+                Author = "Test Manager"
+                Version = [Version]"1.0.0"
+                Name = "MyModule"
+                RootModule = "MyModule.psm1"
+            }
+        }
+        $Result = InModuleScope -ModuleName ModuleBuilder {
+            InitializeBuild -SourcePath TestDrive:\
+        }
+
+        It "Treats the output path as relative to the (parent of the) ModuleSource" {
+            $Result.ModuleBase | Should -be "TestDrive:\"
+            $Result.Path | Should -be "TestDrive:\MyModule.psd1"
+            $Result.OutputDirectory | Should -be "TestDrive:\.\Output"
         }
     }
 }

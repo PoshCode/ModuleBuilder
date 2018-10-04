@@ -120,4 +120,69 @@ Describe "Build-Module" {
             }
         }
     }
+
+    Context "When run without 'Clean' in the target" {
+        Push-Location TestDrive:\ -StackName BuildModuleTest
+        New-Item -ItemType Directory -Path TestDrive:\MyModule\Public -Force
+        New-Item -ItemType File -Path TestDrive:\MyModule\Public\Get-MyInfo.ps1 -Force
+        Start-Sleep -Milliseconds 200 # to ensure the output is after the input
+        New-Item -ItemType Directory -Path TestDrive:\1.0.0\ -Force
+        New-Item -ItemType File -Path TestDrive:\1.0.0\MyModule.psm1 -Force
+
+        Mock SetModuleContent -ModuleName ModuleBuilder {}
+        Mock Update-Metadata -ModuleName ModuleBuilder {}
+        Mock InitializeBuild -ModuleName ModuleBuilder {
+            # These are actually all the values that we need
+            @{
+                OutputDirectory = "TestDrive:\1.0.0"
+                Name = "MyModule"
+                ModuleBase = "TestDrive:\MyModule\"
+                CopyDirectories = @()
+                Encoding = "UTF8"
+                PublicFilter = "Public\*.ps1"
+            }
+        }
+
+        Mock Test-Path {$True} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
+        Mock Remove-Item {} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
+        Mock Set-Location {} -ModuleName ModuleBuilder
+        Mock Copy-Item {} -ModuleName ModuleBuilder
+
+        Mock Get-ChildItem {
+            [IO.FileInfo]$(Join-Path $(Convert-Path "TestDrive:\") "MyModule\Public\Get-MyInfo.ps1")
+        } -ModuleName ModuleBuilder
+
+        Mock Get-Item {
+            [PSCustomObject]@{ LastWriteTime = Get-Date }
+        } -ModuleName ModuleBuilder
+
+        Mock New-Item {} -Parameter {
+            $Path -eq "TestDrive:\1.0.0" -and
+            $ItemType -eq "Directory" -and
+            $Force -eq $true
+        } -ModuleName ModuleBuilder
+
+        try {
+            Build-Module -Target Build
+        } finally {
+            Pop-Location -StackName BuildModuleTest
+        }
+
+        # NOTE: We're not just clearing output, but the whole folder
+        It "Should NOT remove the output folder" {
+            Assert-MockCalled Remove-Item -ModuleName ModuleBuilder -Times 0
+        }
+
+        It "Should check the dates on the output" {
+            Assert-MockCalled Get-Item -ModuleName ModuleBuilder -Times 1
+        }
+
+        It "Should not (re)create the OutputDirectory" {
+            Assert-MockCalled New-Item -ModuleName ModuleBuilder -Times 0
+        }
+
+        It "Should not rebuild the source files" {
+            Assert-MockCalled SetModuleContent -ModuleName ModuleBuilder -Times 0
+        }
+    }
 }
