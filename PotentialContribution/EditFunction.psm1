@@ -361,6 +361,11 @@ function Edit-Code {
             if($File) {
                 $LastWriteTime = (Get-Item $File).LastWriteTime
 
+                # If it's a temp file, they're editing a function, so we have to wait!
+                if($File.EndsWith(".tmp.ps1") -and $File.StartsWith(([IO.Path]::GetTempPath()))) {
+                    $Wait = $true
+                }
+
                 # Avoid errors if Parameter is null/empty.
                 Write-Verbose "$PSEditor '$File'"
                 if ($PSEditor.Parameters)
