@@ -29,9 +29,18 @@ function Build-Module {
             Build-Module -Prefix "using namespace System.Management.Automation"
 
             This example shows how to build a simple module from it's manifest, adding a using statement at the top as a prefix
+
+        .Example
+            $gitVersion = gitversion | ConvertFrom-Json | Select -Expand InformationalVersion
+            Build-Module -SemVer $gitVersion
+
+            This example shows how to use a semantic version from gitversion to version your build.
+            Note, this is how we version ModuleBuilder, so if you want to see it in action, check out our azure-pipelines.yml
+            https://github.com/PoshCode/ModuleBuilder/blob/master/azure-pipelines.yml
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Build is approved now")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
+    [CmdletBinding(DefaultParameterSetName="SemanticVersion")]
     param(
         # The path to the module folder, manifest or build.psd1
         [Parameter(Position = 0, ValueFromPipelineByPropertyName)]
@@ -50,8 +59,26 @@ function Build-Module {
         [Alias("Destination")]
         [string]$OutputDirectory,
 
+        # Semantic version, like 1.0.3-beta01+sha.22c35ffff166f34addc49a3b80e622b543199cc5
+        # If the SemVer has metadata (after a +), then the full Semver will be added to the ReleaseNotes
+        [Parameter(ParameterSetName="SemanticVersion")]
+        [string]$SemVer,
+
+        # The module version (must be a valid System.Version such as PowerShell supports for modules)
         [Alias("ModuleVersion")]
-        [version]$Version,
+        [Parameter(ParameterSetName="ModuleVersion", Mandatory)]
+        [version]$Version = $(if($V = $SemVer.Split("+")[0].Split("-")[0]){$V}),
+
+        # Setting pre-release forces the release to be a pre-release.
+        # Must be valid pre-release tag like PowerShellGet supports
+        [Parameter(ParameterSetName="ModuleVersion")]
+        [string]$Prerelease = $($SemVer.Split("+")[0].Split("-")[1]),
+
+        # Build metadata (like the commit sha or the date).
+        # If a value is provided here, then the full Semantic version will be inserted to the release notes:
+        # Like: ModuleName v(Version(-Prerelease?)+BuildMetadata)
+        [Parameter(ParameterSetName="ModuleVersion")]
+        [string]$BuildMetadata = $($SemVer.Split("+")[1]),
 
         # Folders which should be copied intact to the module output
         # Can be relative to the  module folder
@@ -101,6 +128,18 @@ function Build-Module {
     }
     process {
         try {
+            # BEFORE we InitializeBuild we need to "fix" the version
+            if($PSCmdlet.ParameterSetName -ne "SemanticVersion") {
+                Write-Verbose "Calculate the Semantic Version from the $Version - $Prerelease + $BuildMetadata"
+                $SemVer = $Version
+                if($Prerelease) {
+                    $SemVer = $Version + '-' + $Prerelease
+                }
+                if($BuildMetadata) {
+                    $SemVer = $SemVer + '+' + $BuildMetadata
+                }
+            }
+
             # Push into the module source (it may be a subfolder)
             $ModuleInfo = InitializeBuild $SourcePath
             # Output file names
@@ -159,10 +198,43 @@ function Build-Module {
                 }
             }
 
-            Write-Verbose "Update Manifest to $OutputManifest"
+            try {
+                if ($Version) {
+                    Write-Verbose "Update Manifest at $OutputManifest with version: $Version"
+                    Update-Metadata -Path $OutputManifest -PropertyName ModuleVersion -Value $Version
+                }
+            } catch {
+                Write-Warning "Failed to update version to $Version. $_"
+            }
 
-            if ($Version) {
-                Update-Metadata -Path $OutputManifest -PropertyName ModuleVersion -Value $Version
+            if ($Prerelease) {
+                Write-Verbose "Update Manifest at $OutputManifest with Prerelease: $Prerelease"
+                Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value $Prerelease
+            } else {
+                Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value ""
+            }
+
+            if ($BuildMetadata) {
+                Write-Verbose "Update Manifest at $OutputManifest with metadata: $BuildMetadata from $SemVer"
+                $RelNote = Get-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.ReleaseNotes -ErrorAction SilentlyContinue
+                if ($null -ne $RelNote) {
+                    $Line = "$($ModuleInfo.Name) v$($SemVer)"
+                    if ([string]::IsNullOrWhiteSpace($RelNote)) {
+                        Write-Verbose "New ReleaseNotes:`n$Line"
+                        Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.ReleaseNotes -Value $Line
+                    } elseif ($RelNote -match "^\s*\n") {
+                        # Leading whitespace includes newlines
+                        Write-Verbose "Existing ReleaseNotes:$RelNote"
+                        $RelNote = $RelNote -replace "^(?s)(\s*)\S.*$|^$","`${1}$($Line)`$_"
+                        Write-Verbose "New ReleaseNotes:$RelNote"
+                        Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.ReleaseNotes -Value $RelNote
+                    } else {
+                        Write-Verbose "Existing ReleaseNotes:`n$RelNote"
+                        $RelNote = $RelNote -replace "^(?s)(\s*)\S.*$|^$","`${1}$($Line)`n`$_"
+                        Write-Verbose "New ReleaseNotes:`n$RelNote"
+                        Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.ReleaseNotes -Value $RelNote
+                    }
+                }
             }
 
             # This is mostly for testing ...

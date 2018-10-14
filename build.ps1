@@ -10,7 +10,7 @@ param(
 
     # The version of the output module
     [Alias("ModuleVersion")]
-    [version]$Version
+    [string]$SemVer
 )
 
 # Sanitize parameters to pass to Build-Module
@@ -19,7 +19,6 @@ $null = $PSBoundParameters.Remove('Test')
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
-
     # Build ModuleBuilder with ModuleBuilder:
     Write-Verbose "Compiling ModuleBuilderBootstrap module"
     $OFS = "`n`n"

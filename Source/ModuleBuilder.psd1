@@ -6,12 +6,12 @@
     PrivateData            = @{
         # PrivateData.PSData is the PowerShell Gallery data
         PSData             = @{
-            # Prerelease string of this module
-            Prerelease     = '-beta01'
+            # Prerelease string should be here, so we can set it
+            Prerelease     = 'beta'
 
-            # ReleaseNotes of this module
+            # Release Notes have to be here, so we can update them
             ReleaseNotes   = '
-            1.0.0-beta01: Pre-release version of Build-Module
+            First release to the PowerShell gallery ...
             '
 
             # Tags applied to this module. These help with module discovery in online galleries.
@@ -50,3 +50,4 @@
     PowerShellVersion      = '5.1'
     CompatiblePSEditions = @('Core','Desktop')
 }
+

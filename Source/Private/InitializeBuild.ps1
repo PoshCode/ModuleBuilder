@@ -15,11 +15,15 @@ function InitializeBuild {
     [CmdletBinding()]
     param(
         # The root folder where the module source is (including the Build.psd1 and the module Manifest.psd1)
-        [string]$SourcePath
+        [string]$SourcePath,
+
+        # Pass the invocation from the parent in, so InitializeBuild can read parameter values
+        [Parameter(DontShow)]
+        $Invocation = $(Get-Variable MyInvocation -Scope 1 -ValueOnly)
     )
-    # Read the caller's parameter values
+    # NOTE: This reads the parameter values from Build-Module!
     $ParameterValues = @{}
-    foreach($parameter in (Get-Variable MyInvocation -Scope 1 -ValueOnly).MyCommand.Parameters.GetEnumerator()) {
+    foreach($parameter in $Invocation.MyCommand.Parameters.GetEnumerator()) {
         $key = $parameter.Key
         if($null -ne ($value = Get-Variable -Name $key -ValueOnly -ErrorAction Ignore )) {
             if($value -ne ($null -as $parameter.Value.ParameterType)) {

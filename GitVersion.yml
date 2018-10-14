@@ -1,4 +1,5 @@
 mode: ContinuousDeployment
+next-version: 1.0.0
 assembly-versioning-scheme: 'MajorMinorPatchTag'
 assembly-informational-format: '{Major}.{Minor}.{Patch}{PreReleaseTagWithDash}+Sha.{Sha}.Date.{CommitDate}'
 commit-message-incrementing: MergeMessageOnly
