@@ -14,7 +14,7 @@ steps:
 - powershell: .\bootstrap.ps1
   displayName: 'Restore pre-requisites'
 
-- powershell: .\build.ps1 -OutputDirectory $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName) -Version $(GitVersion.AssemblySemVer) -Verbose
+- powershell: .\build.ps1 -OutputDirectory $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName) -SemVer $(GitVersion.InformationalVersion) -Verbose
   displayName: 'Run build script'
 
 - task: richardfennellBM.BM-VSTS-PesterRunner-Task.Pester-Task.Pester@8
