@@ -70,13 +70,11 @@ function InitializeBuild {
     # Update the ModuleManifest with our build configuration
     $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
 
-    # Ensure the OutputDirectory makes sense
-    if (!$ModuleInfo.OutputDirectory) {
-        # The assumption here is that the "source" is a subdirectory of the project root (next to, for instance "tests" and "docs")
-        # If there's no output directory specified (or a relative path) we want to output within the project root, not the "source"
-        $OutputRoot = if($OutputRoot = Split-Path $ModuleSource) { $OutputRoot } else { $ModuleSource }
-        $OutputDirectory = Join-Path $OutputRoot "Output"
-        Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
+    # Ensure the OutputDirectory makes sense (it's never blank anymore)
+    if (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
+        # Relative paths are relative to the build.psd1 now
+        $OutputDirectory = Join-Path $ModuleSource $ModuleInfo.OutputDirectory
+        $ModuleInfo.OutputDirectory = $OutputDirectory
     }
 
     $ModuleInfo

@@ -55,9 +55,9 @@ function Build-Module {
         [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
 
         # Where to build the module.
-        # Defaults to an \output folder, adjacent to the "SourcePath" folder
+        # Defaults to an ..\output folder (adjacent to the "SourcePath" folder)
         [Alias("Destination")]
-        [string]$OutputDirectory = "Output",
+        [string]$OutputDirectory = "..\Output",
 
         # If set (true) adds a folder named after the version number to the OutputDirectory
         [switch]$VersionedOutputDirectory,
@@ -149,18 +149,21 @@ function Build-Module {
             Write-Verbose  "Building $($ModuleInfo.Name)"
 
             # Output file names
-            $OutputDirectory = $ModuleInfo.OutputDirectory
+            $OutputDirectory = $ModuleInfo | ResolveOutputFolder
             $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
             $OutputManifest = Join-Path $OutputDirectory "$($ModuleInfo.Name).psd1"
-
-            Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
-            Write-Verbose  "Building $($ModuleInfo.Name)"
             Write-Verbose  "Output to: $OutputDirectory"
 
+            Wait-Debugger
             if ($Target -match "Clean") {
                 Write-Verbose "Cleaning $OutputDirectory"
-                if (Test-Path $OutputDirectory) {
-                    Remove-Item $OutputDirectory -Recurse -Force
+                if (Test-Path $OutputDirectory -PathType Leaf) {
+                    throw "Unable to build. There is a file in the way at $OutputDirectory"
+                }
+                if (Test-Path $OutputDirectory -PathType Container) {
+                    if (Get-ChildItem $OutputDirectory\*) {
+                        Remove-Item $OutputDirectory\* -Recurse -Force
+                    }
                 }
                 if ($Target -notmatch "Build") {
                     return # No build, just cleaning
