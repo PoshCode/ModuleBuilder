@@ -55,9 +55,12 @@ function Build-Module {
         [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
 
         # Where to build the module.
-        # Defaults to a version number folder, adjacent to the module folder
+        # Defaults to an \output folder, adjacent to the "SourcePath" folder
         [Alias("Destination")]
-        [string]$OutputDirectory,
+        [string]$OutputDirectory = "Output",
+
+        # If set (true) adds a folder named after the version number to the OutputDirectory
+        [switch]$VersionedOutputDirectory,
 
         # Semantic version, like 1.0.3-beta01+sha.22c35ffff166f34addc49a3b80e622b543199cc5
         # If the SemVer has metadata (after a +), then the full Semver will be added to the ReleaseNotes
@@ -142,6 +145,9 @@ function Build-Module {
 
             # Push into the module source (it may be a subfolder)
             $ModuleInfo = InitializeBuild $SourcePath
+            Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
+            Write-Verbose  "Building $($ModuleInfo.Name)"
+
             # Output file names
             $OutputDirectory = $ModuleInfo.OutputDirectory
             $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
