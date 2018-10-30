@@ -154,7 +154,6 @@ function Build-Module {
             $OutputManifest = Join-Path $OutputDirectory "$($ModuleInfo.Name).psd1"
             Write-Verbose  "Output to: $OutputDirectory"
 
-            Wait-Debugger
             if ($Target -match "Clean") {
                 Write-Verbose "Cleaning $OutputDirectory"
                 if (Test-Path $OutputDirectory -PathType Leaf) {
