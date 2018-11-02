@@ -8,7 +8,7 @@ Describe "ResolveOutputFolder" {
         }
 
         It "Creates the Output directory" {
-            $Result | Should -Be "TestDrive:\Output"
+            $Result | Should -Be (Convert-Path "TestDrive:\Output")
             $Result | Should -Exist
         }
     }
@@ -24,7 +24,7 @@ Describe "ResolveOutputFolder" {
         }
 
         It "Returns the Output directory" {
-            $Result | Should -Be "TestDrive:\Output"
+            $Result | Should -Be (Convert-Path "TestDrive:\Output")
         }
 
         It "Does not creates children in Output" {
@@ -47,7 +47,7 @@ Describe "ResolveOutputFolder" {
         }
 
         It "Returns the Output directory" {
-            $Result | Should -Be "TestDrive:\Output\1.0.0"
+            $Result | Should -Be (Convert-Path "TestDrive:\Output\1.0.0")
         }
     }
 }

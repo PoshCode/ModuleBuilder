@@ -64,7 +64,7 @@ Describe "Build-Module" {
         Mock Update-Metadata -ModuleName ModuleBuilder {}
         Mock InitializeBuild -ModuleName ModuleBuilder {
             # These are actually all the values that we need
-            @{
+            [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\1.0.0"
                 Name = "MyModule"
                 ModuleBase = "TestDrive:\MyModule\"
@@ -74,8 +74,14 @@ Describe "Build-Module" {
             }
         }
 
+        Mock New-Item { [IO.FileInfo]"TestDrive:\1.0.0" } -Parameter {
+            $Path -eq "TestDrive:\1.0.0" -and
+            $ItemType -eq "Directory" -and
+            $Force -eq $true
+        } -ModuleName ModuleBuilder
+
         Mock Test-Path {$True} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
-        Mock Remove-Item {} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
+        Mock Remove-Item {} -Parameter {$Path.StartsWith((Convert-Path "TestDrive:\1.0.0"))} -ModuleName ModuleBuilder
         Mock Set-Location {} -ModuleName ModuleBuilder
         Mock Copy-Item {} -ModuleName ModuleBuilder
 
@@ -83,11 +89,6 @@ Describe "Build-Module" {
             [IO.FileInfo]$(Join-Path $(Convert-Path "TestDrive:\") "MyModule\Public\Get-MyInfo.ps1")
         } -ModuleName ModuleBuilder
 
-        Mock New-Item {} -Parameter {
-            $Path -eq "TestDrive:\1.0.0" -and
-            $ItemType -eq "Directory" -and
-            $Force -eq $true
-        } -ModuleName ModuleBuilder
 
         try {
             Build-Module
@@ -133,7 +134,7 @@ Describe "Build-Module" {
         Mock Update-Metadata -ModuleName ModuleBuilder {}
         Mock InitializeBuild -ModuleName ModuleBuilder {
             # These are actually all the values that we need
-            @{
+            [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\1.0.0"
                 Name = "MyModule"
                 ModuleBase = "TestDrive:\MyModule\"
@@ -142,6 +143,12 @@ Describe "Build-Module" {
                 PublicFilter = "Public\*.ps1"
             }
         }
+
+        Mock New-Item { [IO.FileInfo]"TestDrive:\1.0.0" } -Parameter {
+            $Path -eq "TestDrive:\1.0.0" -and
+            $ItemType -eq "Directory" -and
+            $Force -eq $true
+        } -ModuleName ModuleBuilder
 
         Mock Test-Path {$True} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
         Mock Remove-Item {} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
@@ -154,12 +161,6 @@ Describe "Build-Module" {
 
         Mock Get-Item {
             [PSCustomObject]@{ LastWriteTime = Get-Date }
-        } -ModuleName ModuleBuilder
-
-        Mock New-Item {} -Parameter {
-            $Path -eq "TestDrive:\1.0.0" -and
-            $ItemType -eq "Directory" -and
-            $Force -eq $true
         } -ModuleName ModuleBuilder
 
         try {
@@ -177,8 +178,8 @@ Describe "Build-Module" {
             Assert-MockCalled Get-Item -ModuleName ModuleBuilder -Times 1
         }
 
-        It "Should not (re)create the OutputDirectory" {
-            Assert-MockCalled New-Item -ModuleName ModuleBuilder -Times 0
+        It "Should always (re)create the OutputDirectory" {
+            Assert-MockCalled New-Item -ModuleName ModuleBuilder -Times 1
         }
 
         It "Should not rebuild the source files" {
@@ -195,9 +196,10 @@ Describe "Build-Module" {
 
         Mock SetModuleContent -ModuleName ModuleBuilder {}
         Mock Update-Metadata -ModuleName ModuleBuilder {}
+
         Mock InitializeBuild -ModuleName ModuleBuilder {
             # These are actually all the values that we need
-            @{
+            [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\$Version"
                 Name = "MyModule"
                 ModuleBase = "TestDrive:\MyModule\"
@@ -207,8 +209,14 @@ Describe "Build-Module" {
             }
         }
 
+        Mock New-Item { [IO.FileInfo]"TestDrive:\$ExpectedVersion" } -Parameter {
+            $Path -eq "TestDrive:\$ExpectedVersion" -and
+            $ItemType -eq "Directory" -and
+            $Force -eq $true
+        } -ModuleName ModuleBuilder
+
         Mock Test-Path {$True} -Parameter {$Path -eq "TestDrive:\$ExpectedVersion"} -ModuleName ModuleBuilder
-        Mock Remove-Item {} -Parameter {$Path -eq "TestDrive:\$ExpectedVersion"} -ModuleName ModuleBuilder
+        Mock Remove-Item {} -Parameter {$Path.StartsWith((Convert-Path "TestDrive:\$ExpectedVersion"))} -ModuleName ModuleBuilder
         Mock Set-Location {} -ModuleName ModuleBuilder
         Mock Copy-Item {} -ModuleName ModuleBuilder
         # Release notes
@@ -219,12 +227,6 @@ Describe "Build-Module" {
 
         Mock Get-ChildItem {
             [IO.FileInfo]$(Join-Path $(Convert-Path "TestDrive:\") "MyModule\Public\Get-MyInfo.ps1")
-        } -ModuleName ModuleBuilder
-
-        Mock New-Item {} -Parameter {
-            $Path -eq "TestDrive:\$ExpectedVersion" -and
-            $ItemType -eq "Directory" -and
-            $Force -eq $true
         } -ModuleName ModuleBuilder
 
         try {

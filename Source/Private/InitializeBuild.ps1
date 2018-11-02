@@ -41,7 +41,7 @@ function InitializeBuild {
     foreach ($parameter in $Invocation.MyCommand.Parameters.GetEnumerator()) {
         $key = $parameter.Key
         # set if it doesn't exist, overwrite if the value is bound as a parameter
-        if (!$BuildInfo.ContainsKey($key) -or $Invocation.BoundParameters.ContainsKey($key)) {
+        if (!$BuildInfo.ContainsKey($key) -or ($Invocation.BoundParameters -and $Invocation.BoundParameters.ContainsKey($key))) {
             if ($null -ne ($value = Get-Variable -Name $key -ValueOnly -ErrorAction Ignore )) {
                 if ($value -ne ($null -as $parameter.Value.ParameterType)) {
                     Write-Debug "    $key = $value"
