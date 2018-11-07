@@ -134,12 +134,12 @@ function Build-Module {
             # BEFORE we InitializeBuild we need to "fix" the version
             if($PSCmdlet.ParameterSetName -ne "SemanticVersion") {
                 Write-Verbose "Calculate the Semantic Version from the $Version - $Prerelease + $BuildMetadata"
-                $SemVer = $Version
+                $SemVer = "$Version"
                 if($Prerelease) {
-                    $SemVer = $Version + '-' + $Prerelease
+                    $SemVer = "$Version-$Prerelease"
                 }
                 if($BuildMetadata) {
-                    $SemVer = $SemVer + '+' + $BuildMetadata
+                    $SemVer = "$SemVer+$BuildMetadata"
                 }
             }
 
@@ -215,11 +215,16 @@ function Build-Module {
                 Write-Warning "Failed to update version to $Version. $_"
             }
 
-            if ($Prerelease) {
-                Write-Verbose "Update Manifest at $OutputManifest with Prerelease: $Prerelease"
-                Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value $Prerelease
-            } else {
-                Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value ""
+            if ($null -ne (Get-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -ErrorAction SilentlyContinue)) {
+                if ($Prerelease) {
+                    Write-Verbose "Update Manifest at $OutputManifest with Prerelease: $Prerelease"
+                    Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value $Prerelease
+                } else {
+                    Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value ""
+                }
+            } elseif($Prerelease) {
+                Write-Warning ("Cannot set Prerelease in module manifest. Add an empty Prerelease to your module manifest, like:`n" +
+                               '         PrivateData = @{ PSData = @{ Prerelease = "" } }')
             }
 
             if ($BuildMetadata) {
