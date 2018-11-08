@@ -74,7 +74,7 @@ Describe "Build-Module" {
             }
         }
 
-        Mock New-Item { [IO.FileInfo]"TestDrive:\1.0.0" } -Parameter {
+        Mock New-Item { [IO.FileInfo](Join-Path (Convert-Path "TestDrive:\") "1.0.0") } -Parameter {
             $Path -eq "TestDrive:\1.0.0" -and
             $ItemType -eq "Directory" -and
             $Force -eq $true
@@ -144,7 +144,7 @@ Describe "Build-Module" {
             }
         }
 
-        Mock New-Item { [IO.FileInfo]"TestDrive:\1.0.0" } -Parameter {
+        Mock New-Item { [IO.FileInfo](Join-Path (Convert-Path "TestDrive:\") "1.0.0")} -Parameter {
             $Path -eq "TestDrive:\1.0.0" -and
             $ItemType -eq "Directory" -and
             $Force -eq $true
@@ -209,7 +209,7 @@ Describe "Build-Module" {
             }
         }
 
-        Mock New-Item { [IO.FileInfo]"TestDrive:\$ExpectedVersion" } -Parameter {
+        Mock New-Item { [IO.FileInfo](Join-Path (Convert-Path "TestDrive:\") $ExpectedVersion) } -Parameter {
             $Path -eq "TestDrive:\$ExpectedVersion" -and
             $ItemType -eq "Directory" -and
             $Force -eq $true
@@ -324,7 +324,7 @@ Describe "Build-Module" {
             }
         }
 
-        Mock New-Item { [IO.FileInfo]"TestDrive:\$ExpectedVersion" } -Parameter {
+        Mock New-Item { [IO.FileInfo](Join-Path (Convert-Path "TestDrive:\") $ExpectedVersion) } -Parameter {
             $Path -eq "TestDrive:\$ExpectedVersion" -and
             $ItemType -eq "Directory" -and
             $Force -eq $true
