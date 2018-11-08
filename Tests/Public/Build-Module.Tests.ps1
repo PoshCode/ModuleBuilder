@@ -64,7 +64,7 @@ Describe "Build-Module" {
         Mock Update-Metadata -ModuleName ModuleBuilder {}
         Mock InitializeBuild -ModuleName ModuleBuilder {
             # These are actually all the values that we need
-            @{
+            [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\1.0.0"
                 Name = "MyModule"
                 ModuleBase = "TestDrive:\MyModule\"
@@ -74,8 +74,14 @@ Describe "Build-Module" {
             }
         }
 
+        Mock New-Item { [IO.FileInfo](Join-Path (Convert-Path "TestDrive:\") "1.0.0") } -Parameter {
+            $Path -eq "TestDrive:\1.0.0" -and
+            $ItemType -eq "Directory" -and
+            $Force -eq $true
+        } -ModuleName ModuleBuilder
+
         Mock Test-Path {$True} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
-        Mock Remove-Item {} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
+        Mock Remove-Item {} -Parameter {$Path.StartsWith((Convert-Path "TestDrive:\1.0.0"))} -ModuleName ModuleBuilder
         Mock Set-Location {} -ModuleName ModuleBuilder
         Mock Copy-Item {} -ModuleName ModuleBuilder
 
@@ -83,11 +89,6 @@ Describe "Build-Module" {
             [IO.FileInfo]$(Join-Path $(Convert-Path "TestDrive:\") "MyModule\Public\Get-MyInfo.ps1")
         } -ModuleName ModuleBuilder
 
-        Mock New-Item {} -Parameter {
-            $Path -eq "TestDrive:\1.0.0" -and
-            $ItemType -eq "Directory" -and
-            $Force -eq $true
-        } -ModuleName ModuleBuilder
 
         try {
             Build-Module
@@ -133,7 +134,7 @@ Describe "Build-Module" {
         Mock Update-Metadata -ModuleName ModuleBuilder {}
         Mock InitializeBuild -ModuleName ModuleBuilder {
             # These are actually all the values that we need
-            @{
+            [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\1.0.0"
                 Name = "MyModule"
                 ModuleBase = "TestDrive:\MyModule\"
@@ -142,6 +143,12 @@ Describe "Build-Module" {
                 PublicFilter = "Public\*.ps1"
             }
         }
+
+        Mock New-Item { [IO.FileInfo](Join-Path (Convert-Path "TestDrive:\") "1.0.0")} -Parameter {
+            $Path -eq "TestDrive:\1.0.0" -and
+            $ItemType -eq "Directory" -and
+            $Force -eq $true
+        } -ModuleName ModuleBuilder
 
         Mock Test-Path {$True} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
         Mock Remove-Item {} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
@@ -154,12 +161,6 @@ Describe "Build-Module" {
 
         Mock Get-Item {
             [PSCustomObject]@{ LastWriteTime = Get-Date }
-        } -ModuleName ModuleBuilder
-
-        Mock New-Item {} -Parameter {
-            $Path -eq "TestDrive:\1.0.0" -and
-            $ItemType -eq "Directory" -and
-            $Force -eq $true
         } -ModuleName ModuleBuilder
 
         try {
@@ -177,8 +178,8 @@ Describe "Build-Module" {
             Assert-MockCalled Get-Item -ModuleName ModuleBuilder -Times 1
         }
 
-        It "Should not (re)create the OutputDirectory" {
-            Assert-MockCalled New-Item -ModuleName ModuleBuilder -Times 0
+        It "Should always (re)create the OutputDirectory" {
+            Assert-MockCalled New-Item -ModuleName ModuleBuilder -Times 1
         }
 
         It "Should not rebuild the source files" {
@@ -195,9 +196,10 @@ Describe "Build-Module" {
 
         Mock SetModuleContent -ModuleName ModuleBuilder {}
         Mock Update-Metadata -ModuleName ModuleBuilder {}
+
         Mock InitializeBuild -ModuleName ModuleBuilder {
             # These are actually all the values that we need
-            @{
+            [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\$Version"
                 Name = "MyModule"
                 ModuleBase = "TestDrive:\MyModule\"
@@ -207,8 +209,14 @@ Describe "Build-Module" {
             }
         }
 
+        Mock New-Item { [IO.FileInfo](Join-Path (Convert-Path "TestDrive:\") $ExpectedVersion) } -Parameter {
+            $Path -eq "TestDrive:\$ExpectedVersion" -and
+            $ItemType -eq "Directory" -and
+            $Force -eq $true
+        } -ModuleName ModuleBuilder
+
         Mock Test-Path {$True} -Parameter {$Path -eq "TestDrive:\$ExpectedVersion"} -ModuleName ModuleBuilder
-        Mock Remove-Item {} -Parameter {$Path -eq "TestDrive:\$ExpectedVersion"} -ModuleName ModuleBuilder
+        Mock Remove-Item {} -Parameter {$Path.StartsWith((Convert-Path "TestDrive:\$ExpectedVersion"))} -ModuleName ModuleBuilder
         Mock Set-Location {} -ModuleName ModuleBuilder
         Mock Copy-Item {} -ModuleName ModuleBuilder
         # Release notes
@@ -219,12 +227,6 @@ Describe "Build-Module" {
 
         Mock Get-ChildItem {
             [IO.FileInfo]$(Join-Path $(Convert-Path "TestDrive:\") "MyModule\Public\Get-MyInfo.ps1")
-        } -ModuleName ModuleBuilder
-
-        Mock New-Item {} -Parameter {
-            $Path -eq "TestDrive:\$ExpectedVersion" -and
-            $ItemType -eq "Directory" -and
-            $Force -eq $true
         } -ModuleName ModuleBuilder
 
         try {
@@ -287,6 +289,123 @@ Describe "Build-Module" {
             Assert-MockCalled Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
                 $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "
                     MyModule v$SemVer
+                    Multi-line Release Notes
+                    With a prefix carriage return"
+            }
+        }
+
+        Pop-Location -StackName BuildModuleTest
+    }
+
+    Context "Setting the version and pre-release" {
+        # $SemVer = "1.0.0-beta03+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
+        $SemVer = @{
+            Version = "1.0.0"
+            Prerelease = "beta03"
+            BuildMetadata = "Sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
+        }
+        $global:ExpectedVersion = "1.0.0"
+        Push-Location TestDrive:\ -StackName BuildModuleTest
+        New-Item -ItemType Directory -Path TestDrive:\MyModule\ -Force
+        New-Item -ItemType Directory -Path "TestDrive:\$ExpectedVersion\" -Force
+
+        Mock SetModuleContent -ModuleName ModuleBuilder {}
+        Mock Update-Metadata -ModuleName ModuleBuilder {}
+
+        Mock InitializeBuild -ModuleName ModuleBuilder {
+            # These are actually all the values that we need
+            [PSCustomObject]@{
+                OutputDirectory = "TestDrive:\$Version"
+                Name = "MyModule"
+                ModuleBase = "TestDrive:\MyModule\"
+                CopyDirectories = @()
+                Encoding = "UTF8"
+                PublicFilter = "Public\*.ps1"
+            }
+        }
+
+        Mock New-Item { [IO.FileInfo](Join-Path (Convert-Path "TestDrive:\") $ExpectedVersion) } -Parameter {
+            $Path -eq "TestDrive:\$ExpectedVersion" -and
+            $ItemType -eq "Directory" -and
+            $Force -eq $true
+        } -ModuleName ModuleBuilder
+
+        Mock Test-Path {$True} -Parameter {$Path -eq "TestDrive:\$ExpectedVersion"} -ModuleName ModuleBuilder
+        Mock Remove-Item {} -Parameter {$Path.StartsWith((Convert-Path "TestDrive:\$ExpectedVersion"))} -ModuleName ModuleBuilder
+        Mock Set-Location {} -ModuleName ModuleBuilder
+        Mock Copy-Item {} -ModuleName ModuleBuilder
+        # Release notes
+        Mock Get-Metadata { "First Release" } -ModuleName ModuleBuilder
+        Mock Join-Path {
+            [IO.Path]::Combine($Path, $ChildPath)
+        } -ModuleName ModuleBuilder
+
+        Mock Get-ChildItem {
+            [IO.FileInfo]$(Join-Path $(Convert-Path "TestDrive:\") "MyModule\Public\Get-MyInfo.ps1")
+        } -ModuleName ModuleBuilder
+
+        try {
+            Build-Module @SemVer
+        } catch {
+            Pop-Location -StackName BuildModuleTest
+            throw
+        }
+
+        It "Should build to an output folder with the simple version." {
+            Assert-MockCalled Remove-Item -ModuleName ModuleBuilder
+            Assert-MockCalled New-Item -ModuleName ModuleBuilder
+        }
+
+        It "Should update the module version to the simple version." {
+            Assert-MockCalled Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
+                $PropertyName -eq "ModuleVersion" -and $Value -eq $ExpectedVersion
+            }
+        }
+        It "Should update the module pre-release version" {
+            Assert-MockCalled Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
+                $PropertyName -eq "PrivateData.PSData.Prerelease" -and $Value -eq "beta03"
+            }
+        }
+        It "When there are simple release notes, it should insert a line with the module name and full semver" {
+            Assert-MockCalled Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
+                $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and
+                    $Value -eq "MyModule v$($SemVer.Version)-$($SemVer.Prerelease)+$($SemVer.BuildMetadata)`nFirst Release"
+            }
+        }
+
+        It "When there's no release notes, it should insert the module name and full semver" {
+            # If there's no release notes, but it was left uncommented
+            Mock Get-Metadata { "" } -ModuleName ModuleBuilder
+
+            try {
+                Build-Module @SemVer
+            } catch {
+                Pop-Location -StackName BuildModuleTest
+                throw
+            }
+
+            Assert-MockCalled Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
+                $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and
+                    $Value -eq "MyModule v$($SemVer.Version)-$($SemVer.Prerelease)+$($SemVer.BuildMetadata)"
+            }
+        }
+
+        It "When there's a prefix empty line, it should insert the module name and full semver the same way" {
+            # If there's no release notes, but it was left uncommented
+            Mock Get-Metadata { "
+                    Multi-line Release Notes
+                    With a prefix carriage return" } -ModuleName ModuleBuilder
+
+            try {
+                Build-Module @SemVer
+            }  catch {
+                Pop-Location -StackName BuildModuleTest
+                throw
+            }
+
+            Assert-MockCalled Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
+                $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "
+                    MyModule v$($SemVer.Version)-$($SemVer.Prerelease)+$($SemVer.BuildMetadata)
                     Multi-line Release Notes
                     With a prefix carriage return"
             }

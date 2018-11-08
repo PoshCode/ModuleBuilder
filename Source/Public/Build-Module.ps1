@@ -55,9 +55,12 @@ function Build-Module {
         [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
 
         # Where to build the module.
-        # Defaults to a version number folder, adjacent to the module folder
+        # Defaults to an ..\output folder (adjacent to the "SourcePath" folder)
         [Alias("Destination")]
-        [string]$OutputDirectory,
+        [string]$OutputDirectory = "..\Output",
+
+        # If set (true) adds a folder named after the version number to the OutputDirectory
+        [switch]$VersionedOutputDirectory,
 
         # Semantic version, like 1.0.3-beta01+sha.22c35ffff166f34addc49a3b80e622b543199cc5
         # If the SemVer has metadata (after a +), then the full Semver will be added to the ReleaseNotes
@@ -131,30 +134,35 @@ function Build-Module {
             # BEFORE we InitializeBuild we need to "fix" the version
             if($PSCmdlet.ParameterSetName -ne "SemanticVersion") {
                 Write-Verbose "Calculate the Semantic Version from the $Version - $Prerelease + $BuildMetadata"
-                $SemVer = $Version
+                $SemVer = "$Version"
                 if($Prerelease) {
-                    $SemVer = $Version + '-' + $Prerelease
+                    $SemVer = "$Version-$Prerelease"
                 }
                 if($BuildMetadata) {
-                    $SemVer = $SemVer + '+' + $BuildMetadata
+                    $SemVer = "$SemVer+$BuildMetadata"
                 }
             }
 
             # Push into the module source (it may be a subfolder)
             $ModuleInfo = InitializeBuild $SourcePath
-            # Output file names
-            $OutputDirectory = $ModuleInfo.OutputDirectory
-            $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
-            $OutputManifest = Join-Path $OutputDirectory "$($ModuleInfo.Name).psd1"
-
             Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
             Write-Verbose  "Building $($ModuleInfo.Name)"
+
+            # Output file names
+            $OutputDirectory = $ModuleInfo | ResolveOutputFolder
+            $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
+            $OutputManifest = Join-Path $OutputDirectory "$($ModuleInfo.Name).psd1"
             Write-Verbose  "Output to: $OutputDirectory"
 
             if ($Target -match "Clean") {
                 Write-Verbose "Cleaning $OutputDirectory"
-                if (Test-Path $OutputDirectory) {
-                    Remove-Item $OutputDirectory -Recurse -Force
+                if (Test-Path $OutputDirectory -PathType Leaf) {
+                    throw "Unable to build. There is a file in the way at $OutputDirectory"
+                }
+                if (Test-Path $OutputDirectory -PathType Container) {
+                    if (Get-ChildItem $OutputDirectory\*) {
+                        Remove-Item $OutputDirectory\* -Recurse -Force
+                    }
                 }
                 if ($Target -notmatch "Build") {
                     return # No build, just cleaning
@@ -207,11 +215,16 @@ function Build-Module {
                 Write-Warning "Failed to update version to $Version. $_"
             }
 
-            if ($Prerelease) {
-                Write-Verbose "Update Manifest at $OutputManifest with Prerelease: $Prerelease"
-                Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value $Prerelease
-            } else {
-                Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value ""
+            if ($null -ne (Get-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -ErrorAction SilentlyContinue)) {
+                if ($Prerelease) {
+                    Write-Verbose "Update Manifest at $OutputManifest with Prerelease: $Prerelease"
+                    Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value $Prerelease
+                } else {
+                    Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value ""
+                }
+            } elseif($Prerelease) {
+                Write-Warning ("Cannot set Prerelease in module manifest. Add an empty Prerelease to your module manifest, like:`n" +
+                               '         PrivateData = @{ PSData = @{ Prerelease = "" } }')
             }
 
             if ($BuildMetadata) {

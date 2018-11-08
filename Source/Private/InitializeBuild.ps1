@@ -22,15 +22,8 @@ function InitializeBuild {
         $Invocation = $(Get-Variable MyInvocation -Scope 1 -ValueOnly)
     )
     # NOTE: This reads the parameter values from Build-Module!
-    $ParameterValues = @{}
-    foreach($parameter in $Invocation.MyCommand.Parameters.GetEnumerator()) {
-        $key = $parameter.Key
-        if($null -ne ($value = Get-Variable -Name $key -ValueOnly -ErrorAction Ignore )) {
-            if($value -ne ($null -as $parameter.Value.ParameterType)) {
-                $ParameterValues[$key] = $value
-            }
-        }
-    }
+    # BUG BUG: needs to prioritize build.psd1 values over build-module *defaults*, but user-provided parameters over build.psd1 values
+    Write-Debug "Initializing build variables"
 
     $ModuleSource = ResolveModuleSource $SourcePath
     Push-Location $ModuleSource -StackName Build-Module
@@ -44,6 +37,20 @@ function InitializeBuild {
     # Read a build.psd1 configuration file for default parameter values
     $BuildInfo = Import-Metadata -Path (Join-Path $ModuleSource [Bb]uild.psd1)
     # Combine the defaults with parameter values
+    $ParameterValues = @{}
+    foreach ($parameter in $Invocation.MyCommand.Parameters.GetEnumerator()) {
+        $key = $parameter.Key
+        # set if it doesn't exist, overwrite if the value is bound as a parameter
+        if (!$BuildInfo.ContainsKey($key) -or ($Invocation.BoundParameters -and $Invocation.BoundParameters.ContainsKey($key))) {
+            if ($null -ne ($value = Get-Variable -Name $key -ValueOnly -ErrorAction Ignore )) {
+                if ($value -ne ($null -as $parameter.Value.ParameterType)) {
+                    Write-Debug "    $key = $value"
+                    $ParameterValues[$key] = $value
+                }
+            }
+        }
+    }
+
     $BuildInfo = $BuildInfo | Update-Object $ParameterValues
 
     # Make sure the Path is set and points at the actual manifest
@@ -63,15 +70,11 @@ function InitializeBuild {
     # Update the ModuleManifest with our build configuration
     $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
 
-    # Ensure OutputDirectory
-    if (!$ModuleInfo.OutputDirectory) {
-        $OutputRoot = if($OutputRoot = Split-Path $ModuleSource) { $OutputRoot } else { $ModuleSource}
-        $OutputDirectory = Join-Path $OutputRoot "$($ModuleInfo.Version)"
-        Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
-    } elseif (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
-        $OutputRoot = if($OutputRoot = Split-Path $ModuleSource) { $OutputRoot } else { $ModuleSource}
-        $OutputDirectory = Join-Path $OutputRoot $ModuleInfo.OutputDirectory
-        Add-Member -Input $ModuleInfo -Type NoteProperty -Name OutputDirectory -Value $OutputDirectory -Force
+    # Ensure the OutputDirectory makes sense (it's never blank anymore)
+    if (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
+        # Relative paths are relative to the build.psd1 now
+        $OutputDirectory = Join-Path $ModuleSource $ModuleInfo.OutputDirectory
+        $ModuleInfo.OutputDirectory = $OutputDirectory
     }
 
     $ModuleInfo

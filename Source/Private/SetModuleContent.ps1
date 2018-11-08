@@ -20,6 +20,7 @@ function SetModuleContent {
         # The FIRST and LAST items can be text content instead of file paths.
         [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [Alias("PSPath", "FullName")]
+        [AllowEmptyCollection()]
         [string[]]$SourceFile,
 
         # The working directory (allows relative paths for other values)
