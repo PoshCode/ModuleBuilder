@@ -45,11 +45,20 @@ We have a few modules which are required for building. They're listed in `Requir
 ```
 
 
-#### 4. Run tests with Pester
+#### 4. Load the compiled module into Powershell
+
+The `.\build.ps1` process will output a folder named with the current version number.  (For example, "1.0.0")  Inside this folder you will find the compiled .psm1 and .psd1 files.  You will either need to manually load the module using the `Import-Module` command, or you will need to copy the folder to your Powershell "modules" folder for it to be autoloaded.  To location of this folder varies by operating system.  Please refer to official Microsoft documentation for more information.
+
+If you would like to copy it to your "modules" folder, first create a folder called "ModuleBuilder" in the "modules" folder, then copy the entire folder which was created by `.\build.ps1` into that folder.  You final directory stucture should look similar to this: `C:\Program Files\PowerShell\Modules\ModuleBuilder\1.0.0\`
+
+
+#### 5. Run tests with Pester
 
 ```powershell
 Invoke-Pester
 ```
+Note: If Pester completely fails you likely haven't loaded the module properly!
+
 
 
 ### What's in the module, so far:
