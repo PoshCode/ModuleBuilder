@@ -197,6 +197,7 @@ function Build-Module {
             $AllScripts = Get-ChildItem -Path $SourceDirectories.ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
 
             SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
+            MoveUsingStatements -RootModule $RootModule -Encoding "$($ModuleInfo.Encoding)"
 
             # If there is a PublicFilter, update ExportedFunctions
             if ($ModuleInfo.PublicFilter) {
