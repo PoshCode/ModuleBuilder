@@ -18,37 +18,42 @@ Describe "MoveUsingStatements" {
     }
 
     Context "Moving Using Statements to the beginning of the file" {
+        $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
+            Mock Write-Warning {}
+            Get-Command MoveUsingStatements
+        }
+
         $TestCases = @(
             @{
-                TestCaseName = '2xUsingMustBeAtStartOfScript'
+                TestCaseName = '2xUsingMustBeAtStartOfScript Fixed'
                 PSM1File     = "function x {`r`n}`r`n" +
-                                "Using namespace System.io`r`n`r`n" + #UsingMustBeAtStartOfScript
-                                "function y {`r`n}`r`n" +
-                                "Using namespace System.Drawing" #UsingMustBeAtStartOfScript
+                "Using namespace System.io`r`n`r`n" + #UsingMustBeAtStartOfScript
+                "function y {`r`n}`r`n" +
+                "Using namespace System.Drawing" #UsingMustBeAtStartOfScript
                 ErrorBefore  = 2
                 ErrorAfter   = 0
             },
             @{
-                TestCaseName = 'NoErrors'
+                TestCaseName = 'NoErrors Do Nothing'
                 PSM1File     = "Using namespace System.io`r`n`r`n" +
-                                "Using namespace System.Drawing`r`n"+
-                                "function x { `r`n}`r`n" +
-                                "function y { `r`n}`r`n"
+                "Using namespace System.Drawing`r`n" +
+                "function x { `r`n}`r`n" +
+                "function y { `r`n}`r`n"
                 ErrorBefore  = 0
                 ErrorAfter   = 0
             },
             @{
-                TestCaseName = 'NotValidPowerShell'
+                TestCaseName = 'NotValidPowerShel Do Nothing'
                 PSM1File     = "Using namespace System.io`r`n`r`n" +
-                                "function x { `r`n}`r`n" +
-                                "Using namespace System.Drawing`r`n"+ # UsingMustBeAtStartOfScript
-                                "function y { `r`n}`r`n}" # Extra } at the end
+                "function x { `r`n}`r`n" +
+                "Using namespace System.Drawing`r`n" + # UsingMustBeAtStartOfScript
+                "function y { `r`n}`r`n}" # Extra } at the end
                 ErrorBefore  = 2
                 ErrorAfter   = 2
             }
         )
 
-        It 'Should succeed <TestCaseName> from <ErrorBefore> to <ErrorAfter> parsing errors' -TestCases $TestCases {
+        It 'Should succeed test: "<TestCaseName>" from <ErrorBefore> to <ErrorAfter> parsing errors' -TestCases $TestCases {
             param($TestCaseName, $PSM1File, $ErrorBefore, $ErrorAfter)
 
             $testModuleFile = "$TestDrive\MyModule.psm1"
@@ -63,10 +68,8 @@ Describe "MoveUsingStatements" {
             $ErrorFound.Count | Should -be $ErrorBefore
 
             # After
-            InModuleScope ModuleBuilder {
-                $testModuleFile = "$TestDrive\MyModule.psm1"
-                MoveUsingStatements -RootModule $testModuleFile
-            }
+            &$MoveUsingStatementsCmd -RootModule $testModuleFile
+
             $null = [System.Management.Automation.Language.Parser]::ParseFile(
                 $testModuleFile,
                 [ref]$null,
@@ -74,10 +77,63 @@ Describe "MoveUsingStatements" {
             )
             $ErrorFound.Count | Should -be $ErrorAfter
         }
+    }
+    Context "When MoveUsingStatements should do nothing" {
 
-        It 'Should Not do anything when there are no parsing errors' {
+        $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
+            Mock Write-Warning {}
+            Mock Set-Content {}
+            Mock Write-Debug {} -ParameterFilter {$Message -eq "No Using Statement Error found." }
+
+            Get-Command MoveUsingStatements
+        }
+
+        It 'Should Warn and skip when there are Parsing errors other than Using Statements' {
+            $testModuleFile = "$TestDrive\MyModule.psm1"
+            $PSM1File = "Using namespace System.IO`r`n function xyz {}`r`n}`r`nUsing namespace System.Drawing" # extra }                Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
+            Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
+
+            &$MoveUsingStatementsCmd -RootModule $testModuleFile
+            Assert-MockCalled -CommandName Write-Warning -Times 1 -ModuleName ModuleBuilder
+            Assert-MockCalled -CommandName Set-Content -Times 0 -ModuleName ModuleBuilder
+        }
+
+        It 'Should not do anything when there are no Using Statements Errors' {
+
+            $testModuleFile = "$TestDrive\MyModule.psm1"
+            $PSM1File = "Using namespace System.IO; function x {}"
+            Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
+
+            &$MoveUsingStatementsCmd -RootModule $testModuleFile
+
+            Assert-MockCalled -CommandName Write-Debug -Times 1 -ModuleName ModuleBuilder
+            Assert-MockCalled -CommandName Set-Content -Times 0 -ModuleName ModuleBuilder
+            (Get-Content -Raw $testModuleFile).Trim() | Should -Be $PSM1File
 
         }
 
+
+        It 'Should not modify file when introducing parsing errors' {
+
+            $testModuleFile = "$TestDrive\MyModule.psm1"
+            $PSM1File = "function x {}`r`nUsing namespace System.IO;"
+            Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
+
+            InModuleScope ModuleBuilder {
+                Mock New-Object {
+                    # Introducing Parsing Error in the file
+                    $Flag = [System.Collections.ArrayList]::new()
+                    $null = $Flag.Add("MyParsingError}")
+                    Write-Output -NoEnumerate $Flag
+                }
+            }
+
+            &$MoveUsingStatementsCmd -RootModule $testModuleFile
+
+            Assert-MockCalled -CommandName Set-Content -Times 0 -ModuleName ModuleBuilder
+            Assert-MockCalled -CommandName Write-Warning -Times 1 -ModuleName ModuleBuilder
+            (Get-Content -Raw $testModuleFile).Trim() | Should -Be $PSM1File
+
+        }
     }
 }
