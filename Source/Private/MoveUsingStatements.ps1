@@ -39,7 +39,8 @@ function MoveUsingStatements {
         Write-Debug "No Using Statement Error found."
         return
     }
-    elseif ($ParseError.Where{$_.ErrorId -ne 'UsingMustBeAtStartOfScript'}) {
+    # Avoid modifying the file if there's other parsing errors than Using Statements misplaced
+    if ($ParseError.Where{$_.ErrorId -ne 'UsingMustBeAtStartOfScript'}) {
         Write-Warning "Parsing errors found. Skipping Moving Using statements."
         return
     }
