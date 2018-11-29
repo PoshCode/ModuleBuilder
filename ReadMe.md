@@ -44,13 +44,32 @@ We have a few modules which are required for building. They're listed in `Requir
 .\build.ps1
 ```
 
+#### 4. Make the compiled module available to Powershell
 
-#### 4. Run tests with Pester
+The `.\build.ps1` process will output the path to the folder named with the current version number, like "1.0.0" -- the compiled psm1 and psd1 files are in that folder. In order for PowerShell to find them when you ask it to import, they need to be in the PSModulePath.  PowerShell expects to find modules in a folder with a matching name that sits in one of the folders in your PSModulePath.
+
+Since we cloned the "ModuleBuilder" project into a "ModuleBuilder" folder, the easiest thing to do is just add the parent of the `ModuleBuilder` folder to your PSModulePath. Personally, I keep all my git repos in my user folder at `~\Projects` and I add that to my PSModulePath in my profile script. You could do it temporarily for your current PowerShell session by running this:
+
+```powershell
+$Env:PSModulePath += ';' + (Resolve-Path ..)
+```
+
+Alternatively, you could copy the build output to your PSModulePath -- but then you need to start by creating the new "ModuleBuilder" folder to put the version number folder in. You could do that as you build by running something like this instead of just running the `.\build.ps1` script:
+
+```powershell
+$UserModules = Join-Path (Split-Path $Profile.CurrentUserAllHosts) "Modules\ModuleBuilder"
+New-Item $UserModules -Type Directory -Force
+Copy-Item (.\build.ps1) -Destination $UserModules -Force
+```
+
+You final directory stucture Would look something like this: `C:\Users\Jaykul\Documents\PowerShell\Modules\ModuleBuilder\1.0.0\`
+
+#### 5. Run tests with Pester
 
 ```powershell
 Invoke-Pester
 ```
-
+Note: If Pester completely fails you likely haven't loaded the module properly. Try running `Import-Module ModuleBuilder` and see step 4.
 
 ### What's in the module, so far:
 
