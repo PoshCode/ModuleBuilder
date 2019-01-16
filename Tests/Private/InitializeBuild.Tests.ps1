@@ -27,11 +27,16 @@ Describe "InitializeBuild" {
     Mock Get-Module -ModuleName ModuleBuilder {
         [PSCustomObject]@{
             ModuleBase = "TestDrive:\Source\"
-            Author = "Test Manager"
-            Version = [Version]"1.0.0"
-            Name = "MyModule"
+            Author     = "Test Manager"
+            Version    = [Version]"1.0.0"
+            Name       = "MyModule"
             RootModule = "MyModule.psm1"
         }
+    }
+    Mock Join-Path -ParameterFilter {
+        $Resolve -eq $true
+    } -ModuleName ModuleBuilder {
+        Join-Path -Path $Path -ChildPath $ChildPath
     }
 
     Context "It collects the initial data" {

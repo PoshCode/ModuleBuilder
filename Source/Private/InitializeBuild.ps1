@@ -34,8 +34,21 @@ function InitializeBuild {
         "Modules_InvalidRootModuleInModuleManifest"
     ) -join "|^"
 
-    # Read a build.psd1 configuration file for default parameter values
-    $BuildInfo = Import-Metadata -Path (Join-Path $ModuleSource [Bb]uild.psd1)
+    # Read a build.psd1 configuration file for default parameter values (if exists)
+    $BuildConfigFile = Join-Path $ModuleSource [Bb]uild.psd1 -Resolve -ErrorAction SilentlyContinue
+    if ($BuildConfigFile) {
+        Write-Debug "Config file found at $BuildConfigFile."
+        $BuildInfo = Import-Metadata -Path $BuildConfigFile
+    }
+    else {
+        Write-Debug "No Config file found at $ModuleSource."
+    }
+
+    # If the file is empty, it does not return a hashtable but $null
+    if ($BuildInfo -isnot [System.Collections.Hashtable]) {
+        $BuildInfo = @{}
+    }
+
     # Combine the defaults with parameter values
     $ParameterValues = @{}
     foreach ($parameter in $Invocation.MyCommand.Parameters.GetEnumerator()) {
@@ -60,7 +73,7 @@ function InitializeBuild {
     $ModuleInfo = Get-Module $BuildInfo.Path -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
 
     # If there are any problems that count, fail
-    if ($Problems = $Problems.Where({$_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore})) {
+    if ($Problems = $Problems.Where( {$_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore})) {
         foreach ($problem in $Problems) {
             Write-Error $problem
         }
