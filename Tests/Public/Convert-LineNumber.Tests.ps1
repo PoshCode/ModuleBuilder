@@ -58,7 +58,7 @@ Describe "Convert-LineNumber" {
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru
         $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
-        $SourceLocation.SourceLineNumber | Should -Be 24
+        $SourceLocation.SourceLineNumber | Should -Be 25
         $SourceLocation.Function | Should -Be 'CopyReadme'
     }
 }
