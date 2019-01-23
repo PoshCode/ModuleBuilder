@@ -1,4 +1,3 @@
-Using namespace System.Io # To test Convert-lineNumer when module is merged
 function MoveUsingStatements {
     <#
         .SYNOPSIS
