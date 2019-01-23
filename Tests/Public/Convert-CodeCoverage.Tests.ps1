@@ -30,6 +30,6 @@ Describe "Convert-CodeCoverage" {
         $SourceLocation = $PesterResults | Convert-CodeCoverage -SourceRoot $ModuleRoot
 
         $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
-        $SourceLocation.Line | Should -Be 24
+        $SourceLocation.Line | Should -Be 25
     }
 }
