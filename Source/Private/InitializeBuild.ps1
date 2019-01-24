@@ -24,9 +24,28 @@ function InitializeBuild {
     # NOTE: This reads the parameter values from Build-Module!
     # BUG BUG: needs to prioritize build.psd1 values over build-module *defaults*, but user-provided parameters over build.psd1 values
     Write-Debug "Initializing build variables"
+    if (-not (Split-Path -Path $SourcePath -Leaf) -eq 'build.psd1') {
+        $ModuleSource = ResolveModuleSource $SourcePath
+        $BuildManifest = Join-Path $ModuleSource [Bb]uild.psd1
+    }
+    else {
+        Write-Verbose "Module source points to the Building project file"
+        $BuildManifest = $SourcePath
+    }
 
-    $ModuleSource = ResolveModuleSource $SourcePath
-    Push-Location $ModuleSource -StackName Build-Module
+    # Read a build.psd1 configuration file for default parameter values
+    $BuildInfo = Import-Metadata -Path $BuildManifest
+    $BuildRoot = Split-Path -parent $BuildManifest -Resolve
+    Push-Location $BuildRoot -StackName Build-Module
+
+    if ($BuildInfo.Path) {
+        $ModuleSource = Split-Path -path $BuildInfo.Path -Parent -Resolve
+    }
+    else {
+        $ModuleSource = Split-Path $BuildInfoSource -Parent
+    }
+    Write-Verbose "Module Source is now $ModuleSource"
+
 
     # These errors are caused by trying to parse valid module manifests without compiling the module first
     $ErrorsWeIgnore = "^" + @(
@@ -34,8 +53,6 @@ function InitializeBuild {
         "Modules_InvalidRootModuleInModuleManifest"
     ) -join "|^"
 
-    # Read a build.psd1 configuration file for default parameter values
-    $BuildInfo = Import-Metadata -Path (Join-Path $ModuleSource [Bb]uild.psd1)
     # Combine the defaults with parameter values
     $ParameterValues = @{}
     foreach ($parameter in $Invocation.MyCommand.Parameters.GetEnumerator()) {
@@ -73,7 +90,7 @@ function InitializeBuild {
     # Ensure the OutputDirectory makes sense (it's never blank anymore)
     if (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
         # Relative paths are relative to the build.psd1 now
-        $OutputDirectory = Join-Path $ModuleSource $ModuleInfo.OutputDirectory
+        $OutputDirectory = Join-Path $BuildRoot $ModuleInfo.OutputDirectory
         $ModuleInfo.OutputDirectory = $OutputDirectory
     }
 
