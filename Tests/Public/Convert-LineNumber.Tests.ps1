@@ -10,7 +10,7 @@ Describe "Convert-LineNumber" {
     for($i=0; $i -lt 5; $i++) {
 
         # I don't know why I keep trying to do this using random numbers
-        $lineNumber = Get-Random -min 2 -max $ModuleSource.Count
+        $lineNumber = Get-Random -min 3 -max $ModuleSource.Count
         # but I have to keep avoiding the lines that don't make sense
         while($ModuleSource[$lineNumber] -match "^\s*$|^#(END)?REGION|^\s*function\s") {
             $lineNumber += 5
@@ -53,12 +53,12 @@ Describe "Convert-LineNumber" {
             Function = 'CopyReadme'
             # these are pipeline bound
             File = $ModulePath
-            Line = 25
+            Line = 26 # 1 offset with the Using Statement introduced in MoveUsingStatements
         }
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru
         $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
-        $SourceLocation.SourceLineNumber | Should -Be 24
+        $SourceLocation.SourceLineNumber | Should -Be 25
         $SourceLocation.Function | Should -Be 'CopyReadme'
     }
 }

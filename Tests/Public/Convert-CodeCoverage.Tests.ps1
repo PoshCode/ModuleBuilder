@@ -6,7 +6,7 @@ Describe "Convert-CodeCoverage" {
     $ModuleFiles = Get-ChildItem $ModuleRoot -File -Recurse -Filter *.ps1
     $ModuleSource = Get-Content $ModulePath
 
-    $lineNumber = Get-Random -min 2 -max $ModuleSource.Count
+    $lineNumber = Get-Random -min 3 -max $ModuleSource.Count
     while($ModuleSource[$lineNumber] -match "^#(END)?REGION") {
         $lineNumber += 5
     }
@@ -22,7 +22,7 @@ Describe "Convert-CodeCoverage" {
                     Function = 'CopyReadme'
                     # these are pipeline bound
                     File = $ModulePath
-                    Line = 25
+                    Line = 26 # 1 offset with the Using Statement introduced in MoveUsingStatements
                 }
             }
         }
@@ -30,6 +30,6 @@ Describe "Convert-CodeCoverage" {
         $SourceLocation = $PesterResults | Convert-CodeCoverage -SourceRoot $ModuleRoot
 
         $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
-        $SourceLocation.Line | Should -Be 24
+        $SourceLocation.Line | Should -Be 25
     }
 }
