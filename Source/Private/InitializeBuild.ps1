@@ -59,6 +59,7 @@ function InitializeBuild {
     # Finally, add all the information in the module manifest to the return object
     $ModuleInfo = Get-Module $BuildInfo.Path -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
 
+
     # If there are any problems that count, fail
     if ($Problems = $Problems.Where({$_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore})) {
         foreach ($problem in $Problems) {
@@ -69,6 +70,7 @@ function InitializeBuild {
 
     # Update the ModuleManifest with our build configuration
     $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
+    $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject @{ DefaultCommandPrefix = $ModuleInfo.Prefix; Prefix = "" }
 
     # Ensure the OutputDirectory makes sense (it's never blank anymore)
     if (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
