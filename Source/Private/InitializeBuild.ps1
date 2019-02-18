@@ -9,7 +9,6 @@ function InitializeBuild {
             1. It calls Push-Location without Pop-Location to push the SourcePath into the "Build-Module" stack
             2. It reads the ParameterValues from the PARENT MyInvocation
         .NOTES
-            Depends on the internal ResolveModuleSource and ResolveModuleManifest
             Depends on the Configuration module Update-Object and (the built in Import-LocalizedData and Get-Module)
     #>
     [CmdletBinding()]
@@ -25,8 +24,7 @@ function InitializeBuild {
     # BUG BUG: needs to prioritize build.psd1 values over build-module *defaults*, but user-provided parameters over build.psd1 values
     Write-Debug "Initializing build variables"
 
-    $ModuleSource = ResolveModuleSource $SourcePath
-    Push-Location $ModuleSource -StackName Build-Module
+    $BuildInfo = GetBuildInfo -Invocation $Invocation -SourcePath $SourcePath
 
     # These errors are caused by trying to parse valid module manifests without compiling the module first
     $ErrorsWeIgnore = "^" + @(
@@ -34,31 +32,9 @@ function InitializeBuild {
         "Modules_InvalidRootModuleInModuleManifest"
     ) -join "|^"
 
-    # Read a build.psd1 configuration file for default parameter values
-    $BuildInfo = Import-Metadata -Path (Join-Path $ModuleSource [Bb]uild.psd1)
-    # Combine the defaults with parameter values
-    $ParameterValues = @{}
-    foreach ($parameter in $Invocation.MyCommand.Parameters.GetEnumerator()) {
-        $key = $parameter.Key
-        # set if it doesn't exist, overwrite if the value is bound as a parameter
-        if (!$BuildInfo.ContainsKey($key) -or ($Invocation.BoundParameters -and $Invocation.BoundParameters.ContainsKey($key))) {
-            if ($null -ne ($value = Get-Variable -Name $key -ValueOnly -ErrorAction Ignore )) {
-                if ($value -ne ($null -as $parameter.Value.ParameterType)) {
-                    Write-Debug "    $key = $value"
-                    $ParameterValues[$key] = $value
-                }
-            }
-        }
-    }
-
-    $BuildInfo = $BuildInfo | Update-Object $ParameterValues
-
-    # Make sure the Path is set and points at the actual manifest
-    $BuildInfo.Path = ResolveModuleManifest $ModuleSource $BuildInfo.Path
 
     # Finally, add all the information in the module manifest to the return object
-    $ModuleInfo = Get-Module $BuildInfo.Path -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
-
+    $ModuleInfo = Get-Module (Get-Item $BuildInfo.Path) -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
 
     # If there are any problems that count, fail
     if ($Problems = $Problems.Where({$_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore})) {
@@ -75,7 +51,7 @@ function InitializeBuild {
     # Ensure the OutputDirectory makes sense (it's never blank anymore)
     if (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
         # Relative paths are relative to the build.psd1 now
-        $OutputDirectory = Join-Path $ModuleSource $ModuleInfo.OutputDirectory
+        $OutputDirectory = Join-Path (Get-Location).Path $ModuleInfo.OutputDirectory
         $ModuleInfo.OutputDirectory = $OutputDirectory
     }
 
