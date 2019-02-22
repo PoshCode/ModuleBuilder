@@ -17,7 +17,7 @@ function ResolveOutputFolder {
     )
     process {
         Write-Verbose "Resolve OutputDirectory path: $OutputDirectory"
-        # Make sure the OutputDirectory exists (assumes we're in the module source directory)
+        # Make sure the OutputDirectory exists (relative to Build.psd1 or absolute)
         $OutputDirectory = New-Item $OutputDirectory -ItemType Directory -Force | Convert-Path
         if ($VersionedOutputDirectory -and $OutputDirectory.TrimEnd("/\") -notmatch "\d+\.\d+\.\d+$") {
             $OutputDirectory = New-Item (Join-Path $OutputDirectory $Version) -ItemType Directory -Force | Convert-Path

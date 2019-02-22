@@ -7,11 +7,16 @@ Describe "InitializeBuild" {
     }
     Mock Push-Location -ModuleName ModuleBuilder {}
     Mock Import-Metadata -ModuleName ModuleBuilder {
+    Mock ResolveBuildManifest -ModuleName ModuleBuilder {
+        "TestDrive:\Source\build.psd1"
+    }
+    Mock GetBuildInfo -ModuleName ModuleBuilder {
         @{
-            Path = "MyModule.psd1"
-            SourceDirectories = "Classes", "Public"
+            Path = 'TestDrive:\Source\MyModule.psd1'
+            OutputDirectory = '..\output'
         }
     }
+
     #Mock Update-Object -ModuleName ModuleBuilder { $InputObject }
     Mock Get-Variable -ParameterFilter {
         $Name -eq "MyInvocation"
@@ -19,14 +24,17 @@ Describe "InitializeBuild" {
         @{
             MyCommand = @{
                 Parameters = @{
-                    Encoding = @{ParameterType = "string"}
-                    Target = @{ParameterType = "string"}
-                    SourcePath = @{ParameterType = "string"}
+                    Encoding          = @{ParameterType = "string"}
+                    Target            = @{ParameterType = "string"}
+                    SourcePath        = @{ParameterType = "string"}
                     SourceDirectories = @{ParameterType = "string[]"}
-                    OutputDirectory = @{ParameterType = "string"}
+                    OutputDirectory   = @{ParameterType = "string"}
                 }
             }
         }
+    }
+    Mock Get-Item -ModuleName ModuleBuilder {
+        "TestDrive:\MyModule\Source\MyModule.psd1"
     }
     Mock Get-Module -ModuleName ModuleBuilder {
         [PSCustomObject]@{
@@ -40,35 +48,32 @@ Describe "InitializeBuild" {
 
     Context "It collects the initial data" {
 
-        New-Item "TestDrive:\Source\" -Type Directory
+        New-Item "TestDrive:\MyModule\Source\build.psd1" -Type File -Force
+        New-Item "TestDrive:\MyModule\Source\MyModule.psd1" -Type File -Force
 
+        Push-Location TestDrive:\MyModule\Source\
         $Result = InModuleScope -ModuleName ModuleBuilder {
             [CmdletBinding()]
             param( $SourceDirectories = @("Enum", "Classes", "Private", "Public"), $OutputDirectory = "..\Output")
-            InitializeBuild -SourcePath TestDrive:\Source\
+            InitializeBuild -SourcePath 'TestDrive:\MyModule\Source\'
         }
+        Pop-Location
 
-        It "Resolves the module source path" {
-            Assert-MockCalled ResolveModuleSource -ModuleName ModuleBuilder -ParameterFilter {
+        It "Calls ResolveBuildManifest with the TestDrive path" {
+            Assert-MockCalled ResolveBuildManifest -ModuleName ModuleBuilder -ParameterFilter {
                 (Convert-FolderSeparator $SourcePath) -eq (Convert-FolderSeparator "TestDrive:\Source\")
             }
         }
 
-        It "Pushes the module source path" {
-            Assert-MockCalled Push-Location -ModuleName ModuleBuilder -ParameterFilter {
-                $StackName -eq "Build-Module" -and (Convert-FolderSeparator $Path) -eq (Convert-FolderSeparator "TestDrive:\Source\")
+        It "Calls GetBuildInfo with the resolved Path" {
+            Assert-MockCalled GetBuildInfo -ModuleName ModuleBuilder -ParameterFilter {
+                (Convert-FolderSeparator $SourcePath) -eq (Convert-FolderSeparator "TestDrive:\Source\build.psd1")
             }
         }
 
-        It "Parses the build.psd1" {
-            Assert-MockCalled Import-Metadata -ModuleName ModuleBuilder -ParameterFilter {
-                $Path -eq (Join-Path "TestDrive:\Source\" "[Bb]uild.psd1")
-            }
-        }
-
-        It "Calls Get-Module with a fully-qualified path to the manifest" {
+        It "Calls Get-Module with a qualified path to the manifest" {
             Assert-MockCalled Get-Module -ModuleName ModuleBuilder -ParameterFilter {
-                $Name -eq (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
+                (Convert-FolderSeparator $Name) -eq (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
             }
         }
 
@@ -77,10 +82,9 @@ Describe "InitializeBuild" {
             $Result.Path | Should -be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
 
             Push-Location TestDrive:\
-            Convert-FolderSeparator $Result.OutputDirectory  | Should -Be (Convert-FolderSeparator ".\Output")
-            # New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -Be (Convert-FolderSeparator ".\Output" -Relative)
+            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Output"
             Pop-Location
-            $Result.SourceDirectories | Should -Be @("Classes", "Public")
+            $Result.SourceDirectories | Should -be @("Classes", "Public")
         }
     }
 
@@ -123,12 +127,11 @@ Describe "InitializeBuild" {
         }
 
         It "Treats the output path as relative to the (parent of the) ModuleSource" {
-            $Result.ModuleBase | Should -be (Convert-FolderSeparator "TestDrive:\Source\")
-            $Result.Path | Should -be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
+            $Result.ModuleBase | Should -be "TestDrive:\Source\"
+            $Result.Path | Should -be "TestDrive:\Source\MyModule.psd1"
             # Note that Build-Module will call ResolveOutputFolder with this, so the relative path here is ok
             Push-Location TestDrive:\
-            Convert-FolderSeparator $Result.OutputDirectory | Should -Be (Convert-FolderSeparator ".\Source\Output")
-            # New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be (Convert-FolderSeparator -Relative ".\Source\Output")
+            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Source\Output"
             Pop-Location
         }
     }
@@ -172,18 +175,17 @@ Describe "InitializeBuild" {
         }
         $Result = InModuleScope -ModuleName ModuleBuilder {
             [CmdletBinding()]
-            param( $SourceDirectories = @("Enum", "Classes", "Private", "Public"), $OutputDirectory = "../Output")
+            param( $SourceDirectories = @("Enum", "Classes", "Private", "Public"), $OutputDirectory = "..\Output")
 
-            InitializeBuild -SourcePath TestDrive:/
+            InitializeBuild -SourcePath TestDrive:\
         }
 
         It "Treats the output path as relative to the (parent of the) ModuleSource" {
-            Convert-FolderSeparator $Result.ModuleBase | Should -be (Convert-FolderSeparator "TestDrive:/")
-            Convert-FolderSeparator $Result.Path | Should -be (Convert-FolderSeparator "TestDrive:/MyModule.psd1")
+            $Result.ModuleBase | Should -be "TestDrive:\"
+            $Result.Path | Should -be "TestDrive:\MyModule.psd1"
             # Note that Build-Module will call ResolveOutputFolder with this, so the relative path here is ok
-            Push-Location TestDrive:/
-            Convert-FolderSeparator $Result.OutputDirectory  | Should -Be (Convert-FolderSeparator "./Output")
-            #New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be (Convert-FolderSeparator "./Output" -Relative)
+            Push-Location TestDrive:\
+            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Output"
             Pop-Location
         }
     }

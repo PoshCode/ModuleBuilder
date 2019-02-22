@@ -20,11 +20,11 @@ function InitializeBuild {
         [Parameter(DontShow)]
         $Invocation = $(Get-Variable MyInvocation -Scope 1 -ValueOnly)
     )
-    # NOTE: This reads the parameter values from Build-Module!
-    # BUG BUG: needs to prioritize build.psd1 values over build-module *defaults*, but user-provided parameters over build.psd1 values
     Write-Debug "Initializing build variables"
 
-    $BuildInfo = GetBuildInfo -Invocation $Invocation -SourcePath $SourcePath
+    # NOTE: This reads the parameter values from Build-Module, passed in $Invocation!
+    $BuildManifest = ResolveBuildManifest $SourcePath
+    $BuildInfo = GetBuildInfo -Invocation $Invocation -BuildManifest $BuildManifest
 
     # These errors are caused by trying to parse valid module manifests without compiling the module first
     $ErrorsWeIgnore = "^" + @(

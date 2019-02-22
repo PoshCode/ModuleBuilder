@@ -1,33 +1,25 @@
 function GetBuildInfo {
     [CmdletBinding()]
     param(
-        # The root folder where the module source is (including the Build.psd1 and the module Manifest.psd1)
-        [Alias("BuildManifest")]
-        [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
+        # The path to the Build Manifest Build.psd1
+        [Parameter(Mandatory)]
+        [ValidateScript( {
+                if ((Test-Path $_) -and (Split-path -Leaf $_) -eq 'build.psd1') {
+                    $true
+                }
+                else {
+                    throw "The Module Manifest must point to a valid build.psd1 Data file"
+                }
+            })]
+        [string]$BuildManifest,
 
         # Pass the invocation from the parent in, so InitializeBuild can read parameter values
         [Parameter(DontShow)]
+        [AllowNull()]
         $Invocation = $(Get-Variable Invocation -Scope 1 -ValueOnly -ErrorAction SilentlyContinue)
     )
 
-    if ( (Split-Path $SourcePath -Leaf) -eq 'build.psd1') {
-        $BuildManifest = $SourcePath
-    }
-    elseif (Test-Path $SourcePath -PathType Leaf) {
-        # $ModuleManifest = $SourcePath
-        # When you pass the ModuleManifest as parameter, you must have the Build Manifest in the same folder
-        $BuildManifest = Join-Path (Split-Path -Parent $SourcePath) [Bb]uild.psd1
-    }
-    else {
-        # It's a container, assume the Build Manifest is directly under
-        $BuildManifest = Join-Path $SourcePath [Bb]uild.psd1
-    }
-
-    if ( -Not (Test-Path $BuildManifest) ) {
-        throw "Couldn't find the Build Manifest at $BuildManifest"
-    }
-
-    # Read the build.psd1 configuration file for default parameter values
+    # Read the Module Manifest configuration file for default parameter values
     $BuildInfo = Import-Metadata -Path $BuildManifest
 
     # Combine the defaults with parameter values
@@ -49,10 +41,11 @@ function GetBuildInfo {
 
     $BuildInfo = $BuildInfo | Update-Object $ParameterValues
 
+    # Resolve Build Manifest's parent folder to find the Absolute path
+    $BuildManifestParent = (Split-Path -Parent $BuildManifest)
+
     # Resolve Module manifest if not defined in Build.psd1
     if (-Not $BuildInfo.Path) {
-        # Resolve Build Manifest's parent folder to find the Absolute path, and validate the ModuleManifest file exists
-        $BuildManifestParent = (Resolve-Path (Split-Path -Parent $BuildManifest)).Path
         $ModuleName = Split-Path -Leaf $BuildManifestParent
 
         # If we're in a "well known" source folder, look higher for a name
@@ -61,16 +54,18 @@ function GetBuildInfo {
         }
 
         # As the Module Manifest did not specify the Module manifest, we expect the Module manifest in same folder
-        $ModuleManifest = Join-Path . "$ModuleName.psd1"
+        $ModuleManifest = Join-Path $BuildManifestParent "$ModuleName.psd1"
+        Write-Debug "Updating BuildInfo path to $ModuleManifest"
         $BuildInfo = $BuildInfo | Update-Object @{Path = $ModuleManifest }
     }
 
     # Make sure the Path is set and points at the actual manifest, relative to Build.psd1 or absolute
-    Write-Verbose "Pushing the location to the Build.psd1 parent folder"
-    Push-Location -Path (Split-Path -Parent $BuildManifest) -StackName Build-Module
+    Write-Verbose "Pushing the location to the Build manifest's parent folder ($BuildManifestParent)"
+    Push-Location -Path $BuildManifestParent -StackName Build-Module
 
+    # Validate the ModuleManifest file exists
     if (!(Test-Path $BuildInfo.Path)) {
-        Pop-Location -StackName Build-Module
+        Pop-Location -StackName Build-Module -ErrorAction SilentlyContinue
         throw "Can't find module manifest at $($BuildInfo.Path)"
     }
 
