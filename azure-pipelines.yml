@@ -7,7 +7,7 @@ pool:
   vmImage: 'VS2017-Win2016' #  options: 'Ubuntu 16.04', 'macOS 10.13', 'VS2017-Win2016'
 
 steps:
-- task: gittools.gitversion.gitversion-task.GitVersion@3
+- task: gittools.gitversion.gitversion-task.GitVersion@4
   displayName: GitVersion
 
 # As long as we're calling build.ps1, we don't need to bootstrap separately
