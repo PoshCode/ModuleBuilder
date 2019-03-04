@@ -6,10 +6,11 @@ function Build-Module {
     <#
         .Synopsis
             Compile a module from ps1 files to a single psm1
+
         .Description
             Compiles modules from source according to conventions:
             1. A single ModuleName.psd1 manifest file with metadata
-            2. Source subfolders in the same directory as the manifest:
+            2. Source subfolders in the same directory as the Module manifest:
                Enum, Classes, Private, Public contain ps1 files
             3. Optionally, a build.psd1 file containing settings for this function
 

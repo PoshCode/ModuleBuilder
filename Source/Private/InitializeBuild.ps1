@@ -34,7 +34,7 @@ function InitializeBuild {
 
 
     # Finally, add all the information in the module manifest to the return object
-    $ModuleInfo = Get-Module (Get-Item $BuildInfo.Path) -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
+    $ModuleInfo = Get-Module (Get-Item $BuildInfo.ModuleManifest) -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
 
     # If there are any problems that count, fail
     if ($Problems = $Problems.Where({$_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore})) {
@@ -47,13 +47,6 @@ function InitializeBuild {
     # Update the ModuleManifest with our build configuration
     $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
     $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject @{ DefaultCommandPrefix = $ModuleInfo.Prefix; Prefix = "" }
-
-    # Ensure the OutputDirectory makes sense (it's never blank anymore)
-    if (![IO.Path]::IsPathRooted($ModuleInfo.OutputDirectory)) {
-        # Relative paths are relative to the build.psd1 now
-        $OutputDirectory = Join-Path (Get-Location).Path $ModuleInfo.OutputDirectory
-        $ModuleInfo.OutputDirectory = $OutputDirectory
-    }
 
     $ModuleInfo
 }

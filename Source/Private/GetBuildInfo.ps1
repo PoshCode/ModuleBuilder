@@ -45,7 +45,7 @@ function GetBuildInfo {
     $BuildManifestParent = (Split-Path -Parent $BuildManifest)
 
     # Resolve Module manifest if not defined in Build.psd1
-    if (-Not $BuildInfo.Path) {
+    if (-Not $BuildInfo.ModuleManifest) {
         $ModuleName = Split-Path -Leaf $BuildManifestParent
 
         # If we're in a "well known" source folder, look higher for a name
@@ -56,7 +56,7 @@ function GetBuildInfo {
         # As the Module Manifest did not specify the Module manifest, we expect the Module manifest in same folder
         $ModuleManifest = Join-Path $BuildManifestParent "$ModuleName.psd1"
         Write-Debug "Updating BuildInfo path to $ModuleManifest"
-        $BuildInfo = $BuildInfo | Update-Object @{Path = $ModuleManifest }
+        $BuildInfo = $BuildInfo | Update-Object @{ModuleManifest = $ModuleManifest }
     }
 
     # Make sure the Path is set and points at the actual manifest, relative to Build.psd1 or absolute
@@ -64,9 +64,9 @@ function GetBuildInfo {
     Push-Location -Path $BuildManifestParent -StackName Build-Module
 
     # Validate the ModuleManifest file exists
-    if (!(Test-Path $BuildInfo.Path)) {
+    if (!(Test-Path $BuildInfo.ModuleManifest)) {
         Pop-Location -StackName Build-Module -ErrorAction SilentlyContinue
-        throw "Can't find module manifest at $($BuildInfo.Path)"
+        throw "Can't find module manifest at $($BuildInfo.ModuleManifest)"
     }
 
     $BuildInfo

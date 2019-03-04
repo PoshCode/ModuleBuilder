@@ -59,7 +59,7 @@ Describe "GetModuleInfo" {
         }
 
         It "Returns the resolved Module path, SourceDirectories, and overridden OutputDirectory (via Invocation param)" {
-            $Result.Path | Should -be "TestDrive:\MyModule\Source\MyModule.psd1" # if set in build.psd1 it will stay the same (i.e. relative)
+            $Result.ModuleManifest | Should -be "TestDrive:\MyModule\Source\MyModule.psd1" # if set in build.psd1 it will stay the same (i.e. relative)
             $Result.SourceDirectories | Should -be @("Classes", "Public")
             $Result.OutputDirectory | Should -be '..\Output'
         }

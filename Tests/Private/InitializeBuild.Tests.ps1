@@ -8,12 +8,12 @@ Describe "InitializeBuild" {
     Mock Push-Location -ModuleName ModuleBuilder {}
     Mock Import-Metadata -ModuleName ModuleBuilder {
     Mock ResolveBuildManifest -ModuleName ModuleBuilder {
-        "TestDrive:\Source\build.psd1"
+        Convert-FolderSeparator"TestDrive:\Source\build.psd1"
     }
     Mock GetBuildInfo -ModuleName ModuleBuilder {
         @{
-            Path = 'TestDrive:\Source\MyModule.psd1'
-            OutputDirectory = '..\output'
+            Path = Convert-FolderSeparator'TestDrive:\Source\MyModule.psd1'
+            OutputDirectory = '../output'
         }
     }
 
@@ -77,10 +77,9 @@ Describe "InitializeBuild" {
             }
         }
 
-        It "Returns the ModuleInfo combined with an OutputDirectory and Path" {
+        It "Returns the ModuleInfo combined with an OutputDirectory and ModuleManifest Path" {
             $Result.ModuleBase | Should -be (Convert-FolderSeparator "TestDrive:\Source\")
-            $Result.Path | Should -be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
-
+            $Result.ModuleManifest | Should -be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
             Push-Location TestDrive:\
             New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Output"
             Pop-Location
