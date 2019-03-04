@@ -124,7 +124,7 @@ Describe "MoveUsingStatements" {
                     # Introducing Parsing Error in the file
                     $Flag = [System.Collections.ArrayList]::new()
                     $null = $Flag.Add("MyParsingError}")
-                    Write-Output -NoEnumerate $Flag
+                    $PSCmdlet.WriteObject($Flag, $false)
                 }
             }
 
