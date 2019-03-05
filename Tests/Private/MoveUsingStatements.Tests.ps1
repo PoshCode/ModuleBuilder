@@ -19,7 +19,7 @@ Describe "MoveUsingStatements" {
 
     Context "Moving Using Statements to the beginning of the file" {
         $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
-            Mock Write-Warning {}
+            $null = Mock Write-Warning {}
             Get-Command MoveUsingStatements
         }
 
@@ -81,9 +81,9 @@ Describe "MoveUsingStatements" {
     Context "When MoveUsingStatements should do nothing" {
 
         $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
-            Mock Write-Warning {}
-            Mock Set-Content {}
-            Mock Write-Debug {} -ParameterFilter {$Message -eq "No Using Statement Error found." }
+            $null = Mock Write-Warning {}
+            $null = Mock Set-Content {}
+            $null = Mock Write-Debug {} -ParameterFilter {$Message -eq "No Using Statement Error found." }
 
             Get-Command MoveUsingStatements
         }
@@ -120,7 +120,7 @@ Describe "MoveUsingStatements" {
             Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
 
             InModuleScope ModuleBuilder {
-                Mock New-Object {
+                $null = Mock New-Object {
                     # Introducing Parsing Error in the file
                     $Flag = [System.Collections.ArrayList]::new()
                     $null = $Flag.Add("MyParsingError}")
