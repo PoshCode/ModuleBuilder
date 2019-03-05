@@ -50,4 +50,30 @@ Describe "ResolveOutputFolder" {
             $Result | Should -Be (Convert-Path "TestDrive:\Output\1.0.0")
         }
     }
+
+
+
+    Context "Given a relative OutputDirectory" {
+
+        New-Item TestDrive:\Source -Type Directory
+        Push-Location TestDrive:\Source
+
+        $Result = InModuleScope -ModuleName ModuleBuilder {
+            ResolveOutputFolder -OutputDirectory ..\Output -ModuleVersion "1.0.0" -VersionedOutput
+        }
+
+        It "Creates the Output directory" {
+            "TestDrive:\Output" | Should -Exist
+        }
+
+        It "Creates the version directory" {
+            "TestDrive:\Output\1.0.0" | Should -Exist
+        }
+
+        It "Returns the Output directory" {
+            $Result | Should -Be (Convert-Path "TestDrive:\Output\1.0.0")
+        }
+
+        Pop-Location
+    }
 }
