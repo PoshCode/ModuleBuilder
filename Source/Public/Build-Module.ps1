@@ -194,7 +194,7 @@ function Build-Module {
             Write-Verbose "Combine scripts to $RootModule"
 
             # SilentlyContinue because there don't *HAVE* to be functions at all
-            $AllScripts = Get-ChildItem -Path $SourceDirectories.ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
+            $AllScripts = Get-ChildItem -Path @($ModuleInfo.SourceDirectories).ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
 
             SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
             MoveUsingStatements -RootModule $RootModule -Encoding "$($ModuleInfo.Encoding)"
