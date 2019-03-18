@@ -181,8 +181,8 @@ function Build-Module {
             }
             $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
 
-            # Note that this requires that the module manifest be in the "root" of the source directories
-            Set-Location $ModuleInfo.ModuleBase
+            # Note that the module manifest parent folder is the "root" of the source directories
+            Push-Location $ModuleInfo.ModuleBase -StackName Build-Module
 
             Write-Verbose "Copy files to $OutputDirectory"
             # Copy the files and folders which won't be processed
