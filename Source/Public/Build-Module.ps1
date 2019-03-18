@@ -16,8 +16,8 @@ function Build-Module {
 
             The optimization process:
             1. The OutputDirectory is created
-            2. All psd1/psm1/ps1xml files (except build.psd1) in the root will be copied to the output
-            3. If specified, $CopyDirectories will be copied to the output
+            2. All psd1/psm1/ps1xml files (except build.psd1) in the Source will be copied to the output
+            3. If specified, $CopyDirectories (relative to the Source) will be copied to the output
             4. The ModuleName.psm1 will be generated (overwritten completely) by concatenating all .ps1 files in the $SourceDirectories subdirectories
             5. The ModuleVersion and ExportedFunctions in the ModuleName.psd1 may be updated (depending on parameters)
 

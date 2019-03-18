@@ -4,10 +4,11 @@ function InitializeBuild {
             Loads build.psd1 and the module manifest and combines them with the parameter values of the calling function. Pushes location to the module source location.
         .DESCRIPTION
             This function is for internal use from Build-Module only
-            It does two things that make it really only work properly there:
+            It does a few things that make it really only work properly there:
 
-            1. It calls Push-Location without Pop-Location to push the SourcePath into the "Build-Module" stack
-            2. It reads the ParameterValues from the PARENT MyInvocation
+            1. It calls ResolveBuildManifest to resolve the Build.psd1 from the given -SourcePath (can be Folder, Build.psd1 or Module manifest path)
+            2. Then calls GetBuildInfo to read the Build configuration file and override parameters passed through $Invocation (read from the PARENT MyInvocation)
+            2. It gets the Module information from the ModuleManifest, and merges it with the $ModuleInfo
         .NOTES
             Depends on the Configuration module Update-Object and (the built in Import-LocalizedData and Get-Module)
     #>
@@ -37,7 +38,7 @@ function InitializeBuild {
     $ModuleInfo = Get-Module (Get-Item $BuildInfo.ModuleManifest) -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
 
     # If there are any problems that count, fail
-    if ($Problems = $Problems.Where({$_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore})) {
+    if ($Problems = $Problems.Where( {$_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore})) {
         foreach ($problem in $Problems) {
             Write-Error $problem
         }
