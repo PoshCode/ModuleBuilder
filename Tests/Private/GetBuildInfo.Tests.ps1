@@ -1,6 +1,5 @@
 Describe "GetModuleInfo" {
     Import-Module ModuleBuilder
-    Mock Push-Location -ModuleName ModuleBuilder {}
     Mock Import-Metadata -ModuleName ModuleBuilder {
         @{
             #Omitting path to let it resolve [Path = "MyModule.psd1"]
@@ -32,20 +31,12 @@ Describe "GetModuleInfo" {
         New-Item "TestDrive:\MyModule\Source\Build.psd1" -Type File -Force
         New-Item "TestDrive:\MyModule\Source\MyModule.psd1" -Type File -Force
 
-        push-location -stackname test TestDrive:\MyModule\Source
         $Result = InModuleScope -ModuleName ModuleBuilder {
 
             # Used to resolve the overridden parameters in $Invocation
             $OutputDirectory = '..\output'
 
             GetBuildInfo -BuildManifest TestDrive:\MyModule\Source\Build.psd1
-        }
-        Pop-location -stackname test
-
-        It "Pushes the module source path" {
-            Assert-MockCalled Push-Location -ModuleName ModuleBuilder -ParameterFilter {
-                $StackName -eq "Build-Module" -and $Path -eq "TestDrive:\MyModule\Source"
-            }
         }
 
         It "Parses the build.psd1" {

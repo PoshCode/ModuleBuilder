@@ -60,12 +60,11 @@ function GetBuildInfo {
     }
 
     # Make sure the Path is set and points at the actual manifest, relative to Build.psd1 or absolute
-    Write-Verbose "Pushing the location to the Build manifest's parent folder ($BuildManifestParent)"
-    Push-Location -Path $BuildManifestParent -StackName Build-Module
+    if(!(Split-Path -IsAbsolute $BuildInfo.ModuleManifest)) {
+        $BuildInfo.ModuleManifest = Join-Path $BuildManifestParent $BuildInfo.ModuleManifest
+    }
 
-    # Validate the ModuleManifest file exists
     if (!(Test-Path $BuildInfo.ModuleManifest)) {
-        Pop-Location -StackName Build-Module -ErrorAction SilentlyContinue
         throw "Can't find module manifest at $($BuildInfo.ModuleManifest)"
     }
 
