@@ -1,7 +1,7 @@
 Describe "ResolveOutputFolder" {
     Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
-    Context "Given an OutputDirectory only" {
+    Context "Given an OutputDirectory and ModuleBase" {
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
             ResolveOutputFolder -OutputDirectory TestDrive:\Output -ModuleBase TestDrive:\Source
@@ -13,7 +13,7 @@ Describe "ResolveOutputFolder" {
         }
     }
 
-    Context "Given an OutputDirectory and ModuleVersion but no switch" {
+    Context "Given an OutputDirectory, ModuleBase and ModuleVersion but no switch" {
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
             ResolveOutputFolder -OutputDirectory TestDrive:\Output -ModuleVersion "1.0.0" -ModuleBase TestDrive:\Source
@@ -32,7 +32,7 @@ Describe "ResolveOutputFolder" {
         }
     }
 
-    Context "Given an OutputDirectory, ModuleVersion and switch" {
+    Context "Given an OutputDirectory, ModuleBase, ModuleVersion and switch" {
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
             ResolveOutputFolder -OutputDirectory TestDrive:\Output -ModuleVersion "1.0.0" -VersionedOutput -ModuleBase TestDrive:\Source

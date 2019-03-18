@@ -34,7 +34,7 @@ Describe "ResolveBuildManifest" {
     }
 
     It "Should throw when passed the wrong folder relative path" {
-        {InModuleScope ModuleBuilder { ResolveBuildManifest "Source\.." }} | Should -Throw
+        {InModuleScope ModuleBuilder { ResolveBuildManifest ".\.." }} | Should -Throw
     }
 
 }
