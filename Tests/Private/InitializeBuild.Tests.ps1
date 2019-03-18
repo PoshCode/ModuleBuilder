@@ -12,7 +12,7 @@ Describe "InitializeBuild" {
     }
     Mock GetBuildInfo -ModuleName ModuleBuilder {
         @{
-            Path = Convert-FolderSeparator'TestDrive:\Source\MyModule.psd1'
+            ModuleManifest  = Convert-FolderSeparator 'TestDrive:\MyModule\Source\MyModule.psd1'
             OutputDirectory = '../output'
         }
     }
@@ -48,16 +48,17 @@ Describe "InitializeBuild" {
 
     Context "It collects the initial data" {
 
+
         New-Item "TestDrive:\MyModule\Source\build.psd1" -Type File -Force
         New-Item "TestDrive:\MyModule\Source\MyModule.psd1" -Type File -Force
 
-        Push-Location TestDrive:\MyModule\Source\
+
         $Result = InModuleScope -ModuleName ModuleBuilder {
             [CmdletBinding()]
             param( $SourceDirectories = @("Enum", "Classes", "Private", "Public"), $OutputDirectory = "..\Output")
             InitializeBuild -SourcePath 'TestDrive:\MyModule\Source\'
         }
-        Pop-Location
+
 
         It "Calls ResolveBuildManifest with the TestDrive path" {
             Assert-MockCalled ResolveBuildManifest -ModuleName ModuleBuilder -ParameterFilter {
@@ -87,105 +88,4 @@ Describe "InitializeBuild" {
         }
     }
 
-    Context "Invalid module manifest" {
-        # In the current PowerShell 5.1 and 6.1
-        # I can't make Get-Module -ListAvailable throw on a manifest
-        # So I can't test the if($Problems = ... code
-    }
-
-    Context "Build with specified relative output path" {
-        New-Item "TestDrive:\Source\" -Type Directory
-
-        Mock Get-Variable -ModuleName ModuleBuilder {
-            if($Name -eq "OutputDirectory" -and $ValueOnly) {
-                ".\Output"
-            }
-        }
-
-        Mock Get-Variable -ParameterFilter {
-            $Name -eq "MyInvocation" -and $ValueOnly
-        } -ModuleName ModuleBuilder {
-            @{
-                MyCommand = @{
-                    Parameters = @{
-                        Encoding = @{ParameterType = "string"}
-                        Target = @{ParameterType = "string"}
-                        SourcePath = @{ParameterType = "string"}
-                        SourceDirectories = @{ParameterType = "string[]"}
-                        OutputDirectory = @{ParameterType = "string"}
-                    }
-                }
-            }
-        }
-
-        $Result = InModuleScope -ModuleName ModuleBuilder {
-            [CmdletBinding()]
-            param( $SourceDirectories = @("Enum", "Classes", "Private", "Public"), $OutputDirectory = "..\Output")
-
-            InitializeBuild -SourcePath TestDrive:\Source\
-        }
-
-        It "Treats the output path as relative to the (parent of the) ModuleSource" {
-            $Result.ModuleBase | Should -be "TestDrive:\Source\"
-            $Result.Path | Should -be "TestDrive:\Source\MyModule.psd1"
-            # Note that Build-Module will call ResolveOutputFolder with this, so the relative path here is ok
-            Push-Location TestDrive:\
-            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Source\Output"
-            Pop-Location
-        }
-    }
-
-
-
-
-    Context "Does not fall over if you build from the drive root" {
-        Mock Get-Variable -ModuleName ModuleBuilder {
-            if($Name -eq "OutputDirectory" -and $ValueOnly) {
-                ".\Output"
-            }
-        }
-
-        Mock ResolveModuleManifest -ModuleName ModuleBuilder { "TestDrive:\MyModule.psd1" }
-
-        Mock Get-Variable -ParameterFilter {
-            $Name -eq "MyInvocation" -and $ValueOnly
-        } -ModuleName ModuleBuilder {
-            @{
-                MyCommand = @{
-                    Parameters = @{
-                        Encoding = @{ParameterType = "string"}
-                        Target = @{ParameterType = "string"}
-                        SourcePath = @{ParameterType = "string"}
-                        SourceDirectories = @{ParameterType = "string[]"}
-                        OutputDirectory = @{ParameterType = "string"}
-                    }
-                }
-            }
-        }
-
-        Mock Get-Module -ModuleName ModuleBuilder {
-            [PSCustomObject]@{
-                ModuleBase = "TestDrive:\"
-                Author = "Test Manager"
-                Version = [Version]"1.0.0"
-                Name = "MyModule"
-                RootModule = "MyModule.psm1"
-            }
-        }
-        $Result = InModuleScope -ModuleName ModuleBuilder {
-            [CmdletBinding()]
-            param( $SourceDirectories = @("Enum", "Classes", "Private", "Public"), $OutputDirectory = "..\Output")
-
-            InitializeBuild -SourcePath TestDrive:\
-        }
-
-        It "Treats the output path as relative to the (parent of the) ModuleSource" {
-            $Result.ModuleBase | Should -be "TestDrive:\"
-            $Result.Path | Should -be "TestDrive:\MyModule.psd1"
-            # Note that Build-Module will call ResolveOutputFolder with this, so the relative path here is ok
-            Push-Location TestDrive:\
-            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Output"
-            Pop-Location
-        }
-    }
 }
