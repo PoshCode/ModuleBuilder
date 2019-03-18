@@ -1,7 +1,7 @@
 function InitializeBuild {
     <#
         .SYNOPSIS
-            Loads build.psd1 and the module manifest and combines them with the parameter values of the calling function. Pushes location to the module source location.
+            Loads build.psd1 and the module manifest and combines them with the parameter values of the calling function.
         .DESCRIPTION
             This function is for internal use from Build-Module only
             It does a few things that make it really only work properly there:
