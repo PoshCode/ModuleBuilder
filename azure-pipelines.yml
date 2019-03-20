@@ -11,7 +11,9 @@ steps:
   displayName: GitVersion
 
 # As long as we're calling build.ps1, we don't need to bootstrap separately
-- powershell: .\bootstrap.ps1 -Confirm:$false
+- powershell: |
+    Save-Script Install-RequiredModules -Path .
+    .\Install-RequiredModules.ps1 -Path .\RequiredModules.psd1 -Confirm:$false
   displayName: 'Restore pre-requisites'
 
 - powershell: .\build.ps1 -OutputDirectory $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName) -SemVer $(GitVersion.InformationalVersion) -Verbose

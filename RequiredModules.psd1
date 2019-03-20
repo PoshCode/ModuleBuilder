@@ -1,6 +1,5 @@
-@(
-    # In RequiredModules, always use REQUIREDVERSION
-    @{ ModuleName = "PowerShellGet"; RequiredVersion = "2.0.4" }
-    @{ ModuleName = "Configuration"; RequiredVersion = "1.3.1" }
-    @{ ModuleName = "Pester";        RequiredVersion = "4.4.2" }
-)
+@{  # NOTE: follow nuget syntax for versions: https://docs.microsoft.com/en-us/nuget/reference/package-versioning#version-ranges-and-wildcards
+    "PowerShellGet" = "2.0.4"
+    "Configuration" = "[1.3.1,2.0)"
+    "Pester"        = "[4.4.2,4.7.0]"
+}
