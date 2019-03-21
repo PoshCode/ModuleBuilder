@@ -32,10 +32,10 @@ cd Modulebuilder
 
 #### 2. Install dependencies
 
-We have a few modules which are required for building. They're listed in `RequiredModules.psd1` -- the `.\Install-RequiredModules.ps1` script installs them (it defaults to CurrentUser scope, but has a `-Scope` parameter if you're running elevated and want to install them for the `AllUsers`). They only change rarely, so you won't need to run this repeatedly.
+We have a few modules which are required for building. They're listed in `RequiredModules.psd1` -- the `.\Install-RequiredModule.ps1` script installs them (it defaults to CurrentUser scope, but has a `-Scope` parameter if you're running elevated and want to install them for the `AllUsers`). They only change rarely, so you won't need to run this repeatedly.
 
 ```powershell
-.\Install-RequiredModules.ps1
+.\Install-RequiredModule.ps1
 ```
 
 #### 3. Run the `build.ps1` script.
