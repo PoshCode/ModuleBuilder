@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 2.0.0
+.VERSION 2.0.1
 
 .GUID 6083ddaa-3951-4482-a9f7-fe115ddf8021
 
@@ -26,6 +26,8 @@
 
 .RELEASENOTES
 
+    2.0.1 Squash mistaken "InstallError" message caused by Select-Object -First
+          Clean up output that was unexpected
     2.0.0 Switch to NuGetVersion to support wildcards like 3.*
           Improve the error messages around aborted or failed installs
     1.0.1 Fix "Version '3.4.0' of module 'Pester' is already installed"
@@ -93,7 +95,7 @@ begin {
             [IO.MemoryStream][Convert]::FromBase64String($EncodedCompressedFile),
             [IO.Compression.CompressionMode]::Decompress)
         $null = $DeflatedStream.Read($UncompressedFileBytes, 0, 52488)
-        [Reflection.Assembly]::Load($UncompressedFileBytes)
+        $null = [Reflection.Assembly]::Load($UncompressedFileBytes)
 
     }
 
@@ -105,12 +107,12 @@ begin {
         )
         Write-Progress "Searching PSModulePath for '$Name' module with version '$Version'" -Id 1 -ParentId 0
 
-        if (!($Found = Get-Module $Name -ListAvailable -Verbose:$false | Where-Object {
-            ($Version.Float -and $Version.Float.Satisfies($_.Version.ToString())) -or
-            (!$Version.Float -and $Version.Satisfies($_.Version.ToString()))
-        } |
-        # Get returns modules in PSModulePath and then Version order, you're not necessarily getting the highest valid version
-        Select-Object -First 1))  {
+        $Found = (Get-Module $Name -ListAvailable -Verbose:$false).Where({
+                    ($Version.Float -and $Version.Float.Satisfies($_.Version.ToString())) -or
+                    (!$Version.Float -and $Version.Satisfies($_.Version.ToString()))
+                    # Get returns modules in PSModulePath and then Version order, you're not necessarily getting the highest valid version
+                }, "First", 1)
+        if (-not $Found) {
             Write-Warning "Unable to find module '$Name' installed with version '$Version'"
         } else {
             Write-Verbose "Found '$Name' installed already with version '$($Found.Version)'"
@@ -126,12 +128,12 @@ begin {
         )
         Write-Progress "Searching PSRepository for '$Name' module with version '$Version'" -Id 1 -ParentId 0
 
-        if (!($Found = Find-Module -Name $Name -AllVersions -Verbose:$false | Where-Object {
-            ($Version.Float -and $Version.Float.Satisfies($_.Version.ToString())) -or
-            (!$Version.Float -and $Version.Satisfies($_.Version.ToString()))
-        } |
-        # Find returns modules in version order, so this is the highest valid version
-        Select-Object -First 1)) {
+        $Found = (Find-Module -Name $Name -AllVersions -Verbose:$false ).Where({
+                    ($Version.Float -and $Version.Float.Satisfies($_.Version.ToString())) -or
+                    (!$Version.Float -and $Version.Satisfies($_.Version.ToString()))
+                }, "First", 1)
+
+        if (-not $Found) {
             Write-Warning "Unable to resolve dependency '$Name' with version '$Version'"
         } else {
             Write-Verbose "Found '$Name' to install with version '$($Found.Version)'"
@@ -216,8 +218,9 @@ end {
         Write-Warning "Module import skipped"
     } elseif ($InstallErrors) {
         Write-Warning "Module import skipped because of install errors"
+        Wait-Debugger
     } else {
-        $Modules | GetModuleVersion | Import-Module -Verbose:$false
+        $Modules | GetModuleVersion | Import-Module -Passthru -Verbose:$false
     }
 
     Write-Progress "Done" -Id 0 -Completed
