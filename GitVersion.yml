@@ -5,10 +5,8 @@ next-version: 1.0.0
 commit-message-incrementing: MergeMessageOnly
 branches:
   master:
-    tag: preview
-    increment: Minor
+    increment: Patch
   features:
-    increment: patch
     regex: features?[/-]
     source-branches:
     - master
