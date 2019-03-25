@@ -3,44 +3,47 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 name: $(Build.DefinitionName)_$(GitVersion_InformationalVersion)
+
+variables:
+  ArtifactName: Modules
+
+resources:
+  repositories:
+    - repository: templates
+      type: github
+      name: PoshCode/Azure-Pipelines
+      ref: refs/tags/1.0.0
+
 pool:
-  vmImage: 'VS2017-Win2016' #  options: 'Ubuntu 16.04', 'macOS 10.13', 'VS2017-Win2016'
+  vmImage: 'windows-2019' # other options include: 'Ubuntu 16.04', 'macOS 10.13', 'VS2017-Win2016'
 
-steps:
-- task: gittools.gitversion.gitversion-task.GitVersion@4
-  displayName: GitVersion
+jobs:
+  - template: GitVersion-job.yml@templates
 
-# As long as we're calling build.ps1, we don't need to bootstrap separately
-- powershell: |
-    Save-Script Install-RequiredModule -Path .
-    .\Install-RequiredModule.ps1 -Path .\RequiredModules.psd1 -Confirm:$false
-  displayName: 'Restore pre-requisites'
+  - job: Build
+    dependsOn: GitVersion
+    variables:
+      InformationalVersion: $[dependencies.GitVersion.outputs['GitVersion.InformationalVersion']]
+    steps:
+    - template: InstallRequiredModules-step.yml@templates
+      displayName: 'Restore pre-requisites from RequiredModules.psd1'
 
-- powershell: .\build.ps1 -OutputDirectory $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName) -SemVer $(GitVersion.InformationalVersion) -Verbose
-  displayName: 'Run build script'
+    - powershell: .\build.ps1 -OutputDirectory $(Build.BinariesDirectory)\$(Build.DefinitionName) -SemVer $(InformationalVersion) -Verbose
+      displayName: 'Run build script'
 
-- task: richardfennellBM.BM-VSTS-PesterRunner-Task.Pester-Task.Pester@8
-  displayName: 'Pester Tests'
-  inputs:
-    additionalModulePath: '$(Build.ArtifactStagingDirectory)'
-    CodeCoverageFolder: '$(Build.ArtifactStagingDirectory)'
-    resultsFile: '$(Common.TestResultsDirectory)\Test-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
-    CodeCoverageOutputFile: '$(Common.TestResultsDirectory)\Coverage-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
+    - task: PublishPipelineArtifact@0
+      displayName: 'Publish Build Output'
+      inputs:
+        ArtifactName: $(ArtifactName)
+        targetPath: '$(Build.BinariesDirectory)'
 
-- task: PublishTestResults@2
-  displayName: 'Publish Test Results'
-  condition: always()
-  inputs:
-    testRunner: NUnit
-    searchFolder: '$(Common.TestResultsDirectory)'
+  - template: ScriptAnalyzer-job.yml@templates
+    parameters:
+      dependsOn: ['Build']
+      artifactName: $(ArtifactName)
 
-- task: PublishCodeCoverageResults@1
-  displayName: 'Publish code coverage'
-  inputs:
-    summaryFileLocation: '$(Common.TestResultsDirectory)\Coverage-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
-
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact: Module'
-  inputs:
-    ArtifactName: Module
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+  - template: Pester-job.yml@templates
+    parameters:
+      dependsOn: ['Build']
+      artifactName: $(ArtifactName)
+      TestsDirectory: '$(Build.SourcesDirectory)\Tests'
