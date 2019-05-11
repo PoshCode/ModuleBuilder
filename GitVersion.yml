@@ -7,11 +7,8 @@ branches:
   master:
     increment: Patch
   features:
-    regex: features?[/-]
+    increment: Patch
+    regex: .*?/
     source-branches:
     - master
-  releases:
-    increment: None
-    regex: releases?[/-]
-    source-branches:
-    - master
+    - features

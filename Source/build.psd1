@@ -2,7 +2,7 @@
 # command when building the module (see `Get-Help Build-Module -Full` for details).
 @{
     Path = "ModuleBuilder.psd1"
-    OutputDirectory = "..\"
+    OutputDirectory = "../Output"
     VersionedOutputDirectory = $true
     CopyDirectories = @('en-US')
 }
