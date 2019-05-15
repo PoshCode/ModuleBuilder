@@ -59,7 +59,7 @@ Alternatively, you could copy the build output to your PSModulePath -- but then 
 ```powershell
 $UserModules = Join-Path (Split-Path $Profile.CurrentUserAllHosts) "Modules\ModuleBuilder"
 New-Item $UserModules -Type Directory -Force
-Copy-Item (.\build.ps1) -Destination $UserModules -Force
+Copy-Item (.\build.ps1) -Destination $UserModules -Force -Recurse
 ```
 
 You final directory stucture Would look something like this: `C:\Users\Jaykul\Documents\PowerShell\Modules\ModuleBuilder\1.0.0\`
