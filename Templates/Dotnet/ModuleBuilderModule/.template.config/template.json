@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "identity": "PoshCode.ModuleBuilderModule",
+  "author": "PoshCode",
+  "tags": {
+    "language": "Powershell",
+    "type": "project"
+  },
+  "classifications": ["Powershell", "Modules"],
+  "name": "ModuleBuilder Module Generator",
+  "shortName": "ModuleBuilderModule",
+  "symbols": {
+    "moduleName": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "Name of your new Powershell Module",
+      "replaces": "{moduleName}",
+      "isRequired": true
+    }
+  },
+  "postActions": [
+    {
+      "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
+      "args": {
+        "executable": "powershell",
+        "args": "./dotnet-post-action.ps1"
+      },
+      "manualInstructions": [
+        {
+          "text": "Generate Manifest"
+        }
+      ],
+      "continueOnError": false,
+      "description ": "Generates a basic Module Manifest"
+    }
+  ]
+}
