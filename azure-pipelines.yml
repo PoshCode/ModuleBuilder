@@ -1,5 +1,5 @@
 # https://aka.ms/yaml
-name: $(Build.DefinitionName)_$(GitVersion_InformationalVersion)
+name: $(GitVersion_InformationalVersion)
 
 variables:
   ArtifactName: Modules
@@ -21,11 +21,14 @@ jobs:
     dependsOn: GitVersion
     variables:
       InformationalVersion: $[dependencies.GitVersion.outputs['GitVersion.InformationalVersion']]
+      source: $(Build.SourcesDirectory)/Source/build.psd1
+      output: $(Build.BinariesDirectory)/$(Build.DefinitionName)
 
     steps:
     - template: InstallRequiredModules-step.yml@templates
 
-    - pwsh: ./build.ps1 -OutputDirectory $(Build.BinariesDirectory)/$(Build.DefinitionName) -SemVer $(InformationalVersion) -Verbose
+    - pwsh: |
+        Build-Module $(source) -OutputDirectory $(output) -SemVer $(InformationalVersion) -Verbose
       displayName: 'Run build script'
 
     - task: PublishPipelineArtifact@0
