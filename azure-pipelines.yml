@@ -1,46 +1,141 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+# ---------------------------------------------------------------------------------------------------------------------
+# Azure Pipeline that will build your module using ModuleBuilder before running Pester and PSScriptAnalyzer test.
+#
+# More information about the Azure Pipelines YAML schema used in this file at https://aka.ms/yaml
+#
+# DOES NOT REQUIRE installing any Visual Studio Marketplace extensions/tasks into your Azure Devops organization.
+# ---------------------------------------------------------------------------------------------------------------------
+
+# Name of our build, the GitVersion variable will be replaced during one of the steps
 name: $(Build.DefinitionName)_$(GitVersion_InformationalVersion)
+
+# Determines which branch(es) will cause a CI build to be started
+trigger:
+- master
+
+# This matrix tests the compiled module against Windows, Linux and MacOS, using virtual machine images
+# from the Microsoft-hosted agent pool and using isolated jobs for Code Coverage and Script Analysis.
+strategy:
+  matrix:
+    Linux:
+      imageName: 'ubuntu-16.04'
+    Mac:
+      imageName: 'macOS-10.14'
+    Windows:
+      imageName: 'vs2017-win2016'
+    CodeCoverage:
+      imageName: 'vs2017-win2016'
+    ScriptAnalyzer:
+      imageName: 'vs2017-win2016'
+
+# per matrix build, the `imageName` variable below will contain one of the image names specified above
 pool:
-  vmImage: 'VS2017-Win2016' #  options: 'Ubuntu 16.04', 'macOS 10.13', 'VS2017-Win2016'
+  vmImage: $(imageName)
 
+# Steps will be executed in chronological order, see per-step comments
 steps:
-- task: gittools.gitversion.gitversion-task.GitVersion@4
-  displayName: GitVersion
 
-# As long as we're calling build.ps1, we don't need to bootstrap separately
+  # -------------------------------------------------------------------------------------------------------------------
+  # Use the repository name to create Azure Pipeline variable `ModuleName` which we will use later for imports etc.
+  # -------------------------------------------------------------------------------------------------------------------
 - powershell: |
-    Save-Script Install-RequiredModule -Path .
-    .\Install-RequiredModule.ps1 -Path .\RequiredModules.psd1 -Confirm:$false
-  displayName: 'Restore pre-requisites'
+    $moduleName = "$(Build.Repository.Name)" -Replace '.+/'
+    "ModuleName = $moduleName" | Out-Host
+    "##vso[task.setvariable variable=ModuleName]$($moduleName)"
+  displayName: 'Determine Module Name'
 
-- powershell: .\build.ps1 -OutputDirectory $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName) -SemVer $(GitVersion.InformationalVersion) -Verbose
-  displayName: 'Run build script'
-
-- task: richardfennellBM.BM-VSTS-PesterRunner-Task.Pester-Task.Pester@8
-  displayName: 'Pester Tests'
+  # -------------------------------------------------------------------------------------------------------------------
+  # We must install DotNetCore or the tools directory used for e.g. `dotnet gitversion` will not get added to PATH.
+  # -------------------------------------------------------------------------------------------------------------------
+- task: DotNetCoreInstaller@0
   inputs:
-    additionalModulePath: '$(Build.ArtifactStagingDirectory)'
-    CodeCoverageFolder: '$(Build.ArtifactStagingDirectory)'
-    resultsFile: '$(Common.TestResultsDirectory)\Test-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
-    CodeCoverageOutputFile: '$(Common.TestResultsDirectory)\Coverage-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
+    version: '2.2.300'
+  displayName: 'Install DotnetCore'
 
+  # -------------------------------------------------------------------------------------------------------------------
+  # Because we cannot use the GitVersion task on Linux/Mac so we install GitVersion-Dotnet ourselves before creating the
+  # pipeline variables as used by the following tasks, thus maintaining forward-compatibility. FYI the `GitVersion.yml`
+  # file in our module's root directory is automatically loaded and thus used by gitversion.
+  # -------------------------------------------------------------------------------------------------------------------
+- powershell: |
+    [Environment]::SetEnvironmentVariable("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", 1) # prevent 2+ minute installation
+    [Environment]::SetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", 1) # prevent 2+ minute installation
+    dotnet tool install --global GitVersion.Tool --version 5.0.0-beta3-4
+    dotnet-gitversion # dump variables for future CI debugging
+    dotnet-gitversion /output buildserver # update the Azure Build Number and create the variables
+    New-Item $profile -Force # create a Powershell profile alias so we can keep using `gitversion` in all next steps
+    Get-Content -Path .\Invoke-DotnetGitVersion.ps1 | Set-Content -Path $profile
+  displayName: 'Install GitVersion Dotnet'
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # Install all Powershell modules using `Install-RequiredModule` script downloaded from the PSGallery.
+  # -------------------------------------------------------------------------------------------------------------------
+- powershell: |
+    Find-Script Install-RequiredModule
+    Save-Script -Name Install-RequiredModule -Path . -Verbose
+    .\Install-RequiredModule.ps1 -Path .\RequiredModules.psd1 -Confirm:$false -Verbose
+  displayName: 'Install Required Modules'
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # Let ModuleBuilder construct our module by combining all `.ps1` files in `.\Source`.
+  # -------------------------------------------------------------------------------------------------------------------
+- powershell: |
+    .\build.ps1 -OutputDirectory $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName) -SemVer $(GITVERSION.InformationalVersion) -Verbose
+  displayName: 'Build the Module using ModuleBuilder'
+  condition: and( succeeded(), ne( variables['Agent.JobName'], 'Job ScriptAnalyzer' ))
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # Because we cannot use the Black Marble Pester task on Linux/Mac we use plain `Invoke-Pester` instead.
+  # -------------------------------------------------------------------------------------------------------------------
+- powershell: |
+    Import-Module $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName)\$(GITVERSION.MajorMinorPatch)\$(ModuleName).psd1 -Force -Verbose
+    Invoke-Pester -OutputFile $(Common.TestResultsDirectory)\Test-$(Build.DefinitionName)_$(Build.BuildNumber).xml -ExcludeTag PSScriptAnalyzer -EnableExit
+    Get-ChildItem $(Common.TestResultsDirectory)
+  displayName: 'Run Pester Tests'
+  condition: and( succeeded(), notIn( variables['Agent.JobName'], 'Job CodeCoverage', 'Job ScriptAnalyzer' ))
+
+  # Publish the test results
 - task: PublishTestResults@2
   displayName: 'Publish Test Results'
-  condition: always()
+  condition: and( always(), notIn( variables['Agent.JobName'], 'Job CodeCoverage', 'Job ScriptAnalyzer' ))
   inputs:
     testRunner: NUnit
     searchFolder: '$(Common.TestResultsDirectory)'
+    testResultsFiles: '**/Test-*.xml' # case sensitive!
+    publishRunAttachments: true
+    testRunTitle:  $(Agent.JobName)
 
+  # -------------------------------------------------------------------------------------------------------------------
+  # Run ScriptAnalyzer as a separate job
+  # -------------------------------------------------------------------------------------------------------------------
+- powershell: |
+    Invoke-Pester -Tag PSScriptAnalyzer -EnableExit
+  displayName: 'Run PSScriptAnalyzer'
+  condition: and( succeeded(), eq( variables['Agent.JobName'], 'Job ScriptAnalyzer' ))
+
+  # -------------------------------------------------------------------------------------------------------------------
+  # Run Code Coverage as a separate job
+  # -------------------------------------------------------------------------------------------------------------------
+- powershell: |
+    Import-Module $(Build.ArtifactStagingDirectory)\$(Build.DefinitionName)\$(GITVERSION.MajorMinorPatch)\$(ModuleName).psd1 -Force -Verbose
+    $coverageOutputFile = '$(Common.TestResultsDirectory)\Coverage-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
+    $moduleToAnalyze = "$(Build.ArtifactStagingDirectory)\$(Build.DefinitionName)\$(GITVERSION.MajorMinorPatch)\$(ModuleName).psm1"
+    Invoke-Pester -CodeCoverageOutputFile $coverageOutputFile -CodeCoverage $moduleToAnalyze -ExcludeTag PSScriptAnalyzer -EnableExit
+  displayName: 'Run Code Coverage'
+  errorActionPreference: stop
+  condition: and( succeeded(), eq( variables['Agent.JobName'], 'Job CodeCoverage' ))
+
+  # Publish the code coverage results
 - task: PublishCodeCoverageResults@1
-  displayName: 'Publish code coverage'
+  displayName: 'Publish Code Coverage Results'
+  condition: and( always(), eq( variables['Agent.JobName'], 'Job CodeCoverage' ))
   inputs:
     summaryFileLocation: '$(Common.TestResultsDirectory)\Coverage-$(Build.DefinitionName)_$(Build.BuildNumber).xml'
 
+  # Publish the freshly built module artifact
 - task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact: Module'
+  displayName: 'Publish Build Artifact "Module"'
+  condition: and( always(), eq( variables['Agent.JobName'], 'Job CodeCoverage' ))
   inputs:
     ArtifactName: Module
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
