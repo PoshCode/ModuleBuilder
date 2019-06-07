@@ -52,6 +52,13 @@ steps:
     version: '2.2.300'
   displayName: 'Install DotnetCore'
 
+  # install nuget on all non-Windows platforms
+- script: |
+    sudo curl -o /usr/local/bin/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+    alias nuget="mono /usr/local/bin/nuget.exe"
+  displayName: 'Install NuGet for Mac/Linux'
+  condition: and( succeeded(), ne( variables['Agent.OS'], 'Windows_NT' ))
+
   # -------------------------------------------------------------------------------------------------------------------
   # Because we cannot use the GitVersion extension on Linux/Mac so we install GitVersion-DotnetCore ourselves before
   # creating the pipeline variables as used by the following tasks, thus maintaining forward-compatibility. FYI the
