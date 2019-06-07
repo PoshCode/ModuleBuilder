@@ -1,21 +1,14 @@
-assembly-versioning-scheme: MajorMinorPatchTag
-assembly-informational-format: '{NuGetVersionV2}+Sha.{Sha}.Date.{CommitDate}'
 mode: Mainline
-next-version: 1.0.0
 commit-message-incrementing: MergeMessageOnly
+assembly-versioning-format: '{Major}.{Minor}.{Patch}.{env:BUILDCOUNT ?? 0}'
+assembly-informational-format: '{NuGetVersionV2}+Build.{env:BUILDCOUNT ?? 0}.Date.{CommitDate}.Branch.{env:SAFEBRANCHNAME ?? unknown}.Sha.{Sha}'
+next-version: 1.0.0
 branches:
   master:
-    tag: preview
-    increment: Minor
+    increment: Patch
   features:
-    increment: patch
-    regex: features?[/-]
+    increment: Patch
+    regex: .*?/
     source-branches:
     - master
-  releases:
-    increment: None
-    regex: releases?[/-]
-    source-branches:
-    - master
-ignore:
-  sha: []
+    - features

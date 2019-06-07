@@ -3,4 +3,5 @@
     "Configuration"    = "[1.3.1,2.0)"
     "Pester"           = "[4.5.0,5.0)"
     "PSScriptAnalyzer" = "1.*"
+    "ModuleBuilder"    = "1.*"
 }
