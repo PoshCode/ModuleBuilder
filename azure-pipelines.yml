@@ -53,16 +53,16 @@ steps:
   displayName: 'Install DotnetCore'
 
   # -------------------------------------------------------------------------------------------------------------------
-  # Because we cannot use the GitVersion task on Linux/Mac so we install GitVersion-Dotnet ourselves before creating the
-  # pipeline variables as used by the following tasks, thus maintaining forward-compatibility. FYI the `GitVersion.yml`
-  # file in our module's root directory is automatically loaded and thus used by gitversion.
+  # Because we cannot use the GitVersion extension on Linux/Mac so we install GitVersion-DotnetCore ourselves before
+  # creating the pipeline variables as used by the following tasks, thus maintaining forward-compatibility. FYI the
+  # `GitVersion.yml` file in our module's root directory is automatically loaded and thus used by gitversion.
   # -------------------------------------------------------------------------------------------------------------------
 - powershell: |
     [Environment]::SetEnvironmentVariable("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", 1) # prevent 2+ minute installation
     [Environment]::SetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", 1) # prevent 2+ minute installation
     dotnet tool install --global GitVersion.Tool --version 5.0.0-beta3-4
-    dotnet-gitversion # dump variables for future CI debugging
-    dotnet-gitversion /output buildserver # update the Azure Build Number and create the variables
+    dotnet gitversion # dump variables for future CI debugging
+    dotnet gitversion /output buildserver # update the Azure Build Number and create the variables
     New-Item $profile -Force # create a Powershell profile alias so we can keep using `gitversion` in all next steps
     Get-Content -Path .\Invoke-DotnetGitVersion.ps1 | Set-Content -Path $profile
   displayName: 'Install GitVersion Dotnet'
