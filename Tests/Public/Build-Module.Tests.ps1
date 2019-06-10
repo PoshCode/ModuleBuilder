@@ -460,10 +460,6 @@ Describe "Build-Module" {
         }
 
         Context "When I Build-Module -Version 1.2.3 -Prerelease pre-release" {
-            $SemVer = @{
-                Version    = "1.2.3"
-                Prerelease = "pre-release"
-            }
             It "Should set the prerelese to 'pre-release'" {
                 Mock Update-Metadata -ParameterFilter {
                     $PropertyName -eq "PrivateData.PSData.Prerelease"
@@ -472,7 +468,7 @@ Describe "Build-Module" {
                 } -ModuleName ModuleBuilder
 
                 try {
-                    Build-Module @SemVer -Verbose
+                    Build-Module -Version "1.2.3" -Prerelease "pre-release"
                 } catch {
                     throw
                 }
@@ -494,7 +490,7 @@ Describe "Build-Module" {
                 } -ModuleName ModuleBuilder
 
                 try {
-                    Build-Module -SemVer "1.2.3-pre-release" -Verbose
+                    Build-Module -SemVer "1.2.3-pre-release"
                 } catch {
                     throw
                 }
