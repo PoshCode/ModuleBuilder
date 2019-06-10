@@ -16,6 +16,13 @@ param(
 # Sanitize parameters to pass to Build-Module
 $null = $PSBoundParameters.Remove('Test')
 
+if (-not $Semver) {
+    if ($semver = gitversion -showvariable SemVer) {
+        $null = $PSBoundParameters.Add("SemVer", $SemVer)
+    }
+}
+
+
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
