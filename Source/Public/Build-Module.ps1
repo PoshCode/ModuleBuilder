@@ -70,18 +70,18 @@ function Build-Module {
         # The module version (must be a valid System.Version such as PowerShell supports for modules)
         [Alias("ModuleVersion")]
         [Parameter(ParameterSetName="ModuleVersion", Mandatory)]
-        [version]$Version = $(if($V = $SemVer.Split("+")[0].Split("-")[0]){$V}),
+        [version]$Version = $(if($V = $SemVer.Split("+")[0].Split("-",2)[0]){$V}),
 
         # Setting pre-release forces the release to be a pre-release.
         # Must be valid pre-release tag like PowerShellGet supports
         [Parameter(ParameterSetName="ModuleVersion")]
-        [string]$Prerelease = $($SemVer.Split("+")[0].Split("-")[1]),
+        [string]$Prerelease = $($SemVer.Split("+")[0].Split("-",2)[1]),
 
         # Build metadata (like the commit sha or the date).
         # If a value is provided here, then the full Semantic version will be inserted to the release notes:
         # Like: ModuleName v(Version(-Prerelease?)+BuildMetadata)
         [Parameter(ParameterSetName="ModuleVersion")]
-        [string]$BuildMetadata = $($SemVer.Split("+")[1]),
+        [string]$BuildMetadata = $($SemVer.Split("+",2)[1]),
 
         # Folders which should be copied intact to the module output
         # Can be relative to the  module folder

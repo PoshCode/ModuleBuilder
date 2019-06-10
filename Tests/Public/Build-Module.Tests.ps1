@@ -413,4 +413,92 @@ Describe "Build-Module" {
 
         Pop-Location -StackName BuildModuleTest
     }
+
+    Context "Bug #70 Cannot build 1.2.3-pre-release" {
+        BeforeEach {
+            Push-Location TestDrive:\ -StackName BuildModuleTest
+            New-Item -ItemType Directory -Path TestDrive:\MyModule\ -Force
+            New-Item -ItemType Directory -Path "TestDrive:\$ExpectedVersion\" -Force
+
+            Mock SetModuleContent -ModuleName ModuleBuilder { }
+            Mock Update-Metadata -ModuleName ModuleBuilder { }
+
+            Mock InitializeBuild -ModuleName ModuleBuilder {
+                # These are actually all the values that we need
+                [PSCustomObject]@{
+                    OutputDirectory = "TestDrive:\$Version"
+                    Name            = "MyModule"
+                    ModuleBase      = "TestDrive:\MyModule\"
+                    CopyDirectories = @()
+                    Encoding        = "UTF8"
+                    PublicFilter    = "Public\*.ps1"
+                }
+            }
+
+            Mock New-Item { [IO.FileInfo](Join-Path (Convert-Path "TestDrive:\") $ExpectedVersion) } -Parameter {
+                $Path -eq "TestDrive:\$ExpectedVersion" -and
+                $ItemType -eq "Directory" -and
+                $Force -eq $true
+            } -ModuleName ModuleBuilder
+
+            Mock Test-Path { $True } -Parameter { $Path -eq "TestDrive:\$ExpectedVersion" } -ModuleName ModuleBuilder
+            Mock Remove-Item { } -Parameter { $Path.StartsWith((Convert-Path "TestDrive:\$ExpectedVersion")) } -ModuleName ModuleBuilder
+            Mock Set-Location { } -ModuleName ModuleBuilder
+            Mock Copy-Item { } -ModuleName ModuleBuilder
+            # Release notes
+            Mock Get-Metadata { "First Release" } -ModuleName ModuleBuilder
+            Mock Join-Path {
+                [IO.Path]::Combine($Path, $ChildPath)
+            } -ModuleName ModuleBuilder
+
+            Mock Get-ChildItem {
+                [IO.FileInfo]$(Join-Path $(Convert-Path "TestDrive:\") "MyModule\Public\Get-MyInfo.ps1")
+            } -ModuleName ModuleBuilder
+        }
+        AfterEach {
+            Pop-Location -StackName BuildModuleTest
+        }
+
+        Context "When I Build-Module -Version 1.2.3 -Prerelease pre-release" {
+            It "Should set the prerelese to 'pre-release'" {
+                Mock Update-Metadata -ParameterFilter {
+                    $PropertyName -eq "PrivateData.PSData.Prerelease"
+                } -MockWith {
+                    $Value | Should -Be "pre-release"
+                } -ModuleName ModuleBuilder
+
+                try {
+                    Build-Module -Version "1.2.3" -Prerelease "pre-release"
+                } catch {
+                    throw
+                }
+
+                Assert-MockCalled Update-Metadata -ParameterFilter {
+                    $PropertyName -eq "PrivateData.PSData.Prerelease" -and $Value -eq "pre-release"
+                } -ModuleName ModuleBuilder
+            }
+        }
+
+
+        Context "When I Build-Module -SemVer 1.2.3-pre-release" {
+
+            It "Should set the prerelese to 'pre-release'" {
+                Mock Update-Metadata -ParameterFilter {
+                    $PropertyName -eq "PrivateData.PSData.Prerelease"
+                } -MockWith {
+                    $Value | Should -Be "pre-release"
+                } -ModuleName ModuleBuilder
+
+                try {
+                    Build-Module -SemVer "1.2.3-pre-release"
+                } catch {
+                    throw
+                }
+
+                Assert-MockCalled Update-Metadata -ParameterFilter {
+                    $PropertyName -eq "PrivateData.PSData.Prerelease" -and $Value -eq "pre-release"
+                } -ModuleName ModuleBuilder
+            }
+        }
+    }
 }
