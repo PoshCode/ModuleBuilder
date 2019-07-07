@@ -10,7 +10,7 @@ resources:
     endpoint: PoshCode
     type: github
     name: PoshCode/Azure-Pipelines
-    ref: refs/tags/3.2.0
+    ref: master # refs/tags/3.2.0
 
 stages:
 - stage: Build
