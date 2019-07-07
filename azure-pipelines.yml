@@ -15,27 +15,10 @@ resources:
 jobs:
   - template: GitVersion-job.yml@templates
 
-  - job: Build
-    pool:
-      vmImage: 'windows-2019'
-    dependsOn: GitVersion
-    variables:
-      InformationalVersion: $[dependencies.GitVersion.outputs['GitVersion.InformationalVersion']]
-      source: $(Build.SourcesDirectory)/Source/build.psd1
-      output: $(Build.BinariesDirectory)/$(Build.DefinitionName)
-
-    steps:
-    - template: InstallRequiredModules-step.yml@templates
-
-    - pwsh: |
-        Build-Module $(source) -OutputDirectory $(output) -SemVer $(InformationalVersion) -Verbose
-      displayName: 'Run build script'
-
-    - task: PublishPipelineArtifact@0
-      displayName: 'Publish Build Output'
-      inputs:
-        ArtifactName: $(ArtifactName)
-        targetPath: '$(Build.BinariesDirectory)'
+  - template: Build-Module-job.yml@templates
+    parameters:
+      dependsOn: ['Build']
+      artifactName: $(ArtifactName)
 
   - template: ScriptAnalyzer-job.yml@templates
     parameters:
