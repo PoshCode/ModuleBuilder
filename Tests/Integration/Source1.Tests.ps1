@@ -1,6 +1,7 @@
 #requires -Module ModuleBuilder
 
 Describe "Invoke-Build With Source1" {
+    Write-Host "Testing with ModuleBuilder v$((Get-Module ModuleBuilder).Version)"
     Context "When we call Invoke-Build" {
         $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -Passthru
 
