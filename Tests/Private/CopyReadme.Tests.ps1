@@ -1,4 +1,4 @@
-Describe "ParseLineNumber" {
+Describe "Copy ReadMe" {
     Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     Context "There's no ReadMe" {
@@ -28,34 +28,30 @@ Describe "ParseLineNumber" {
         }
     }
 
-    Context "If there's a ReadMe, it creates the folder" {
-        # None of the things are created
+    Context "There is a ReadMe" {
+        # Nothing is actually created when this test runs
+        Mock New-Item -ModuleName ModuleBuilder
+        Mock Copy-Item -ModuleName ModuleBuilder
+
+        # Test-Path returns true only for the source document
+        ${global:Test Script Path} = Join-Path $PSScriptRoot CopyReadme.Tests.ps1
+        Mock Test-Path { $Path -eq ${global:Test Script Path} } -ModuleName ModuleBuilder
+
+        Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
+
+        InModuleScope ModuleBuilder {
+            CopyReadme -ReadMe ${global:Test Script Path} -Module ModuleBuilder -OutputDirectory TestDrive:\ -Culture "En"
+        }
+
+        Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
 
         It "Creates a language path in the output" {
-            Mock New-Item -ModuleName ModuleBuilder
-            Mock Copy-Item -ModuleName ModuleBuilder
-
-            InModuleScope ModuleBuilder {
-                CopyReadme -ReadMe $PSScriptRoot\CopyReadme.Tests.ps1 -Module ModuleBuilder -OutputDirectory TestDrive:\ -Culture "En"
-            }
-
-            Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
-
             Assert-MockCalled New-Item -ModuleName ModuleBuilder -ParameterFilter {
                 $Path -eq "TestDrive:\En"
             }
         }
-    }
-
-    Context "If there's a ReadMe, it copies it" {
-        # None of the things are created
-        Mock Copy-Item -ModuleName ModuleBuilder
 
         It "Copies the readme as about_module.help.txt" {
-            InModuleScope ModuleBuilder {
-                CopyReadme -ReadMe $PSScriptRoot\CopyReadme.Tests.ps1 -Module ModuleBuilder -OutputDirectory TestDrive:\ -Culture "En"
-            }
-
             Assert-MockCalled Copy-Item -ModuleName ModuleBuilder -ParameterFilter {
                 $Destination -eq "TestDrive:\En\about_ModuleBuilder.help.txt"
             }
