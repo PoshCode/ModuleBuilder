@@ -4,12 +4,12 @@ Describe "ResolveModuleManifest" {
     [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot/../../Source
 
     It "Should return the module manifest path when passed just a module folder" {
-        $Expected = InModuleScope ModuleBuilder { ResolveModuleManifest ${Global:Test Root Path} }
+        $Expected = InModuleScope ModuleBuilder { ResolveModuleManifest ${Global:Test Root Path} -Verbose }
         $Expected | Should -Be (Join-Path ${Global:Test Root Path} ModuleBuilder.psd1)
     }
 
     It "Should return the module manifest path when passed a module folder and null" {
-        $Expected = InModuleScope ModuleBuilder { ResolveModuleManifest ${Global:Test Root Path} $null }
+        $Expected = InModuleScope ModuleBuilder { ResolveModuleManifest ${Global:Test Root Path} $null -Verbose }
         $Expected | Should -Be (Join-Path ${Global:Test Root Path} ModuleBuilder.psd1)
     }
 

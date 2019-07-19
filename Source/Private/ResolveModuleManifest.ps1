@@ -24,13 +24,16 @@ function ResolveModuleManifest {
     )
     Push-Location $ModuleBase -StackName ResolveModuleManifest
 
-    if(-not ($PSBoundParameters.ContainsKey("Name") -or $Name)) {
+    if ($PSBoundParameters.ContainsKey("Name") -and -not [string]::IsNullOrEmpty($Name)) {
+        Write-Verbose "Module Name passed, using file BaseName from $Name"
+        $Name = (Split-Path $Name -Leaf) -replace "\.psd1$"
+    } else {
         # Do not use GetFileNameWithoutExtension, because some module names have dots in them
         Write-Verbose "Module Name not passed. Looking for manifest in $ModuleBase"
         $Name = (Split-Path $ModuleBase -Leaf) -replace "\.psd1$"
         # If we're in a "well known" source folder, look higher for a name
         if ($Name -in "Source", "src") {
-            Write-Verbose "Module base was /source, rejecting $Name"
+            Write-Verbose "Module base was $Name, trying parent"
             $Name = Split-Path (Split-Path $ModuleBase) -Leaf
         }
 
@@ -44,8 +47,6 @@ function ResolveModuleManifest {
                 Write-Verbose "Read Path from build.psd1 as '$Name'"
             }
         }
-    } else {
-        $Name = (Split-Path $Name -Leaf) -replace "\.psd1$"
     }
 
     Write-Verbose "Reading Module '$Name' in '$ModuleBase'"
