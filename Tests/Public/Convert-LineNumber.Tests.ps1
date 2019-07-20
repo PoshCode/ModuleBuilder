@@ -5,7 +5,7 @@ Describe "Convert-LineNumber" {
     $ModuleContent = Get-Content $ModulePath
     $ModuleSource = Resolve-Path (Join-Path $PSScriptRoot "\..\..\Source")
 
-    for($i=0; $i -lt 5; $i++) {
+    for ($i=0; $i -lt 5; $i++) {
 
         # I don't know why I keep trying to do this using random numbers
         $lineNumber = Get-Random -min 3 -max $ModuleContent.Count
@@ -42,10 +42,10 @@ Describe "Convert-LineNumber" {
         $outputLine = Select-String -Path $ModulePath 'Write-Verbose "Copy ReadMe to: \$LanguagePath"' | % LineNumber
         $sourceLine = Select-String -Path $SourceFile 'Write-Verbose "Copy ReadMe to: \$LanguagePath"' | % LineNumber
 
-        $SourceLocation = "At CopyReadme, ${ModulePath}: line $outputLine" | Convert-LineNumber
+        $SourceLocation = "At CopyReadMe, ${ModulePath}: line $outputLine" | Convert-LineNumber
 
         # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
-        $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
+        $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadMe.ps1"
         $SourceLocation.SourceLineNumber | Should -Be $sourceLine
     }
 
@@ -53,7 +53,7 @@ Describe "Convert-LineNumber" {
         $PesterMiss = [PSCustomObject]@{
             # Note these don't really matter
             Command = $ModuleContent[25]
-            Function = 'CopyReadme'
+            Function = 'CopyReadMe'
             # these are pipeline bound
             File = $ModulePath
             Line = 26 # 1 offset with the Using Statement introduced in MoveUsingStatements
@@ -61,8 +61,8 @@ Describe "Convert-LineNumber" {
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru
         # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
-        $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
+        $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadMe.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 25
-        $SourceLocation.Function | Should -Be 'CopyReadme'
+        $SourceLocation.Function | Should -Be 'CopyReadMe'
     }
 }

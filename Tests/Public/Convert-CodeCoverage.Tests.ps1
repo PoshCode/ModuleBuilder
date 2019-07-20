@@ -18,7 +18,7 @@ Describe "Convert-CodeCoverage" {
                 MissedCommands = [PSCustomObject]@{
                     # Note these don't really matter
                     Command = $ModuleContent[25]
-                    Function = 'CopyReadme'
+                    Function = 'CopyReadMe'
                     # these are pipeline bound
                     File = $ModulePath
                     Line = 26 # 1 offset with the Using Statement introduced in MoveUsingStatements
@@ -28,7 +28,7 @@ Describe "Convert-CodeCoverage" {
 
         $SourceLocation = $PesterResults | Convert-CodeCoverage -SourceRoot $ModuleSource
 
-        $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
+        $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadMe.ps1"
         $SourceLocation.Line | Should -Be 25
     }
 }

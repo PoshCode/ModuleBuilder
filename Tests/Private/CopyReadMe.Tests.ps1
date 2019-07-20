@@ -8,7 +8,7 @@ Describe "Copy ReadMe" {
             Mock Test-Path -ModuleName ModuleBuilder
 
             InModuleScope ModuleBuilder {
-                Get-Module ModuleBuilder | CopyReadme -OutputDirectory TestDrive:\
+                Get-Module ModuleBuilder | CopyReadMe -OutputDirectory TestDrive:\
             }
 
             Assert-MockCalled Test-Path -Times 0 -ModuleName ModuleBuilder
@@ -20,7 +20,7 @@ Describe "Copy ReadMe" {
             Mock Join-Path -ModuleName ModuleBuilder
 
             InModuleScope ModuleBuilder {
-                Get-Module ModuleBuilder | CopyReadme -Readme ReadMe.md -OutputDirectory TestDrive:\
+                Get-Module ModuleBuilder | CopyReadMe -Readme ReadMe.md -OutputDirectory TestDrive:\
             }
 
             # Test-Path is only called once -- means it didn't check for the folder
@@ -35,13 +35,13 @@ Describe "Copy ReadMe" {
         Mock Copy-Item -ModuleName ModuleBuilder
 
         # Test-Path returns true only for the source document
-        ${global:Test Script Path} = Join-Path $PSScriptRoot CopyReadme.Tests.ps1
+        ${global:Test Script Path} = Join-Path $PSScriptRoot CopyReadMe.Tests.ps1
         Mock Test-Path { $Path -eq ${global:Test Script Path} } -ModuleName ModuleBuilder
 
         Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
 
         InModuleScope ModuleBuilder {
-            CopyReadme -ReadMe ${global:Test Script Path} -Module ModuleBuilder -OutputDirectory TestDrive:\ -Culture "En"
+            CopyReadMe -ReadMe ${global:Test Script Path} -Module ModuleBuilder -OutputDirectory TestDrive:\ -Culture "En"
         }
 
         It "Creates a language path in the output" {

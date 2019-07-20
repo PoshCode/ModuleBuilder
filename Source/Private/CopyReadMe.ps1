@@ -1,4 +1,4 @@
-function CopyReadme {
+function CopyReadMe {
     [CmdletBinding()]
     param(
         # The path to the ReadMe document to copy
