@@ -1,13 +1,12 @@
 Describe "Convert-CodeCoverage" {
 
     $ModulePath = Join-Path (Get-Module ModuleBuilder).ModuleBase ModuleBuilder.psm1
-    $ModuleRoot = Resolve-Path "$PSScriptRoot\..\..\Source"
+    $ModuleContent = Get-Content $ModulePath
 
-    $ModuleFiles = Get-ChildItem $ModuleRoot -File -Recurse -Filter *.ps1
-    $ModuleSource = Get-Content $ModulePath
+    $ModuleSource = Resolve-Path "$PSScriptRoot\..\..\Source"
 
-    $lineNumber = Get-Random -min 3 -max $ModuleSource.Count
-    while($ModuleSource[$lineNumber] -match "^#(END)?REGION") {
+    $lineNumber = Get-Random -min 3 -max $ModuleContent.Count
+    while($ModuleContent[$lineNumber] -match "^#(END)?REGION") {
         $lineNumber += 5
     }
 
@@ -18,8 +17,8 @@ Describe "Convert-CodeCoverage" {
             CodeCoverage = [PSCustomObject]@{
                 MissedCommands = [PSCustomObject]@{
                     # Note these don't really matter
-                    Command = $ModuleSource[25]
-                    Function = 'CopyReadme'
+                    Command = $ModuleContent[25]
+                    Function = 'CopyReadMe'
                     # these are pipeline bound
                     File = $ModulePath
                     Line = 26 # 1 offset with the Using Statement introduced in MoveUsingStatements
@@ -27,9 +26,9 @@ Describe "Convert-CodeCoverage" {
             }
         }
 
-        $SourceLocation = $PesterResults | Convert-CodeCoverage -SourceRoot $ModuleRoot
+        $SourceLocation = $PesterResults | Convert-CodeCoverage -SourceRoot $ModuleSource
 
-        $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
+        $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadMe.ps1"
         $SourceLocation.Line | Should -Be 25
     }
 }

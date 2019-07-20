@@ -24,22 +24,32 @@ function ResolveModuleManifest {
     )
     Push-Location $ModuleBase -StackName ResolveModuleManifest
 
-    if(!$PSBoundParameters.ContainsKey("Name") -or !$Name) {
+    if ($PSBoundParameters.ContainsKey("Name") -and -not [string]::IsNullOrEmpty($Name)) {
+        Write-Verbose "Module Name passed, using file BaseName from $Name"
+        $Name = (Split-Path $Name -Leaf) -replace "\.psd1$"
+    } else {
         # Do not use GetFileNameWithoutExtension, because some module names have dots in them
+        Write-Verbose "Module Name not passed. Looking for manifest in $ModuleBase"
         $Name = (Split-Path $ModuleBase -Leaf) -replace "\.psd1$"
         # If we're in a "well known" source folder, look higher for a name
         if ($Name -in "Source", "src") {
+            Write-Verbose "Module base was $Name, trying parent"
             $Name = Split-Path (Split-Path $ModuleBase) -Leaf
         }
 
         # If the folder name isn't the manifest name, look in the build.psd1
-        if (!(Test-Path "$Name.psd1") -and (Test-Path "build.psd1")) {
-            $Name = (Import-LocalizedData -BaseDirectory $ModuleBase -FileName Build -ErrorAction SilentlyContinue).Path -replace "\.psd1$"
+        if (!(Test-Path "$($Name).psd1") -and (Test-Path "build.psd1")) {
+            Write-Verbose "Module manifest not found ($Name), reading Path from build.psd1 in $ModuleBase"
+            $Metadata = Import-Metadata (Convert-Path build.psd1) -ErrorAction SilentlyContinue
+            if ($Metadata.Path) {
+                $Name = Split-Path $Metadata.Path -Leaf
+                $Name = $Name -replace "\.psd1$"
+                Write-Verbose "Read Path from build.psd1 as '$Name'"
+            }
         }
-    } else {
-        $Name = (Split-Path $Name -Leaf) -replace "\.psd1$"
     }
 
+    Write-Verbose "Reading Module '$Name' in '$ModuleBase'"
     $Manifest = Join-Path $ModuleBase "$Name.psd1"
     if (!(Test-Path $Manifest)) {
         Pop-Location -StackName ResolveModuleManifest

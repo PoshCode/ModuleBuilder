@@ -1,7 +1,7 @@
 Describe "ResolveModuleSource" {
     Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
-    [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot\..\..\Source
+    [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot/../../Source
 
     It "Should return the folder name when passed a module folder" {
         $Expected = InModuleScope ModuleBuilder { ResolveModuleSource ${Global:Test Root Path} }
@@ -14,12 +14,12 @@ Describe "ResolveModuleSource" {
     }
 
     It "Should return the folder name when passed a module manifest" {
-        $Expected = InModuleScope ModuleBuilder { ResolveModuleSource ${Global:Test Root Path}\ModuleBuilder.psd1 }
+        $Expected = InModuleScope ModuleBuilder { ResolveModuleSource ${Global:Test Root Path}/ModuleBuilder.psd1 }
         $Expected | Should -Be ${Global:Test Root Path}
     }
 
     It "Should return the folder name when passed a build manifest" {
-        $Expected = InModuleScope ModuleBuilder { ResolveModuleSource ${Global:Test Root Path}\build.psd1 }
+        $Expected = InModuleScope ModuleBuilder { ResolveModuleSource ${Global:Test Root Path}/build.psd1 }
         $Expected | Should -Be ${Global:Test Root Path}
     }
 

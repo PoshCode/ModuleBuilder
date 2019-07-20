@@ -10,40 +10,38 @@ resources:
     endpoint: PoshCode
     type: github
     name: PoshCode/Azure-Pipelines
-    ref: refs/tags/2.0.0
+    ref: feature/BuildModule # refs/tags/3.2.0
 
-jobs:
+stages:
+- stage: Build
+  jobs:
   - template: GitVersion-job.yml@templates
-
-  - job: Build
-    pool:
-      vmImage: 'windows-2019'
-    dependsOn: GitVersion
-    variables:
-      InformationalVersion: $[dependencies.GitVersion.outputs['GitVersion.InformationalVersion']]
-      source: $(Build.SourcesDirectory)/Source/build.psd1
-      output: $(Build.BinariesDirectory)/$(Build.DefinitionName)
-
-    steps:
-    - template: InstallRequiredModules-step.yml@templates
-
-    - pwsh: |
-        Build-Module $(source) -OutputDirectory $(output) -SemVer $(InformationalVersion) -Verbose
-      displayName: 'Run build script'
-
-    - task: PublishPipelineArtifact@0
-      displayName: 'Publish Build Output'
-      inputs:
-        ArtifactName: $(ArtifactName)
-        targetPath: '$(Build.BinariesDirectory)'
-
-  - template: ScriptAnalyzer-job.yml@templates
+  - template: Build-Module-job.yml@templates
     parameters:
       dependsOn: ['Build']
+      artifactName: $(ArtifactName)
+
+- stage: Test
+  dependsOn: Build
+  jobs:
+  - template: ScriptAnalyzer-job.yml@templates
+    parameters:
+      dependsOn: []
       artifactName: $(ArtifactName)
 
   - template: Pester-job.yml@templates
     parameters:
-      dependsOn: ['Build']
+      dependsOn: []
       artifactName: $(ArtifactName)
       TestsDirectory: '$(Build.SourcesDirectory)/Tests'
+      strategy:
+        matrix:
+          Linux:
+            vmImage: 'ubuntu-16.04'
+          MacOS:
+            vmImage: 'macOS-10.14'
+          Windows:
+            vmImage: 'windows-2019'
+      pool:
+        vmImage: $(vmImage)
+

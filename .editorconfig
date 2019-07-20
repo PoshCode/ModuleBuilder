@@ -21,5 +21,5 @@ trim_trailing_whitespace = true
 indent_size = 4
 trim_trailing_whitespace = true
 
-[*.{ps1xml,props,xml,yaml}]
+[*.{ps1xml,props,xml,yaml,yml}]
 indent_size = 2

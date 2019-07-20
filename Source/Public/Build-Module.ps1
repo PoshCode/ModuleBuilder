@@ -70,7 +70,7 @@ function Build-Module {
         # The module version (must be a valid System.Version such as PowerShell supports for modules)
         [Alias("ModuleVersion")]
         [Parameter(ParameterSetName="ModuleVersion", Mandatory)]
-        [version]$Version = $(if($V = $SemVer.Split("+")[0].Split("-",2)[0]){$V}),
+        [version]$Version = $(if(($V = $SemVer.Split("+")[0].Split("-",2)[0])){$V}),
 
         # Setting pre-release forces the release to be a pre-release.
         # Must be valid pre-release tag like PowerShellGet supports
