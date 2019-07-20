@@ -6,6 +6,9 @@ next-version: 1.0.0
 branches:
   master:
     increment: Patch
+  pull-request:
+    tag: rc
+    increment: Patch
   features:
     increment: Patch
     regex: .*?/
