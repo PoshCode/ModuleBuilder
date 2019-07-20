@@ -1,4 +1,5 @@
 Describe "Copy ReadMe" {
+    . $PSScriptRoot\..\Convert-FolderSeparator.ps1
     Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     Context "There's no ReadMe" {
@@ -43,18 +44,18 @@ Describe "Copy ReadMe" {
             CopyReadme -ReadMe ${global:Test Script Path} -Module ModuleBuilder -OutputDirectory TestDrive:\ -Culture "En"
         }
 
-        Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
-
         It "Creates a language path in the output" {
             Assert-MockCalled New-Item -ModuleName ModuleBuilder -ParameterFilter {
-                $Path -eq "TestDrive:\En"
+                (Convert-FolderSeparator "$Path") -eq (Convert-FolderSeparator "TestDrive:\En")
             }
         }
 
         It "Copies the readme as about_module.help.txt" {
             Assert-MockCalled Copy-Item -ModuleName ModuleBuilder -ParameterFilter {
-                $Destination -eq "TestDrive:\En\about_ModuleBuilder.help.txt"
+                (Convert-FolderSeparator $Destination) -eq (Convert-FolderSeparator "TestDrive:\En\about_ModuleBuilder.help.txt")
             }
         }
+
+        Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
     }
 }

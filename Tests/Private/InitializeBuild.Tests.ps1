@@ -1,6 +1,10 @@
 Describe "InitializeBuild" {
+    . $PSScriptRoot\..\Convert-FolderSeparator.ps1
+
     Mock ResolveModuleSource -ModuleName ModuleBuilder { $SourcePath }
-    Mock ResolveModuleManifest -ModuleName ModuleBuilder { "TestDrive:\Source\MyModule.psd1" }
+    Mock ResolveModuleManifest -ModuleName ModuleBuilder {
+        Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1"
+    }
     Mock Push-Location -ModuleName ModuleBuilder {}
     Mock Import-Metadata -ModuleName ModuleBuilder {
         @{
@@ -26,7 +30,7 @@ Describe "InitializeBuild" {
     }
     Mock Get-Module -ModuleName ModuleBuilder {
         [PSCustomObject]@{
-            ModuleBase = "TestDrive:\Source\"
+            ModuleBase = Convert-FolderSeparator "TestDrive:\Source\"
             Author = "Test Manager"
             Version = [Version]"1.0.0"
             Name = "MyModule"
@@ -46,36 +50,37 @@ Describe "InitializeBuild" {
 
         It "Resolves the module source path" {
             Assert-MockCalled ResolveModuleSource -ModuleName ModuleBuilder -ParameterFilter {
-                $SourcePath -eq "TestDrive:\Source\"
+                (Convert-FolderSeparator $SourcePath) -eq (Convert-FolderSeparator "TestDrive:\Source\")
             }
         }
 
         It "Pushes the module source path" {
             Assert-MockCalled Push-Location -ModuleName ModuleBuilder -ParameterFilter {
-                $StackName -eq "Build-Module" -and $Path -eq "TestDrive:\Source\"
+                $StackName -eq "Build-Module" -and (Convert-FolderSeparator $Path) -eq (Convert-FolderSeparator "TestDrive:\Source\")
             }
         }
 
         It "Parses the build.psd1" {
             Assert-MockCalled Import-Metadata -ModuleName ModuleBuilder -ParameterFilter {
-                $Path -eq "TestDrive:\Source\[Bb]uild.psd1"
+                $Path -eq (Join-Path "TestDrive:\Source\" "[Bb]uild.psd1")
             }
         }
 
         It "Calls Get-Module with a fully-qualified path to the manifest" {
             Assert-MockCalled Get-Module -ModuleName ModuleBuilder -ParameterFilter {
-                $Name -eq "TestDrive:\Source\MyModule.psd1"
+                $Name -eq (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
             }
         }
 
         It "Returns the ModuleInfo combined with an OutputDirectory and Path" {
-            $Result.ModuleBase | Should -be "TestDrive:\Source\"
-            $Result.Path | Should -be "TestDrive:\Source\MyModule.psd1"
+            $Result.ModuleBase | Should -be (Convert-FolderSeparator "TestDrive:\Source\")
+            $Result.Path | Should -be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
 
             Push-Location TestDrive:\
-            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Output"
+            Convert-FolderSeparator $Result.OutputDirectory  | Should -Be (Convert-FolderSeparator ".\Output")
+            # New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -Be (Convert-FolderSeparator ".\Output" -Relative)
             Pop-Location
-            $Result.SourceDirectories | Should -be @("Classes", "Public")
+            $Result.SourceDirectories | Should -Be @("Classes", "Public")
         }
     }
 
@@ -118,11 +123,12 @@ Describe "InitializeBuild" {
         }
 
         It "Treats the output path as relative to the (parent of the) ModuleSource" {
-            $Result.ModuleBase | Should -be "TestDrive:\Source\"
-            $Result.Path | Should -be "TestDrive:\Source\MyModule.psd1"
+            $Result.ModuleBase | Should -be (Convert-FolderSeparator "TestDrive:\Source\")
+            $Result.Path | Should -be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
             # Note that Build-Module will call ResolveOutputFolder with this, so the relative path here is ok
             Push-Location TestDrive:\
-            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Source\Output"
+            Convert-FolderSeparator $Result.OutputDirectory | Should -Be (Convert-FolderSeparator ".\Source\Output")
+            # New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be (Convert-FolderSeparator -Relative ".\Source\Output")
             Pop-Location
         }
     }
@@ -166,17 +172,18 @@ Describe "InitializeBuild" {
         }
         $Result = InModuleScope -ModuleName ModuleBuilder {
             [CmdletBinding()]
-            param( $SourceDirectories = @("Enum", "Classes", "Private", "Public"), $OutputDirectory = "..\Output")
+            param( $SourceDirectories = @("Enum", "Classes", "Private", "Public"), $OutputDirectory = "../Output")
 
-            InitializeBuild -SourcePath TestDrive:\
+            InitializeBuild -SourcePath TestDrive:/
         }
 
         It "Treats the output path as relative to the (parent of the) ModuleSource" {
-            $Result.ModuleBase | Should -be "TestDrive:\"
-            $Result.Path | Should -be "TestDrive:\MyModule.psd1"
+            Convert-FolderSeparator $Result.ModuleBase | Should -be (Convert-FolderSeparator "TestDrive:/")
+            Convert-FolderSeparator $Result.Path | Should -be (Convert-FolderSeparator "TestDrive:/MyModule.psd1")
             # Note that Build-Module will call ResolveOutputFolder with this, so the relative path here is ok
-            Push-Location TestDrive:\
-            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Output"
+            Push-Location TestDrive:/
+            Convert-FolderSeparator $Result.OutputDirectory  | Should -Be (Convert-FolderSeparator "./Output")
+            #New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be (Convert-FolderSeparator "./Output" -Relative)
             Pop-Location
         }
     }

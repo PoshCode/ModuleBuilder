@@ -56,7 +56,7 @@ Describe "MoveUsingStatements" {
         It 'Should succeed test: "<TestCaseName>" from <ErrorBefore> to <ErrorAfter> parsing errors' -TestCases $TestCases {
             param($TestCaseName, $PSM1File, $ErrorBefore, $ErrorAfter)
 
-            $testModuleFile = "$TestDrive\MyModule.psm1"
+            $testModuleFile = "$TestDrive/MyModule.psm1"
             Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
             # Before
             $ErrorFound = $null
@@ -89,7 +89,7 @@ Describe "MoveUsingStatements" {
         }
 
         It 'Should Warn and skip when there are Parsing errors other than Using Statements' {
-            $testModuleFile = "$TestDrive\MyModule.psm1"
+            $testModuleFile = "$TestDrive/MyModule.psm1"
             $PSM1File = "Using namespace System.IO`r`n function xyz {}`r`n}`r`nUsing namespace System.Drawing" # extra }                Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
             Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
 

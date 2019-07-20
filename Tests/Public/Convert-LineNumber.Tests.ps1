@@ -2,28 +2,26 @@ Describe "Convert-LineNumber" {
     Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     $ModulePath = Join-Path (Get-Module ModuleBuilder).ModuleBase ModuleBuilder.psm1
-    $ModuleRoot = Resolve-Path "$PSScriptRoot\..\..\Source"
-
-    $ModuleFiles = Get-ChildItem $ModuleRoot -File -Recurse -Filter *.ps1
-    $ModuleSource = Get-Content $ModulePath
+    $ModuleContent = Get-Content $ModulePath
+    $ModuleSource = Resolve-Path (Join-Path $PSScriptRoot "\..\..\Source")
 
     for($i=0; $i -lt 5; $i++) {
 
         # I don't know why I keep trying to do this using random numbers
-        $lineNumber = Get-Random -min 3 -max $ModuleSource.Count
+        $lineNumber = Get-Random -min 3 -max $ModuleContent.Count
         # but I have to keep avoiding the lines that don't make sense
-        while($ModuleSource[$lineNumber] -match "^\s*$|^#(END)?REGION|^\s*function\s") {
+        while($ModuleContent[$lineNumber] -match "^\s*$|^#(END)?REGION|^\s*function\s") {
             $lineNumber += 5
         }
 
         It "Should map line number $lineNumber in the Module to the matching line the Source" {
             $SourceLocation = Convert-LineNumber $ModulePath $lineNumber
 
-            $line = (Get-Content (Join-Path $ModuleRoot $SourceLocation.SourceFile))[$SourceLocation.SourceLineNumber]
+            $line = (Get-Content (Join-Path $ModuleSource $SourceLocation.SourceFile))[$SourceLocation.SourceLineNumber]
             try {
-                $ModuleSource[$lineNumber] | Should -Be $line
+                $ModuleContent[$lineNumber] | Should -Be $line
             } catch {
-                throw "Failed to match module line $lineNumber to $($SourceLocation.SourceFile) line $($SourceLocation.SourceLineNumber).`nExpected $Line`nBut got  $($ModuleSource[$lineNumber])"
+                throw "Failed to match module line $lineNumber to $($SourceLocation.SourceFile) line $($SourceLocation.SourceLineNumber).`nExpected $Line`nBut got  $($ModuleContent[$lineNumber])"
             }
         }
     }
@@ -32,16 +30,21 @@ Describe "Convert-LineNumber" {
         $line = Select-String -Path $ModulePath 'function ParseLineNumber {' | % LineNumber
 
         $SourceLocation = "At ${ModulePath}:$line char:17" | Convert-LineNumber
+        # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
         $SourceLocation.SourceFile | Should -Be ".\Private\ParseLineNumber.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 1
     }
 
     It 'Should work with ScriptStackTrace messages' {
+
+        $SourceFile = Join-Path $ModuleSource Private\CopyReadMe.ps1 | Convert-Path
+
         $outputLine = Select-String -Path $ModulePath 'Write-Verbose "Copy ReadMe to: \$LanguagePath"' | % LineNumber
-        $sourceLine = Select-String -Path (Join-Path $ModuleRoot Private\CopyReadMe.ps1) 'Write-Verbose "Copy ReadMe to: \$LanguagePath"' | % LineNumber
+        $sourceLine = Select-String -Path $SourceFile 'Write-Verbose "Copy ReadMe to: \$LanguagePath"' | % LineNumber
 
         $SourceLocation = "At CopyReadme, ${ModulePath}: line $outputLine" | Convert-LineNumber
 
+        # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
         $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
         $SourceLocation.SourceLineNumber | Should -Be $sourceLine
     }
@@ -49,7 +52,7 @@ Describe "Convert-LineNumber" {
     It 'Should pass through InputObject for updating objects like CodeCoverage or ErrorRecord' {
         $PesterMiss = [PSCustomObject]@{
             # Note these don't really matter
-            Command = $ModuleSource[25]
+            Command = $ModuleContent[25]
             Function = 'CopyReadme'
             # these are pipeline bound
             File = $ModulePath
@@ -57,6 +60,7 @@ Describe "Convert-LineNumber" {
         }
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru
+        # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
         $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadme.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 25
         $SourceLocation.Function | Should -Be 'CopyReadme'
