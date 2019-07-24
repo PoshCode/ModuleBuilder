@@ -63,7 +63,7 @@ Describe "ResolveOutputFolder" {
         }
 
         It "has created the Folder" {
-            (Test-Path $Result) | Should -be $True
+            (Test-Path $Result) | Should -Be $True
         }
 
     }

@@ -521,7 +521,7 @@ Describe "Build-Module" {
         $Result = Build-Module -SourcePath 'TestDrive:\build.psd1' -OutputDirectory '.\output' -Passthru -Target Build
 
         It "Builds the Module in the designated output folder" {
-            $Result.ModuleBase | Should -be ("TestDrive:\output" | Convert-Path).TrimEnd('\')
+            $Result.ModuleBase | Should -Be ("TestDrive:\output" | Convert-Path).TrimEnd('\')
             'TestDrive:\output\MyModule.psm1' | Should -FileContentMatch 'MATCHING TEST CONTENT'
         }
     }

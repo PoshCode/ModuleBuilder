@@ -72,10 +72,10 @@ Describe "InitializeBuild" {
         }
 
         It "Returns the ModuleInfo combined with the BuildInfo" {
-            $Result.ModuleBase | Should -be (Convert-FolderSeparator "TestDrive:\Source")
-            $Result.ModuleManifest | Should -be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
+            $Result.ModuleBase | Should -Be (Convert-FolderSeparator "TestDrive:\Source")
+            $Result.ModuleManifest | Should -Be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
             Push-Location TestDrive:\
-            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -be ".\Output"
+            New-Item $Result.OutputDirectory -ItemType Directory -Force | Resolve-Path -Relative | Should -Be ".\Output"
             Pop-Location
         }
     }
