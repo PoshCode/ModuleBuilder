@@ -1,5 +1,7 @@
 Describe "GetModuleInfo" {
-    Import-Module ModuleBuilder
+    . $PSScriptRoot\..\Convert-FolderSeparator.ps1
+    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
+
     Mock Import-Metadata -ModuleName ModuleBuilder {
         @{
             #Omitting path to let it resolve [Path = "MyModule.psd1"]
@@ -27,7 +29,6 @@ Describe "GetModuleInfo" {
 
     Context "It collects the initial data" {
 
-
         New-Item "TestDrive:\MyModule\Source\Build.psd1" -Type File -Force
         New-Item "TestDrive:\MyModule\Source\MyModule.psd1" -Type File -Force
 
@@ -41,7 +42,7 @@ Describe "GetModuleInfo" {
 
         It "Parses the build.psd1" {
             Assert-MockCalled Import-Metadata -ModuleName ModuleBuilder -ParameterFilter {
-                $Path -eq "TestDrive:\MyModule\Source\build.psd1"
+                (Convert-FolderSeparator $Path) -eq (Convert-FolderSeparator "TestDrive:\MyModule\Source\build.psd1")
             }
         }
 
@@ -50,7 +51,10 @@ Describe "GetModuleInfo" {
         }
 
         It "Returns the resolved Module path, SourceDirectories, and overridden OutputDirectory (via Invocation param)" {
-            $Result.ModuleManifest | Should -be "TestDrive:\MyModule\Source\MyModule.psd1" # if set in build.psd1 it will stay the same (i.e. relative)
+            # if set in build.psd1 it will stay the same (i.e. relative)
+            (Convert-FolderSeparator $Result.ModuleManifest) |
+                Should -be (Convert-FolderSeparator "TestDrive:\MyModule\Source\MyModule.psd1")
+
             $Result.SourceDirectories | Should -be @("Classes", "Public")
             $Result.OutputDirectory | Should -be '..\Output'
         }
@@ -73,7 +77,7 @@ Describe "GetModuleInfo" {
             New-Item -Force TestDrive:\NoModuleManifest\Source\Build.psd1 -ItemType File
             {InModuleScope -ModuleName ModuleBuilder {
                     GetBuildInfo -BuildManifest TestDrive:\NoModuleManifest\Source\Build.psd1
-                }} | Should -Throw
+            }} | Should -Throw
         }
     }
 
