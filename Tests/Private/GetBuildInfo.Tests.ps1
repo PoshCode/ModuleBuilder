@@ -8,24 +8,6 @@ Describe "GetModuleInfo" {
             SourceDirectories = "Classes", "Public"
         }
     }
-    Mock Get-Variable -ParameterFilter {
-        $Name -eq "Invocation"
-    } -ModuleName ModuleBuilder {
-        @{
-            MyCommand = @{
-                Parameters = @{
-                    Encoding          = @{ParameterType = "string"}
-                    Target            = @{ParameterType = "string"}
-                    SourcePath        = @{ParameterType = "string"}
-                    SourceDirectories = @{ParameterType = "string[]"}
-                    OutputDirectory   = @{ParameterType = "string"}
-                }
-            }
-            BoundParameters = @{
-                OutputDirectory = '..\output'
-            }
-        }
-    }
 
     Context "It collects the initial data" {
 
@@ -35,9 +17,22 @@ Describe "GetModuleInfo" {
         $Result = InModuleScope -ModuleName ModuleBuilder {
 
             # Used to resolve the overridden parameters in $Invocation
-            $OutputDirectory = '..\output'
+            $OutputDirectory = '..\ridiculoustestvalue'
 
-            GetBuildInfo -BuildManifest TestDrive:\MyModule\Source\Build.psd1
+            GetBuildInfo -BuildManifest TestDrive:\MyModule\Source\Build.psd1 -BuildCommandInvocation @{
+                MyCommand   = @{
+                    Parameters = @{
+                        Encoding          = @{ParameterType = "string" }
+                        Target            = @{ParameterType = "string" }
+                        SourcePath        = @{ParameterType = "string" }
+                        SourceDirectories = @{ParameterType = "string[]" }
+                        OutputDirectory   = @{ParameterType = "string" }
+                    }
+                }
+                BoundParameters = @{
+                    OutputDirectory = '..\ridiculoustestvalue'
+                }
+            }
         }
 
         It "Parses the build.psd1" {
@@ -46,8 +41,8 @@ Describe "GetModuleInfo" {
             }
         }
 
-        It "Attempts to load the `$Invocation object from calling scope" {
-            Assert-MockCalled -CommandName Get-Variable -ParameterFilter { $Name -eq "Invocation" } -ModuleName ModuleBuilder
+        It "Reads bound parameters from the BuildCommandInvocation" {
+            $Result.OutputDirectory |Should -Be "..\ridiculoustestvalue"
         }
 
         It "Returns the resolved Module path, SourceDirectories, and overridden OutputDirectory (via Invocation param)" {
@@ -56,7 +51,7 @@ Describe "GetModuleInfo" {
                 Should -Be (Convert-FolderSeparator "TestDrive:\MyModule\Source\MyModule.psd1")
 
             $Result.SourceDirectories | Should -Be @("Classes", "Public")
-            $Result.OutputDirectory | Should -Be '..\Output'
+            $Result.OutputDirectory | Should -Be '..\ridiculoustestvalue'
         }
     }
 

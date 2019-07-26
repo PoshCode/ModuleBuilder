@@ -13,29 +13,36 @@ function GetBuildInfo {
             })]
         [string]$BuildManifest,
 
-        # Pass the invocation from the parent in, so InitializeBuild can read parameter values
+        # Pass MyInvocation from the Build-Command so we can read parameter values
         [Parameter(DontShow)]
         [AllowNull()]
-        $Invocation = $(Get-Variable Invocation -Scope 1 -ValueOnly -ErrorAction SilentlyContinue)
+        $BuildCommandInvocation
     )
 
     # Read the Module Manifest configuration file for default parameter values
+    Write-Debug "Load Build Manifest $BuildManifest"
     $BuildInfo = Import-Metadata -Path $BuildManifest
+    $CommonParameters = [System.Management.Automation.Cmdlet]::CommonParameters +
+                        [System.Management.Automation.Cmdlet]::OptionalCommonParameters
+    $BuildParameters = $BuildCommandInvocation.MyCommand.Parameters
 
     # Combine the defaults with parameter values
     $ParameterValues = @{}
-    if ($Invocation) {
-        foreach ($parameter in $Invocation.MyCommand.Parameters.GetEnumerator()) {
+    if ($BuildCommandInvocation) {
+        foreach ($parameter in $BuildParameters.GetEnumerator().Where({$_.Key -notin $CommonParameters})) {
+            Write-Debug "  Parameter: $($parameter.key)"
             $key = $parameter.Key
             # set if it doesn't exist, overwrite if the value is bound as a parameter
-            if (!$BuildInfo.ContainsKey($key) -or ($Invocation.BoundParameters -and $Invocation.BoundParameters.ContainsKey($key))) {
+            if (!$BuildInfo.ContainsKey($key) -or ($BuildCommandInvocation.BoundParameters -and $BuildCommandInvocation.BoundParameters.ContainsKey($key))) {
                 if ($null -ne ($value = Get-Variable -Name $key -ValueOnly -ErrorAction Ignore )) {
                     if ($value -ne ($null -as $parameter.Value.ParameterType)) {
-                        Write-Debug "    $key = $value"
                         $ParameterValues[$key] = $value
                     }
                 }
+            } else {
+                Write-Debug "    From Manifest: $($BuildInfo.$key)"
             }
+            Write-Debug "    From Parameter: $($ParameterValues.$key)"
         }
     }
 

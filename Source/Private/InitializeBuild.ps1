@@ -17,22 +17,23 @@ function InitializeBuild {
         # The root folder where the module source is (including the Build.psd1 and the module Manifest.psd1)
         [string]$SourcePath,
 
-        # Pass the invocation from the parent in, so InitializeBuild can read parameter values
         [Parameter(DontShow)]
-        $Invocation = $(Get-Variable MyInvocation -Scope 1 -ValueOnly)
+        [AllowNull()]
+        $BuildCommandInvocation = $(Get-Variable MyInvocation -Scope 1 -ValueOnly)
     )
     Write-Debug "Initializing build variables"
 
-    # NOTE: This reads the parameter values from Build-Module, passed in $Invocation!
+    # GetBuildInfo reads the parameter values from the Build-Module command and combines them with the Manifest values
     $BuildManifest = ResolveBuildManifest $SourcePath
-    $BuildInfo = GetBuildInfo -Invocation $Invocation -BuildManifest $BuildManifest
+
+    Write-Debug "BuildCommand: $($BuildCommandInvocation.MyCommand | Out-String)"
+    $BuildInfo = GetBuildInfo -BuildManifest $BuildManifest -BuildCommandInvocation $BuildCommandInvocation
 
     # These errors are caused by trying to parse valid module manifests without compiling the module first
     $ErrorsWeIgnore = "^" + @(
         "Modules_InvalidRequiredModulesinModuleManifest"
         "Modules_InvalidRootModuleInModuleManifest"
     ) -join "|^"
-
 
     # Finally, add all the information in the module manifest to the return object
     $ModuleInfo = Get-Module (Get-Item $BuildInfo.ModuleManifest).FullName -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
