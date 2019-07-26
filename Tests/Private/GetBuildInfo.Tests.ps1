@@ -1,4 +1,4 @@
-Describe "GetModuleInfo" {
+Describe "GetBuildInfo" {
     . $PSScriptRoot\..\Convert-FolderSeparator.ps1
     Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
@@ -11,7 +11,7 @@ Describe "GetModuleInfo" {
 
     Context "It collects the initial data" {
 
-        New-Item "TestDrive:\MyModule\Source\Build.psd1" -Type File -Force
+        New-Item "TestDrive:\MyModule\Source\build.psd1" -Type File -Force
         New-Item "TestDrive:\MyModule\Source\MyModule.psd1" -Type File -Force
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
@@ -19,7 +19,7 @@ Describe "GetModuleInfo" {
             # Used to resolve the overridden parameters in $Invocation
             $OutputDirectory = '..\ridiculoustestvalue'
 
-            GetBuildInfo -BuildManifest TestDrive:\MyModule\Source\Build.psd1 -BuildCommandInvocation @{
+            GetBuildInfo -BuildManifest TestDrive:\MyModule\Source\build.psd1 -BuildCommandInvocation @{
                 MyCommand   = @{
                     Parameters = @{
                         Encoding          = @{ParameterType = "string" }
@@ -58,7 +58,7 @@ Describe "GetModuleInfo" {
     Context 'Error when calling GetBuildInfo the wrong way' {
         It 'Should throw if the ModuleManifestPath does not exist' {
             {InModuleScope -ModuleName ModuleBuilder {
-                GetBuildInfo -BuildManifest TestDrive:\NOTEXIST\Source\Build.psd1
+                GetBuildInfo -BuildManifest TestDrive:\NOTEXIST\Source\build.psd1
             }} | Should -Throw
         }
 
@@ -69,9 +69,9 @@ Describe "GetModuleInfo" {
         }
 
         It 'Should throw if the Module manifest does not exists' {
-            New-Item -Force TestDrive:\NoModuleManifest\Source\Build.psd1 -ItemType File
+            New-Item -Force TestDrive:\NoModuleManifest\Source\build.psd1 -ItemType File
             {InModuleScope -ModuleName ModuleBuilder {
-                    GetBuildInfo -BuildManifest TestDrive:\NoModuleManifest\Source\Build.psd1
+                    GetBuildInfo -BuildManifest TestDrive:\NoModuleManifest\Source\build.psd1
             }} | Should -Throw
         }
     }
