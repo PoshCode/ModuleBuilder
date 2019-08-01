@@ -42,6 +42,7 @@ function Build-Module {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Build is approved now")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
     [CmdletBinding(DefaultParameterSetName="SemanticVersion")]
+    [Alias("build")]
     param(
         # The path to the module folder, manifest or build.psd1
         [Parameter(Position = 0, ValueFromPipelineByPropertyName)]
@@ -96,7 +97,7 @@ function Build-Module {
         ),
 
         # A Filter (relative to the module folder) for public functions
-        # If non-empty, ExportedFunctions will be set with the file BaseNames of matching files
+        # If non-empty, FunctionsToExport will be set with the file BaseNames of matching files
         # Defaults to Public\*.ps1
         [AllowEmptyString()]
         [string[]]$PublicFilter = "Public\*.ps1",
@@ -197,17 +198,19 @@ function Build-Module {
             # SilentlyContinue because there don't *HAVE* to be functions at all
             $AllScripts = Get-ChildItem -Path @($ModuleInfo.SourceDirectories).ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
 
+            # We have to force the Encoding to string because PowerShell Core made up encodings
             SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
-            MoveUsingStatements -RootModule $RootModule -Encoding "$($ModuleInfo.Encoding)"
 
             # If there is a PublicFilter, update ExportedFunctions
             if ($ModuleInfo.PublicFilter) {
                 # SilentlyContinue because there don't *HAVE* to be public functions
-                if ($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty BaseName) {
+                if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty BaseName)) {
                     Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
                 }
             }
 
+            $ParseResult = ConvertToAst $RootModule
+            $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
             try {
                 if ($Version) {
                     Write-Verbose "Update Manifest at $OutputManifest with version: $Version"

@@ -3,10 +3,11 @@ Describe "MoveUsingStatements" {
     Context "Necessary Parameters" {
         $CommandInfo = InModuleScope ModuleBuilder { Get-Command MoveUsingStatements }
 
-        It 'has a mandatory RootModule parameter' {
-            $RootModule = $CommandInfo.Parameters['RootModule']
-            $RootModule | Should -Not -BeNullOrEmpty
-            $RootModule.Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $true
+        It 'has a mandatory AST parameter' {
+            $AST = $CommandInfo.Parameters['AST']
+            $AST | Should -Not -BeNullOrEmpty
+            $AST.ParameterType | Should -Be ([System.Management.Automation.Language.Ast])
+            $AST.Attributes.Where{ $_ -is [Parameter] }.Mandatory | Should -Be $true
         }
 
         It "has an optional string Encoding parameter" {
@@ -18,42 +19,54 @@ Describe "MoveUsingStatements" {
     }
 
     Context "Moving Using Statements to the beginning of the file" {
+
         $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
-            $null = Mock Write-Warning {}
-            Get-Command MoveUsingStatements
+            $null = Mock Write-Warning { }
+            {   param($RootModule)
+                ConvertToAst $RootModule | MoveUsingStatements
+            }
         }
 
         $TestCases = @(
             @{
-                TestCaseName = '2xUsingMustBeAtStartOfScript Fixed'
-                PSM1File     = "function x {`r`n}`r`n" +
-                "Using namespace System.io`r`n`r`n" + #UsingMustBeAtStartOfScript
-                "function y {`r`n}`r`n" +
-                "Using namespace System.Drawing" #UsingMustBeAtStartOfScript
+                TestCaseName = 'Move all using statements in `n terminated files to the top'
+                PSM1File     = "function x {`n}`n" +
+                "using namespace System.IO`n`n" + #UsingMustBeAtStartOfScript
+                "function y {`n}`n" +
+                "using namespace System.Drawing" #UsingMustBeAtStartOfScript
                 ErrorBefore  = 2
                 ErrorAfter   = 0
             },
             @{
-                TestCaseName = 'NoErrors Do Nothing'
-                PSM1File     = "Using namespace System.io`r`n`r`n" +
-                "Using namespace System.Drawing`r`n" +
+                TestCaseName = 'Move all using statements in `r`n terminated files to the top'
+                PSM1File     = "function x {`r`n}`r`n" +
+                "USING namespace System.IO`r`n`r`n" + #UsingMustBeAtStartOfScript
+                "function y {`r`n}`r`n" +
+                "USING namespace System.Drawing" #UsingMustBeAtStartOfScript
+                ErrorBefore  = 2
+                ErrorAfter   = 0
+            },
+            @{
+                TestCaseName = 'Not change the content again if there are no out-of-place using statements'
+                PSM1File     = "using namespace System.IO`r`n`r`n" +
+                "using namespace System.Drawing`r`n" +
                 "function x { `r`n}`r`n" +
                 "function y { `r`n}`r`n"
                 ErrorBefore  = 0
                 ErrorAfter   = 0
             },
             @{
-                TestCaseName = 'NotValidPowerShel Do Nothing'
-                PSM1File     = "Using namespace System.io`r`n`r`n" +
+                TestCaseName = 'Not move anything if there are (other) parse errors'
+                PSM1File     = "using namespace System.IO`r`n`r`n" +
                 "function x { `r`n}`r`n" +
-                "Using namespace System.Drawing`r`n" + # UsingMustBeAtStartOfScript
+                "using namespace System.Drawing`r`n" + # UsingMustBeAtStartOfScript
                 "function y { `r`n}`r`n}" # Extra } at the end
                 ErrorBefore  = 2
                 ErrorAfter   = 2
             }
         )
 
-        It 'Should succeed test: "<TestCaseName>" from <ErrorBefore> to <ErrorAfter> parsing errors' -TestCases $TestCases {
+        It 'It should <TestCaseName>' -TestCases $TestCases {
             param($TestCaseName, $PSM1File, $ErrorBefore, $ErrorAfter)
 
             $testModuleFile = "$TestDrive/MyModule.psm1"
@@ -85,7 +98,9 @@ Describe "MoveUsingStatements" {
             $null = Mock Set-Content {}
             $null = Mock Write-Debug {} -ParameterFilter {$Message -eq "No Using Statement Error found." }
 
-            Get-Command MoveUsingStatements
+            {   param($RootModule)
+                ConvertToAst $RootModule | MoveUsingStatements
+            }
         }
 
         It 'Should Warn and skip when there are Parsing errors other than Using Statements' {

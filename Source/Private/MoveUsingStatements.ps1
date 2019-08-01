@@ -19,27 +19,24 @@ function MoveUsingStatements {
     Param(
         # Path to the PSM1 file to amend
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ValueFromPipeline)]
-        $RootModule,
+        [System.Management.Automation.Language.Ast]$AST,
+
+        [Parameter(ValueFromPipelineByPropertyName, ValueFromPipeline)]
+        [AllowNull()]
+        [System.Management.Automation.Language.ParseError[]]$ParseErrors,
 
         # The encoding defaults to UTF8 (or UTF8NoBom on Core)
         [Parameter(DontShow)]
         [string]$Encoding = $(if ($IsCoreCLR) { "UTF8NoBom" } else { "UTF8" })
     )
 
-    $ParseError = $null
-    $AST = [System.Management.Automation.Language.Parser]::ParseFile(
-        $RootModule,
-        [ref]$null,
-        [ref]$ParseError
-    )
-
     # Avoid modifying the file if there's no Parsing Error caused by Using Statements or other errors
-    if (!$ParseError.Where{$_.ErrorId -eq 'UsingMustBeAtStartOfScript'}) {
+    if (!$ParseErrors.Where{$_.ErrorId -eq 'UsingMustBeAtStartOfScript'}) {
         Write-Debug "No Using Statement Error found."
         return
     }
     # Avoid modifying the file if there's other parsing errors than Using Statements misplaced
-    if ($ParseError.Where{$_.ErrorId -ne 'UsingMustBeAtStartOfScript'}) {
+    if ($ParseErrors.Where{$_.ErrorId -ne 'UsingMustBeAtStartOfScript'}) {
         Write-Warning "Parsing errors found. Skipping Moving Using statements."
         return
     }
@@ -70,10 +67,10 @@ function MoveUsingStatements {
     $null = [System.Management.Automation.Language.Parser]::ParseInput(
         $ScriptText,
         [ref]$null,
-        [ref]$ParseError
+        [ref]$ParseErrors
     )
 
-    if ($ParseError) {
+    if ($ParseErrors) {
         Write-Warning "Oops, it seems that we introduced parsing error(s) while moving the Using Statements. Cancelling changes."
     }
     else {
