@@ -1,6 +1,6 @@
 using module ModuleBuilder
 
-function Get-Source {
+function Get-Finale {
     [CmdletBinding()]
     [Alias("gs")]
     param()

@@ -102,6 +102,12 @@ function Build-Module {
         [AllowEmptyString()]
         [string[]]$PublicFilter = "Public\*.ps1",
 
+        # A switch that allows you to disable the update of the AliasesToExport
+        # By default, (if PublicFilter is not empty, and this is not set)
+        # Build-Module updates the module manifest FunctionsToExport and AliasesToExport
+        # with the combination of all the values in [Alias()] attributes on public functions in the module
+        [switch]$IgnoreAliasAttribute,
+
         # File encoding for output RootModule (defaults to UTF8)
         # Converted to System.Text.Encoding for PowerShell 6 (and something else for PowerShell 5)
         [ValidateSet("UTF8","UTF7","ASCII","Unicode","UTF32")]
@@ -211,6 +217,13 @@ function Build-Module {
 
             $ParseResult = ConvertToAst $RootModule
             $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
+
+            if ($PublicFunctions -and -not $ModuleInfo.IgnoreAliasAttribute) {
+                if (($AliasesToExport = ($ParseResult | GetCommandAlias)[$PublicFunctions] | Select-Object -Unique)) {
+                    Update-Metadata -Path $OutputManifest -PropertyName AliasesToExport -Value $AliasesToExport
+                }
+            }
+
             try {
                 if ($Version) {
                     Write-Verbose "Update Manifest at $OutputManifest with version: $Version"

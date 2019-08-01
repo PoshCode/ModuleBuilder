@@ -61,6 +61,16 @@ Describe "Build-Module" {
         New-Item -ItemType Directory -Path TestDrive:\1.0.0\ -Force
 
         Mock SetModuleContent -ModuleName ModuleBuilder {}
+        Mock ConvertToAst -ModuleName ModuleBuilder {
+            [PSCustomObject]@{
+                PSTypeName  = "PoshCode.ModuleBuilder.ParseResults"
+                ParseErrors = $null
+                Tokens      = $null
+                AST         = { }.AST
+            }
+        }
+        Mock GetCommandAlias -ModuleName ModuleBuilder { @{'Get-MyInfo' = @('GMI') } }
+        Mock MoveUsingStatements -ModuleName ModuleBuilder {}
         Mock Update-Metadata -ModuleName ModuleBuilder {}
         Mock InitializeBuild -ModuleName ModuleBuilder {
             # These are actually all the values that we need
@@ -111,6 +121,16 @@ Describe "Build-Module" {
             }
         }
 
+        It "Should call ConvertToAst to parse the module" {
+            Assert-MockCalled ConvertToAst -ModuleName ModuleBuilder
+        }
+
+        It "Should call MoveUsingStatements to move the using statements, just in case" {
+            Assert-MockCalled MoveUsingStatements -ModuleName ModuleBuilder -Parameter {
+                $AST.Extent.Text -eq "{ }"
+            }
+        }
+
         It "Should call SetModuleContent to combine the source files" {
             Assert-MockCalled SetModuleContent -ModuleName ModuleBuilder
         }
@@ -118,6 +138,12 @@ Describe "Build-Module" {
         It "Should call Update-Metadata to set the FunctionsToExport" {
             Assert-MockCalled Update-Metadata -ModuleName ModuleBuilder -Parameter {
                 $PropertyName -eq "FunctionsToExport"
+            }
+        }
+
+        It "Should call Update-Metadata to set the AliasesToExport" {
+            Assert-MockCalled Update-Metadata -ModuleName ModuleBuilder -Parameter {
+                $PropertyName -eq "AliasesToExport"
             }
         }
     }

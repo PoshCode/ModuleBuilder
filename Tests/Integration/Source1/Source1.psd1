@@ -39,6 +39,7 @@
 
     # Always define FunctionsToExport as an empty @() which will be replaced on build
     FunctionsToExport      = @()
+    AliasesToExport        = @()
 
     # ID used to uniquely identify this module
     GUID                   = 'a264e183-e0f7-4219-bc80-c30d14e0e98e'
