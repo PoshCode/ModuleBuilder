@@ -210,7 +210,7 @@ function Build-Module {
             # If there is a PublicFilter, update ExportedFunctions
             if ($ModuleInfo.PublicFilter) {
                 # SilentlyContinue because there don't *HAVE* to be public functions
-                if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty BaseName)) {
+                if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Where-Object BaseName -in $AllScripts.BaseName | Select-Object -ExpandProperty BaseName)) {
                     Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
                 }
             }
