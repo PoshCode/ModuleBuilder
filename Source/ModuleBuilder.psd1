@@ -1,6 +1,6 @@
 @{
     # The module version should be SemVer.org compatible
-    ModuleVersion          = "1.0.0"
+    ModuleVersion          = "1.1.0"
 
     # PrivateData is where all third-party metadata goes
     PrivateData            = @{
@@ -11,7 +11,8 @@
 
             # Release Notes have to be here, so we can update them
             ReleaseNotes   = '
-            First release to the PowerShell gallery ...
+            Second release, including lots of fixed bugs and a few features ...
+            -
             '
 
             # Tags applied to this module. These help with module discovery in online galleries.

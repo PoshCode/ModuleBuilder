@@ -1,10 +1,10 @@
 Describe "ResolveOutputFolder" {
     Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
-    Context "Given an OutputDirectory only" {
+    Context "Given an OutputDirectory and ModuleBase" {
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
-            ResolveOutputFolder -OutputDirectory TestDrive:\Output
+            ResolveOutputFolder -OutputDirectory TestDrive:\Output -ModuleBase TestDrive:\Source
         }
 
         It "Creates the Output directory" {
@@ -13,10 +13,10 @@ Describe "ResolveOutputFolder" {
         }
     }
 
-    Context "Given an OutputDirectory and ModuleVersion but no switch" {
+    Context "Given an OutputDirectory, ModuleBase and ModuleVersion but no switch" {
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
-            ResolveOutputFolder -OutputDirectory TestDrive:\Output -ModuleVersion "1.0.0"
+            ResolveOutputFolder -OutputDirectory TestDrive:\Output -ModuleVersion "1.0.0" -ModuleBase TestDrive:\Source
         }
 
         It "Creates the Output directory" {
@@ -32,10 +32,10 @@ Describe "ResolveOutputFolder" {
         }
     }
 
-    Context "Given an OutputDirectory, ModuleVersion and switch" {
+    Context "Given an OutputDirectory, ModuleBase, ModuleVersion and switch" {
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
-            ResolveOutputFolder -OutputDirectory TestDrive:\Output -ModuleVersion "1.0.0" -VersionedOutput
+            ResolveOutputFolder -OutputDirectory TestDrive:\Output -ModuleVersion "1.0.0" -VersionedOutput -ModuleBase TestDrive:\Source
         }
 
         It "Creates the Output directory" {
@@ -51,29 +51,20 @@ Describe "ResolveOutputFolder" {
         }
     }
 
+    Context "Given a relative OutputDirectory, the Folder is created relative to ModuleBase" {
 
-
-    Context "Given a relative OutputDirectory" {
-
-        New-Item TestDrive:\Source -Type Directory
-        Push-Location TestDrive:\Source
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
-            ResolveOutputFolder -OutputDirectory ..\Output -ModuleVersion "1.0.0" -VersionedOutput
+            ResolveOutputFolder -OutputDirectory '..\Output' -ModuleBase TestDrive:\Source
         }
 
-        It "Creates the Output directory" {
-            "TestDrive:\Output" | Should -Exist
+        It "Returns an absolute FileSystem path" {
+            { [io.path]::IsPathRooted($Result) } | Should -Not -Throw
         }
 
-        It "Creates the version directory" {
-            "TestDrive:\Output\1.0.0" | Should -Exist
+        It "has created the Folder" {
+            (Test-Path $Result) | Should -Be $True
         }
 
-        It "Returns the Output directory" {
-            $Result | Should -Be (Convert-Path "TestDrive:\Output\1.0.0")
-        }
-
-        Pop-Location
     }
 }

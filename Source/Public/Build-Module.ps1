@@ -6,17 +6,18 @@ function Build-Module {
     <#
         .Synopsis
             Compile a module from ps1 files to a single psm1
+
         .Description
             Compiles modules from source according to conventions:
             1. A single ModuleName.psd1 manifest file with metadata
-            2. Source subfolders in the same directory as the manifest:
+            2. Source subfolders in the same directory as the Module manifest:
                Enum, Classes, Private, Public contain ps1 files
             3. Optionally, a build.psd1 file containing settings for this function
 
             The optimization process:
             1. The OutputDirectory is created
-            2. All psd1/psm1/ps1xml files (except build.psd1) in the root will be copied to the output
-            3. If specified, $CopyDirectories will be copied to the output
+            2. All psd1/psm1/ps1xml files (except build.psd1) in the Source will be copied to the output
+            3. If specified, $CopyDirectories (relative to the Source) will be copied to the output
             4. The ModuleName.psm1 will be generated (overwritten completely) by concatenating all .ps1 files in the $SourceDirectories subdirectories
             5. The ModuleVersion and ExportedFunctions in the ModuleName.psd1 may be updated (depending on parameters)
 
@@ -180,8 +181,8 @@ function Build-Module {
             }
             $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
 
-            # Note that this requires that the module manifest be in the "root" of the source directories
-            Set-Location $ModuleInfo.ModuleBase
+            # Note that the module manifest parent folder is the "root" of the source directories
+            Push-Location $ModuleInfo.ModuleBase -StackName Build-Module
 
             Write-Verbose "Copy files to $OutputDirectory"
             # Copy the files and folders which won't be processed

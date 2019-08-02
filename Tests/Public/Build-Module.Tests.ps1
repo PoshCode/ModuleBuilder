@@ -82,7 +82,7 @@ Describe "Build-Module" {
 
         Mock Test-Path {$True} -Parameter {$Path -eq "TestDrive:\1.0.0"} -ModuleName ModuleBuilder
         Mock Remove-Item {} -Parameter {$Path.StartsWith((Convert-Path "TestDrive:\1.0.0"))} -ModuleName ModuleBuilder
-        Mock Set-Location {} -ModuleName ModuleBuilder
+        Mock Push-Location {} -ModuleName ModuleBuilder
         Mock Copy-Item {} -ModuleName ModuleBuilder
 
         Mock Get-ChildItem {
@@ -106,7 +106,7 @@ Describe "Build-Module" {
         }
 
         It "Should run in the module source folder" {
-            Assert-MockCalled Set-Location -ModuleName ModuleBuilder -Parameter {
+            Assert-MockCalled Push-Location -ModuleName ModuleBuilder -Parameter {
                 $Path -eq "TestDrive:\MyModule\"
             }
         }
@@ -499,6 +499,30 @@ Describe "Build-Module" {
                     $PropertyName -eq "PrivateData.PSData.Prerelease" -and $Value -eq "pre-release"
                 } -ModuleName ModuleBuilder
             }
+        }
+    }
+
+    Context "Does not fall over if you build from the drive root" {
+
+        $null = New-Item "TestDrive:\build.psd1" -Type File -Force -Value "@{}"
+        $null = New-Item "TestDrive:\MyModule.psd1" -Type File -Force -value '@{ModuleVersion="1.0.0";Author="TEST"}'
+        $null = New-Item "TestDrive:\Public\Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
+
+        Mock GetBuildInfo -ModuleName ModuleBuilder {
+            [PSCustomObject]@{
+                ModuleManifest    = "TestDrive:\MyModule.psd1"
+                Version           = [Version]"1.0.0"
+                OutputDirectory   = "./output"
+                Encoding          = 'UTF8'
+                SourceDirectories = @('Public')
+            }
+        }
+
+        $Result = Build-Module -SourcePath 'TestDrive:\build.psd1' -OutputDirectory '.\output' -Passthru -Target Build
+
+        It "Builds the Module in the designated output folder" {
+            $Result.ModuleBase | Should -Be ("TestDrive:\output" | Convert-Path).TrimEnd('\')
+            'TestDrive:\output\MyModule.psm1' | Should -FileContentMatch 'MATCHING TEST CONTENT'
         }
     }
 }

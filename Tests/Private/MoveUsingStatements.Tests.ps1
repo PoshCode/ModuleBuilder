@@ -6,7 +6,7 @@ Describe "MoveUsingStatements" {
         It 'has a mandatory RootModule parameter' {
             $RootModule = $CommandInfo.Parameters['RootModule']
             $RootModule | Should -Not -BeNullOrEmpty
-            $RootModule.Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -be $true
+            $RootModule.Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $true
         }
 
         It "has an optional string Encoding parameter" {
@@ -19,7 +19,7 @@ Describe "MoveUsingStatements" {
 
     Context "Moving Using Statements to the beginning of the file" {
         $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
-            Mock Write-Warning {}
+            $null = Mock Write-Warning {}
             Get-Command MoveUsingStatements
         }
 
@@ -65,7 +65,7 @@ Describe "MoveUsingStatements" {
                 [ref]$null,
                 [ref]$ErrorFound
             )
-            $ErrorFound.Count | Should -be $ErrorBefore
+            $ErrorFound.Count | Should -Be $ErrorBefore
 
             # After
             &$MoveUsingStatementsCmd -RootModule $testModuleFile
@@ -75,15 +75,15 @@ Describe "MoveUsingStatements" {
                 [ref]$null,
                 [ref]$ErrorFound
             )
-            $ErrorFound.Count | Should -be $ErrorAfter
+            $ErrorFound.Count | Should -Be $ErrorAfter
         }
     }
     Context "When MoveUsingStatements should do nothing" {
 
         $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
-            Mock Write-Warning {}
-            Mock Set-Content {}
-            Mock Write-Debug {} -ParameterFilter {$Message -eq "No Using Statement Error found." }
+            $null = Mock Write-Warning {}
+            $null = Mock Set-Content {}
+            $null = Mock Write-Debug {} -ParameterFilter {$Message -eq "No Using Statement Error found." }
 
             Get-Command MoveUsingStatements
         }
@@ -120,7 +120,7 @@ Describe "MoveUsingStatements" {
             Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
 
             InModuleScope ModuleBuilder {
-                Mock New-Object {
+                $null = Mock New-Object {
                     # Introducing Parsing Error in the file
                     $Flag = [System.Collections.ArrayList]::new()
                     $null = $Flag.Add("MyParsingError}")

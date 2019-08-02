@@ -2,7 +2,8 @@
 # command when building the module (see `Get-Help Build-Module -Full` for details).
 @{
     Path = "ModuleBuilder.psd1"
-    OutputDirectory = "../Output/ModuleBuilder"
+    # Subsequent relative paths are to the ModuleManifest
+    OutputDirectory = "../"
     VersionedOutputDirectory = $true
     CopyDirectories = @('en-US')
 }
