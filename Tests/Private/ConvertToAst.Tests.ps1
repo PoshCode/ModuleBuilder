@@ -3,7 +3,7 @@ Describe "ConvertToAst" {
 
     Context "It returns a ParseResult for file paths" {
         $ParseResult = InModuleScope ModuleBuilder {
-            ConvertToAst $PSCommandPath -Debug
+            ConvertToAst $PSCommandPath
         }
 
         It "Returns a ParseResult object" {
@@ -23,7 +23,7 @@ Describe "ConvertToAst" {
 
     Context "It parses piped in commands" {
         $ParseResult = InModuleScope ModuleBuilder {
-            Get-Command ConvertToAst | ConvertToAst -Debug
+            Get-Command ConvertToAst | ConvertToAst
         }
 
         It "Returns a ParseResult object with the AST" {
@@ -34,7 +34,7 @@ Describe "ConvertToAst" {
 
     Context "It parses piped in modules" {
         $ParseResult = InModuleScope ModuleBuilder {
-            Get-Module ModuleBuilder | ConvertToAst -Debug
+            Get-Module ModuleBuilder | ConvertToAst
         }
 
         It "Returns a ParseResult object with the AST" {
@@ -42,37 +42,4 @@ Describe "ConvertToAst" {
             $ParseResult.AST | Should -BeOfType [System.Management.Automation.Language.Ast]
         }
     }
-
-<#
-        param(
-        # The script content, or script or module file path to parse
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
-        [Alias("Path", "PSPath", "Definition", "ScriptBlock", "Module")]
-        $Code
-    )
-    process {
-        Write-Debug "    ENTER: ConvertToAst $Code"
-        $ParseErrors = $null
-        $Tokens = $null
-        if ($Code | Test-Path -ErrorAction SilentlyContinue) {
-            Write-Debug "      Parse Code as Path"
-            $AST = [System.Management.Automation.Language.Parser]::ParseFile(($Code | Convert-Path), [ref]$Tokens, [ref]$ParseErrors)
-        } elseif ($Code -is [System.Management.Automation.FunctionInfo]) {
-            Write-Debug "      Parse Code as Function"
-            $String = "function $($Code.Name) { $($Code.Definition) }"
-            $AST = [System.Management.Automation.Language.Parser]::ParseInput($String, [ref]$Tokens, [ref]$ParseErrors)
-        } else {
-            Write-Debug "      Parse Code as String"
-            $AST = [System.Management.Automation.Language.Parser]::ParseInput([String]$Code, [ref]$Tokens, [ref]$ParseErrors)
-        }
-
-        Write-Debug "    EXIT: ConvertToAst"
-        [PSCustomObject]@{
-            PSTypeName  = "PoshCode.ModuleBuilder.ParseResults"
-            ParseErrors = $ParseErrors
-            Tokens      = $Tokens
-            AST         = $AST
-        }
-    }
-    #>
 }
