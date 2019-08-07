@@ -51,9 +51,8 @@ Describe "Convert-LineNumber" {
 
     It 'Should pass through InputObject for updating objects like CodeCoverage or ErrorRecord' {
         $PesterMiss = [PSCustomObject]@{
-            # Note these don't really matter
-            Command = $ModuleContent[25]
-            Function = 'CopyReadMe'
+            # Note these don't really matter, but they're passed through
+            Function = 'TotalNonsense'
             # these are pipeline bound
             File = $ModulePath
             Line = 26 # 1 offset with the Using Statement introduced in MoveUsingStatements
@@ -61,8 +60,8 @@ Describe "Convert-LineNumber" {
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru
         # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
-        $SourceLocation.SourceFile | Should -Be ".\Private\CopyReadMe.ps1"
+        $SourceLocation.SourceFile | Should -Be ".\Private\ConvertToAst.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 25
-        $SourceLocation.Function | Should -Be 'CopyReadMe'
+        $SourceLocation.Function | Should -Be 'TotalNonsense'
     }
 }

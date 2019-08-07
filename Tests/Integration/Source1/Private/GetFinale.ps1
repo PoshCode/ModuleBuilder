@@ -1,7 +1,7 @@
 using module ModuleBuilder
 
-function Get-Source {
+function GetFinale {
     [CmdletBinding()]
-    [Alias("gs")]
+    [Alias("gf")]
     param()
 }
