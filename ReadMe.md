@@ -102,8 +102,8 @@ For best results, you need to organize your module project similarly to how this
 
 Once you start working on the module, you'll create sub-folders in source, and put script files in them with only **one** function in each file. You should name the files with _the same name_ as the function that's in them -- especially in the public folder, where we use the file name (without the extension) to determine the exported functions.
 
-1. By convention, use folders named "Classes", "Private", and "Public"
+1. By convention, use folders named "Classes" (or "Enum"), "Private", and "Public"
 2. By convention, the functions in "Public" will be exported from the module
 3. To force classes to be in a certain order, you can prefix their file names with numbers, like `01-User.ps1`
 
-There are a *lot* of conventions in `Build-Module`, expressed as default values for its parameters. You can set any parameter to `Build-Module` by adding keys to the `build.psd1` file with your preferences. Check the help for Build-Module for details.
+There are a *lot* of conventions in `Build-Module`, expressed as default values for its parameters. These defaults are documented in the help for Build-Module. You can override any parameter to `Build-Module` by passing it, or by adding keys to the `build.psd1` file with your preferences.
