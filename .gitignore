@@ -3,3 +3,9 @@
 obj/
 Output/
 Tools/
+
+# Editors
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
