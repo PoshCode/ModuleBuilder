@@ -1,37 +1,49 @@
 {
   "$schema": "http://json.schemastore.org/template",
-  "identity": "PoshCode.ModuleBuilderModule",
+  "identity": "PoshCode.ModuleBuilder.EmptyModule",
+  "groupIdentity": "PoshCode.ModuleBuilder",
   "author": "PoshCode",
   "tags": {
     "language": "Powershell",
     "type": "project"
   },
-  "classifications": ["Powershell", "Modules"],
-  "name": "ModuleBuilder Module Generator",
-  "shortName": "ModuleBuilderModule",
+  "classifications": ["Powershell", "Module"],
+  "name": "PowerShell Module with ModuleBuilder",
+  "shortName": "PSModuleBuilder",
+  "sourceName": "ModuleBuilderModule",
+  "placeholderFilename": ".gitkeep",
+  "guids":["65a15d36-3f55-4916-ba8f-26f18775e1b7"],
   "symbols": {
-    "moduleName": {
-      "type": "parameter",
-      "datatype": "string",
-      "description": "Name of your new Powershell Module",
-      "replaces": "{moduleName}",
-      "isRequired": true
+    "author": {
+        "type": "parameter",
+        "defaultValue": "Anonymous",
+        "replaces": "Joel Bennett"
+    },
+    "company": {
+        "type": "parameter",
+        "defaultValue": "Unknown",
+        "replaces": "PoshCode.org"
+    },
+    "description": {
+        "type": "parameter",
+        "defaultValue": "A useful module with a useless description",
+        "replaces": "A ModuleBuilder Template Module"
+    },
+    "createdate": {
+        "type": "generated",
+        "generator": "now",
+        "parameters": {
+            "format": "yyyy-MM-dd"
+        },
+        "replaces": "2019-10-10"
+    },
+    "copyright": {
+        "type": "generated",
+        "generator": "now",
+        "parameters": {
+            "format": "yyyy"
+        },
+        "replaces": "2019"
     }
-  },
-  "postActions": [
-    {
-      "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
-      "args": {
-        "executable": "powershell",
-        "args": "./dotnet-post-action.ps1"
-      },
-      "manualInstructions": [
-        {
-          "text": "Generate Manifest"
-        }
-      ],
-      "continueOnError": false,
-      "description ": "Generates a basic Module Manifest"
-    }
-  ]
+  }
 }
