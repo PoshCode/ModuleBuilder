@@ -14,7 +14,7 @@ function Convert-LineNumber {
         [string]$PositionMessage,
 
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, Position=0, ParameterSetName="FromInvocationInfo")]
-        [Alias("PSCommandPath", "File", "ScriptName")]
+        [Alias("PSCommandPath", "File", "ScriptName", "Script")]
         [string]$SourceFile,
 
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, Position=1, ParameterSetName="FromInvocationInfo")]
