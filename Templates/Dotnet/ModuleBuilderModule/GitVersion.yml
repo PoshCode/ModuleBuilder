@@ -1,0 +1,17 @@
+mode: Mainline
+commit-message-incrementing: MergeMessageOnly
+assembly-versioning-format: '{Major}.{Minor}.{Patch}.{env:BUILDCOUNT ?? 0}'
+assembly-informational-format: '{NuGetVersionV2}+Build.{env:BUILDCOUNT ?? 0}.Date.{CommitDate}.Branch.{env:SAFEBRANCHNAME ?? unknown}.Sha.{Sha}'
+next-version: 1.0.0
+branches:
+  master:
+    increment: Patch
+  pull-request:
+    tag: rc
+    increment: Patch
+  features:
+    increment: Patch
+    regex: .*?/
+    source-branches:
+    - master
+    - features
