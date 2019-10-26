@@ -8,16 +8,36 @@ generate new Powershell Modules following ModuleBuilder best practices and thus:
 
 ## Dotnet
 
-After installing ModuleBuilder, users can use the `ModuleBuilderModule`
-[dotnet template](https://github.com/dotnet/templating) to generate
-new modules using:
+After cloning this repository (and assuming you have the dotnet SDK installed),
+you can install the ModuleBuilder templates from this folder by running:
 
 ```posh
-dotnet new ModuleBuilderModule -o GeneratedModule --moduleName MyGeneratedModule
+dotnet new -i ./
 ```
 
-or without user interaction:
+We need to publish this to nuget to make installing it easier.
+
+Once you've installed the template(s), you can use the `PSModuleBuilder`
+[template](https://github.com/dotnet/templating) to generate a new module in an empty folder using:
 
 ```posh
-dotnet new ModuleBuilderModule -o GeneratedModule --moduleName MyGeneratedModule --allow-scripts yes
+dotnet new PSModuleBuilder
+```
+
+Or you can create the module folder with `-o` and set the module author, company and description like this:
+
+```posh
+dotnet new PSModuleBuilder -o MyNewModule --author Jaykul --company PoshCode.org --description "My Brand New Module"
+```
+
+Even better, you can create some defaults for yourself using the alias option:
+
+```posh
+dotnet new -a psmo psmodulebuilder --author Jaykul --company PoshCode.org
+```
+
+And then create a new module like this:
+
+```posh
+dotnet new psmo -o MyNewModule --description "My Brand New Module"
 ```
