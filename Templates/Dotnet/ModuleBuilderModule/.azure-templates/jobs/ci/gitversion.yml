@@ -1,0 +1,59 @@
+# -----------------------------------------------------------------------------
+# Exports Gitversion variables.
+#
+# Please note that this step ONLY works on a 'windows-2019' image.
+# -----------------------------------------------------------------------------
+
+parameters:
+  updateAssemblyInfo: false
+  additionalArguments: ''
+
+jobs:
+  - job: Gitversion
+    dependsOn: Initialize
+    pool:
+      vmImage: 'windows-2019'
+    variables:
+      BUILDCOUNT: $[counter(dependencies.Initialize.outputs['Output.Counter'], 0)]
+      SAFEBRANCHNAME: $[dependencies.Initialize.outputs['Output.SafeBranchName']]
+
+    steps:
+    - template: ../../steps/log-virtual-machine-information.yml
+
+    # log template parameters
+    - powershell: |
+        Write-Host "updateAssemblyInfo  = ${{ parameters.updateAssemblyInfo }}"
+        Write-Host "additionalArguments = ${{ parameters.additionalArguments }}"
+      displayName: 'Template Parameters'
+
+    # log template variables
+    - powershell: |
+        Write-Host "BUILDCOUNT     = $($env:BUILDCOUNT)"
+        Write-Host "SAFEBRANCHNAME = $($env:SAFEBRANCHNAME)"
+      displayName: 'Template Variables'
+
+    # checkout files from large file system
+    # https://docs.microsoft.com/en-us/azure/devops/pipelines/repos/pipeline-options-for-git?view=azure-devops#checkout-files-from-lfs
+    - checkout: self
+      lfs: true
+
+    # run the Devops task
+    - task: gittools.gitversion.gitversion-task.GitVersion@5
+      displayName: GitVersion
+      inputs:
+        updateAssemblyInfo: ${{ parameters.updateAssemblyInfo }}
+        additionalArguments: ${{ parameters.additionalArguments }}
+
+    # export variables
+    - powershell: |
+        foreach ($envar in Get-Item ENV:GITVERSION_*) {
+          Write-Host "INFO [task.setvariable variable=$(($envar.Name -split "_",2)[1]);isOutput=true]$($envar.Value)"
+          Write-Host "##vso[task.setvariable variable=$(($envar.Name -split "_",2)[1]);isOutput=true]$($envar.Value)"
+        }
+        # Also pass through the variables from initialize
+        Write-Host "INFO [task.setvariable variable=BUILDCOUNT;isOutput=true]$Env:BUILDCOUNT"
+        Write-Host "##vso[task.setvariable variable=BUILDCOUNT;isOutput=true]$Env:BUILDCOUNT"
+        Write-Host "INFO [task.setvariable variable=SAFEBRANCHNAME;isOutput=true]$Env:SAFEBRANCHNAME"
+        Write-Host "##vso[task.setvariable variable=SAFEBRANCHNAME;isOutput=true]$Env:SAFEBRANCHNAME"
+      name: GitVersion
+      displayName: Export GitVersion Variables

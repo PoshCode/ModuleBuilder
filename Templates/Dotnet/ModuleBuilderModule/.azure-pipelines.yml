@@ -1,0 +1,60 @@
+# -----------------------------------------------------------------------------
+# Generic Azure CI/CD Pipeline kickstarter for Powershell ModuleBuilder Modules.
+#
+# IMPORTANT: requires installing the Visual Studio Marketplace extension
+# "Gitversion" into your Azure Devops organization. Found at:
+# https://marketplace.visualstudio.com/items?itemName=gittools.gitversion
+# -----------------------------------------------------------------------------
+
+name: $(GitVersion_InformationalVersion)
+
+trigger:
+- master
+
+variables:
+  ArtifactName: Modules
+
+stages:
+
+# -----------------------------------------------------------------------------
+# Stage 1 - Continuous Integration (CI)
+# -----------------------------------------------------------------------------
+- stage: Build
+  jobs:
+  - template: .azure-templates/jobs/ci/initialize.yml
+  - template: .azure-templates/jobs/ci/gitversion.yml
+  - template: .azure-templates/jobs/ci/build-module.yml
+    parameters:
+      dependsOn: [Gitversion]
+      artifactName: $(ArtifactName)
+
+# -----------------------------------------------------------------------------
+# Stage 2 - Continuous Integration (CI)
+# -----------------------------------------------------------------------------
+- stage: Validate
+  dependsOn: Build
+  jobs:
+  - template: .azure-templates/jobs/ci/script-analyzer.yml
+    parameters:
+      dependsOn: []
+      artifactName: $(ArtifactName)
+
+  - template: .azure-templates/jobs/ci/pester.yml
+    parameters:
+      dependsOn: []
+      artifactName: $(ArtifactName)
+      TestsDirectory: '$(Build.SourcesDirectory)/Tests' # Linux users: be aware of the upperase T
+      strategy:
+        matrix:
+          Linux:
+            vmImage: 'ubuntu-16.04'
+          MacOS:
+            vmImage: 'macOS-10.14'
+          Windows:
+            vmImage: 'windows-2019'
+      pool:
+        vmImage: $(vmImage)
+
+# -----------------------------------------------------------------------------
+# Stage 3 - Continuous Deployment (CD)
+# -----------------------------------------------------------------------------

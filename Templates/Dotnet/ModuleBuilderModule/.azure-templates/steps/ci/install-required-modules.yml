@@ -1,0 +1,42 @@
+parameters:
+  path: "$(Build.SourcesDirectory)/RequiredModules.psd1"
+
+steps:
+
+- powershell: |
+    $ModulePath = Join-Path (Split-Path $Profile.CurrentUserAllHosts) Modules
+    $null = New-Item $ModulePath -Force -Type Directory
+    Write-Host "##vso[task.setvariable variable=ModuleInstallPath]$ModulePath"
+  displayName: 'Create Module Install Folder'
+
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: 'packages.config'
+    feedsToUse: 'select'
+    vstsFeed: '/b3c073b2-9573-45ec-8914-6f70c6f1308c'
+    includeNuGetOrg: false
+    restoreDirectory: $(ModuleInstallPath)
+
+- powershell: |
+    if (Test-Path packages.config) {
+        # Strip the version numbers from the path names:
+        [xml]$packages = Get-Content packages.config
+        foreach ($package in $packages.packages.package.id) {
+            Get-Item (Join-Path '$(ModuleInstallPath)' $package  ) -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+            Get-Item (Join-Path '$(ModuleInstallPath)' $package* ) | Rename-Item -NewName $package
+        }
+        Get-ChildItem '$(ModuleInstallPath)' -Recurse
+    }
+  displayName: 'Fixup Nuget Module Install'
+
+- powershell: |
+    # Apparently, Install-Script isn't good enough except on Windows?
+    # Install-Script Install-RequiredModule -Force -Verbose
+    Save-Script Install-RequiredModule -Path '$(Pipeline.Workspace)'
+    &"$(Pipeline.Workspace)/Install-RequiredModule" -Path '${{ parameters.path }}' -Confirm:$false -Verbose
+    foreach ($installErr in $IRM_InstallErrors) {
+        Write-Warning "ERROR: $installErr"
+        Write-Warning "STACKTRACE: $($installErr.ScriptStackTrace)"
+    }
+  displayName: 'Restore pre-requisites'

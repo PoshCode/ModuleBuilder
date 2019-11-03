@@ -1,0 +1,50 @@
+# -----------------------------------------------------------------------------
+# Initializes the Gitversion devops task.
+#
+# Please note that this step ONLY works on a 'windows-2019' image.
+# -----------------------------------------------------------------------------
+
+parameters:
+  updateAssemblyInfo: false
+  additionalArguments: ''
+
+jobs:
+  - job: Initialize
+    pool:
+      vmImage: 'windows-2019'
+
+    steps:
+    - template: ../../steps/log-virtual-machine-information.yml
+
+    # log template parameters
+    - powershell: |
+        Write-Host "updateAssemblyInfo  = ${{ parameters.updateAssemblyInfo }}"
+        Write-Host "additionalArguments = ${{ parameters.additionalArguments }}"
+      displayName: 'Template Parameters'
+
+    # checkout files from large file system
+    # https://docs.microsoft.com/en-us/azure/devops/pipelines/repos/pipeline-options-for-git?view=azure-devops#checkout-files-from-lfs
+    - checkout: self
+      lfs: true
+
+    # run the gitversion Devops task
+    - task: gittools.gitversion.gitversion-task.GitVersion@5
+      displayName: GitVersion
+      inputs:
+        updateAssemblyInfo: ${{ parameters.updateAssemblyInfo }}
+        additionalArguments: ${{ parameters.additionalArguments }}
+
+    # export variables so they can be used by jobs WITHIN the same stage
+    - powershell: |
+        @{
+            Counter          = '$(GitVersion.MajorMinorPatch)'
+            SafeBranchName   = '$(GitVersion.BranchName)' -replace '[\\/]','-'
+            SubModuleCount   = @(git submodule foreach :).Count
+            HasSolutionFile  = Test-Path *.sln
+            HasProjectFile   = Test-Path *.*proj
+            HasDotNetProject = (Test-Path *.csproj, *.fsproj, *.sln) -contains $true
+        }.GetEnumerator().ForEach({
+            Write-Host ("EXPORT {0} = {1}`n##vso[task.setvariable variable={0};isOutput=true]{1}" -f $_.Key, $_.Value)
+        })
+      name: Output
+      displayName: Export ModuleBuilder Variables

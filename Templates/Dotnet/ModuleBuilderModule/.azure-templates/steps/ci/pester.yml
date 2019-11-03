@@ -1,0 +1,98 @@
+# We need a pester step because the pester task won't let me specify `pwsh`
+parameters:
+  pesterVersion: ''
+  testsDirectory: '$(Build.SourcesDirectory)/Tests'
+  includeTag: []
+  excludeTag: []
+  additionalModulePaths: []
+  codeCoverageDirectory: ''
+  testRunTitle: 'Pester'
+  show: 'All'
+
+steps:
+- powershell: |
+    # Preinstall and import the specified version of the module
+    Set-PSRepository PSGallery -InstallationPolicy Trusted
+    $Version = if ("${{ parameters.pesterVersion }}") {
+        "${{ parameters.pesterVersion }}"
+    } else {
+        (Find-Module Pester).Version
+    }
+    Write-Host "##vso[task.setvariable variable=PesterVersion]$Version"
+    Write-Host "Installing and importing Pester version $Version"
+    Install-Module Pester -RequiredVersion $Version -Scope CurrentUser -Repository 'PSGallery' -AllowClobber -SkipPublisherCheck
+  displayName: 'Install Required Pester Version'
+
+- powershell: |
+    Import-Module Pester -RequiredVersion $(PesterVersion)
+
+    $Options = @{
+        Path = Convert-Path "${{ parameters.testsDirectory }}"
+        OutputFormat = "NUnitXml"
+        OutputFile = Join-Path '$(Common.TestResultsDirectory)' 'Test-$(Build.SourceVersion).xml'
+        Show = "${{ parameters.show }}"
+    }
+
+    if ($CodeCoverage = "${{ parameters.codeCoverageDirectory }}") {
+        $Options.CodeCoverage = Get-ChildItem $CodeCoverage -Recurse -Include *.psm1, *.ps1 | Convert-Path
+        $Options.CodeCoverageOutputFile = '$(Common.TestResultsDirectory)/Coverage-$(Build.SourceVersion).xml'
+    }
+
+    if ($IncludeTag = @("${{ join('", "', parameters.includeTag) }}")) {
+        Write-Verbose "IncludeTag $($IncludeTag -join ', ')" -Verbose
+        $Options.Tag = $IncludeTag
+    }
+
+    if ($ExcludeTag = @("${{ join('", "', parameters.excludeTag) }}")) {
+        Write-Verbose "ExcludeTag $($ExcludeTag -join ', ')" -Verbose
+        $Options.ExcludeTag = $ExcludeTag
+    }
+
+    if ($AdditionalModulePaths = @("${{ join('", "', parameters.additionalModulePaths) }}")) {
+        $Env:PSModulePath = @(
+            @($AdditionalModulePaths -split [IO.Path]::PathSeparator | % TrimEnd(':;')) +
+            @($Env:PSModulePath -split [IO.Path]::PathSeparator | % TrimEnd(':;'))
+        ) -join [IO.Path]::PathSeparator
+        Write-Verbose "Current PSModulePath $Env:PSModulePath" -Verbose
+    }
+
+    Write-Host $($Options | Out-String)
+    if (!$PSVersionTable.OS) {
+        $PSVersionTable.OS = [System.Environment]::OSVersion
+    }
+
+    Write-Host "##vso[task.setvariable variable=PSPlatform]PowerShell $($PSVersionTable['PSVersion', 'OS'] -join ' on ')"
+
+    Invoke-Pester @Options
+  displayName: Invoke-Pester
+
+- powershell: |
+    #normalize source dir for code coverage
+    $sourceDirs = (@(Get-ChildItem ${{ parameters.codeCoverageDirectory }} -Directory -Recurse | Convert-Path) + "${{ parameters.codeCoverageDirectory }}") -join ";"
+    Write-Host "INFO [task.setvariable variable=CodeCoverageRecurseDirectories]$sourceDirs"
+    Write-Host "##vso[task.setvariable variable=CodeCoverageRecurseDirectories]$sourceDirs"
+    #}
+  displayName: Normalize Source Directory for Code Coverage Report
+
+- task: PublishCodeCoverageResults@1
+  displayName: Publish Code Coverage
+  inputs:
+    summaryFileLocation: '$(Common.TestResultsDirectory)/Coverage-$(Build.SourceVersion).xml'
+    pathToSources: $(CodeCoverageRecurseDirectories)
+    failIfCoverageEmpty: true
+  condition: |
+    and(
+        succeededOrFailed(),
+        ne('', '${{ parameters.codeCoverageDirectory }}')
+    )
+
+- task: PublishTestResults@2
+  displayName: Publish Test Results
+  inputs:
+    testResultsFormat: NUnit
+    testResultsFiles: '$(Common.TestResultsDirectory)/Test-$(Build.SourceVersion).xml'
+    buildPlatform: $(PSPlatform)
+    buildConfiguration: ${{ parameters.configurationName }}
+    failTaskOnFailedTests: true
+    testRunTitle: "${{ parameters.testRunTitle }} on $(PSPlatform)"
+  condition: succeededOrFailed()

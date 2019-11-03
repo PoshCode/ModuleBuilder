@@ -1,0 +1,22 @@
+parameters:
+  sourcePath: "$(Build.SourcesDirectory)/*/build.psd1"
+  destination: "$(Build.BinariesDirectory)"
+  semVer: $[dependencies.GitVersion.outputs['GitVersion.NuGetVersion']]
+
+steps:
+- powershell: |
+    Write-Host "Template parameters:"
+    Write-Host "=> sourcePath  = ${{ parameters.sourcePath }}"
+    Write-Host "=> destination = ${{ parameters.destination }}"
+    Write-Host "=> semVer      = ${{ parameters.semVer }}"
+    Write-Host "Using PSModulePath: $($Env:PSModulePath)"
+    Write-Host ""
+
+    foreach ($module in Get-ChildItem "${{ parameters.sourcePath }}") {
+        # Build-Module currently doesn't guarantee the module name will be in the output
+        $params = Import-LocalizedData -BaseDirectory $module.Directory.FullName -FileName $module.Name
+        $destination = Join-Path "${{ parameters.destination }}" ([IO.Path]::GetFileNameWithoutExtension( $params.Path ))
+        Write-Host Build-Module -SourcePath $module -Destination $destination -SemVer "${{ parameters.semVer }}" "-Verbose"
+        Build-Module -SourcePath $module -Destination $destination -SemVer "${{ parameters.semVer }}" -Verbose
+    }
+  displayName: 'Build-Module -SourcePath $sourcePath'

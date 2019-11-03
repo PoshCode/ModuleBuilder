@@ -1,0 +1,67 @@
+# -----------------------------------------------------------------------------
+# This job is responsible for building the Powershell Module and creating
+# the artifact that we will use later for testing and deploying.
+#
+# Uses hardcoded 'windows-2019' image as that is the only one running
+# Powershell 5.1 (Desktop) as required for the Gitversion Devops task.
+# -----------------------------------------------------------------------------
+
+parameters:
+  dependsOn: Gitversion
+  buildSourcePath: "**/build.psd1"
+  gitVersionVariable: 'NuGetVersion'
+  requiredModulesPath: RequiredModules.psd1
+  artifactName: BuildOutput
+
+jobs:
+  - job: Build
+    dependsOn: ${{ parameters.dependsOn }}
+    pool:
+      vmImage: 'windows-2019'
+    workspace:
+      clean: all
+    variables:
+      SemVer: $[dependencies.GitVersion.outputs['GitVersion.${{ parameters.gitVersionVariable }}']]
+      DotNetBuild: $[dependencies.Initialize.outputs['Output.HasDotNetProject']]
+      SubModuleCount: $[dependencies.Initialize.outputs['Output.SubModuleCount']]
+
+    steps:
+    - template: ../../steps/log-virtual-machine-information.yml
+
+    # checkout files from large file system
+    # https://docs.microsoft.com/en-us/azure/devops/pipelines/repos/pipeline-options-for-git?view=azure-devops#checkout-files-from-lfs
+    - checkout: self
+      clean: true
+      lfs: true
+      submodules: recursive
+      persistCredentials: true
+
+    # install required modules
+    - powershell: |
+        git config http.https://qmdevteam.visualstudio.com.extraheader="AUTHORIZATION: bearer $(System.AccessToken)"
+        git submodule foreach --recursive "ls && git lfs install --local && git lfs pull"
+      displayName: 'Fetch Submodule LFS files'
+      condition: gt(variables['SubModuleCount'], 0)
+      name: FetchSubmoduleLFS
+    - ${{ if ne('', parameters.requiredModulesPath ) }}:
+      - template: ../../steps/ci/install-required-modules.yml
+        parameters:
+          path: $(Build.SourcesDirectory)/${{ parameters.requiredModulesPath }}
+
+    # build the module
+    - powershell: |
+        $VersionPrefix, $VersionSuffix = "$(SemVer)" -split '[-+]', 2
+        dotnet build -c Release -p:VersionPrefix=$VersionPrefix -p:VersionSuffix=$VersionSuffix
+      displayName: Build Solution
+      condition: eq(variables['DotNetBuild'],'True')
+    - template: ../../steps/ci/build-module.yml
+      parameters:
+        sourcePath: $(Build.SourcesDirectory)/${{ parameters.buildSourcePath }}
+        destination: $(Build.BinariesDirectory)
+        semVer: $(SemVer)
+
+    - task: PublishPipelineArtifact@1
+      displayName: Publish Build Output
+      inputs:
+        artifactName: ${{ parameters.artifactName }}
+        targetPath: $(Build.BinariesDirectory)

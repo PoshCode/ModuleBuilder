@@ -1,0 +1,14 @@
+# -----------------------------------------------------------------------------
+# Generic step for logging debug information about this specific agent/image.
+# -----------------------------------------------------------------------------
+
+steps:
+- powershell: |
+    Write-Host "Powershell Version:"
+    $PSVersionTable
+    Write-Host ""
+
+    Write-Host "Environment Variables:"
+    Get-ChildItem -Path Env:
+
+  displayName: 'Log Virtual Machine Information'

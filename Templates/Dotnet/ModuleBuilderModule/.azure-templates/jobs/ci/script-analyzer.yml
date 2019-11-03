@@ -1,0 +1,122 @@
+parameters:
+  scriptAnalyzerVersion: ''
+  dependsOn: []
+  artifactName: ''
+  artifactDownloadDirectory: $(Build.ArtifactStagingDirectory)
+  codeDirectory: $(Build.ArtifactStagingDirectory)
+  requiredModulesPath: RequiredModules.psd1
+  modulesToImport: []
+  customRulePath: ''
+  excludeRules: ["PSShouldProcess", "PSUseShouldProcessForStateChangingFunctions", "PSAvoidUsingWriteHost"]
+  pool:
+    vmImage: 'windows-2019'
+
+jobs:
+  - job: PSScriptAnalyzer
+    dependsOn: ${{ parameters.dependsOn }}
+    workspace:
+      clean: outputs
+
+    pool: ${{ parameters.pool }}
+
+    steps:
+    - template: ../../steps/log-virtual-machine-information.yml
+
+    # log template parameters
+    # todo
+
+    - checkout: self # re-checkout, because we need the RequiredModules - what can we do?
+      fetchDepth: 1  # we only need the current copy
+      lfs: true      # this must always stay true or it will fail if it's ever true
+
+    - template: ../../steps/ci/install-required-modules.yml
+      parameters:
+        path: $(Build.SourcesDirectory)/${{ parameters.requiredModulesPath }}
+
+    # If we depends on a build step, then we should download the artifact
+    - task: DownloadPipelineArtifact@2
+      displayName: 'Download Build Artifacts'
+      condition: ${{ ne('', parameters.artifactName)}}
+      inputs:
+        artifactName: ${{ parameters.artifactName }}
+        downloadPath: ${{ parameters.artifactDownloadDirectory }}/$(Build.DefinitionName)
+
+    - powershell: |
+        # Preinstall and import the specified version of ScriptAnalyzer
+        Set-PSRepository PSGallery -InstallationPolicy Trusted
+        $Version = if ("${{ parameters.scriptAnalyzerVersion }}") {
+            "${{ parameters.scriptAnalyzerVersion }}"
+        } else {
+            (Find-Module PSScriptAnalyzer).Version
+        }
+        Write-Host "##vso[task.setvariable variable=ScriptAnalyzerVersion]$Version"
+        Write-Host "Installing PsScriptAnalyzer version $Version"
+        Install-Module PsScriptAnalyzer -RequiredVersion $Version -Scope CurrentUser -Repository 'PSGallery' -AllowClobber -SkipPublisherCheck
+      displayName: 'Install Required PSScriptAnalyzer Version'
+
+    - powershell: |
+        $Path = (New-Item $Env:TEMP\$(New-Guid)\PSScriptAnalyzer.Tests.ps1 -Type File -Force).FullName
+        "##vso[task.setvariable variable=TestPath]$Path"
+
+        Import-Module PsScriptAnalyzer -RequiredVersion $(ScriptAnalyzerVersion)
+
+        Set-Content $Path '
+        $QMExcludeRules = @("${{ join('", "', parameters.excludeRules) }}")
+        $QMCustomRulePath = "${{ parameters.customRulePath }}"
+        $Path = "${{ parameters.codeDirectory }}"
+
+        if ($Modules = @("${{ join('", "', parameters.modulesToImport) }}")) {
+            Write-Verbose "Import-Module $Modules" -Verbose
+            Import-Module $Modules
+        }
+
+        Describe "PSScriptAnalyzer" {
+          $ScriptAnalyzer = @{
+            Config = @{ Path = $Path; Recurse = $true; IncludeDefaultRules = $true; ExcludeRule = $QMExcludeRules }
+            Rules = Get-ScriptAnalyzerRule | Where-Object RuleName -notin $QMExcludeRules
+          }
+
+          It "Can have custom rules" {
+            if ($QMCustomRulePath) {
+              $QMCustomRulePath | Should Exist
+              if ($CustomRules = Get-ScriptAnalyzerRule -CustomRulePath $QMCustomRulePath -RecurseCustomRulePath) {
+                $ScriptAnalyzer.Rules += $CustomRules
+                $ScriptAnalyzer.Config += @{
+                  CustomRulePath        = $QMCustomRulePath
+                  RecurseCustomRulePath = $true
+                }
+              }
+            }
+          }
+
+          It "Does not throw while running Script Analyzer" {
+            $Config = $ScriptAnalyzer.Config
+            try {
+              $ScriptAnalyzer.Results = Invoke-ScriptAnalyzer @Config
+            } catch {
+              Write-Warning "Exception running script analyzer on $($_.TargetObject)"
+              Write-Warning $($_.Exception.StackTrace)
+              throw
+            }
+          }
+
+          forEach ($Rule in $ScriptAnalyzer.Rules.RuleName) {
+            It "Passes $Rule" {
+              if ($Failures = $ScriptAnalyzer.Results.Where( {$_.RuleName -like "*$Rule"})) {
+                throw ([Management.Automation.ErrorRecord]::new(
+                  ([Exception]::new(($Failures.ForEach{$_.ScriptName + ":" + $_.Line + " " + $_.Message} -join "`n"))),
+                  "ScriptAnalyzerViolation",
+                  "SyntaxError",
+                  $Failures))
+              }
+            }
+          }
+        }'
+      displayName: 'Generate ScriptAnalyzer Test'
+
+    # run pester to generate the code coverage
+    - template: ../../steps/ci/pester.yml
+      parameters:
+        testsDirectory: $(TestPath)
+        additionalModulePaths: ${{ parameters.artifactDownloadDirectory }}
+        configurationName: 'Script Analyzer'

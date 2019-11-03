@@ -1,0 +1,70 @@
+parameters:
+  pesterVersion: ''
+  testsDirectory: '$(Build.SourcesDirectory)/Tests'
+  requiredModulesPath: RequiredModules.psd1
+  artifactName: ''
+  artifactDownloadDirectory: '$(Build.ArtifactStagingDirectory)'
+  additionalModulePaths: []
+  codeCoverageDirectory: ''
+  dependsOn: []
+  excludeTag: []
+  includeTag: []
+  cleanJob: ''
+  show: 'All'
+  strategy:
+    parallel: 1
+  pool:
+    vmImage: 'windows-2019'
+
+jobs:
+  - job: Pester
+    dependsOn: ${{ parameters.dependsOn }}
+    ${{ if ne(parameters.cleanJob, '') }}:
+      workspace:
+        clean: ${{ parameters.cleanJob }}
+
+    strategy: ${{ parameters.strategy }}
+    pool: ${{ parameters.pool }}
+
+    variables:
+      CodeCoverageDirectory: ${{ parameters.codeCoverageDirectory }}
+
+    steps:
+    - template: ../../steps/log-virtual-machine-information.yml
+
+    - checkout: self # re-checkout, because we don't package tests
+      fetchDepth: 1  # we only need the current tests
+      lfs: true
+
+    - template: ../../steps/ci/install-required-modules.yml
+      parameters:
+        path: $(Build.SourcesDirectory)/${{ parameters.requiredModulesPath }}
+
+    # If Pester depends on a build step, then we should download that artifact
+    - task: DownloadPipelineArtifact@2
+      displayName: 'Download Build Artifacts'
+      condition: ${{ ne('', parameters.artifactName)}}
+      inputs:
+        artifactName: ${{ parameters.artifactName }}
+        downloadPath: ${{ parameters.artifactDownloadDirectory }}
+
+    - powershell: |
+        $AdditionalModulePaths = @(if("${{ parameters.artifactName }}"){"${{ parameters.artifactDownloadDirectory }}"}) +
+            @("${{ join('", "', parameters.additionalModulePaths) }}") -join [IO.Path]::PathSeparator
+        Write-Host "##vso[task.setvariable variable=AdditionalModulePaths]$AdditionalModulePaths"
+        if(!"$(CodeCoverageDirectory)" -and "${{ parameters.artifactName }}") {
+            Write-Host "##vso[task.setvariable variable=CodeCoverageDirectory]${{ parameters.artifactDownloadDirectory }}"
+        }
+      displayName: 'Combine paths'
+
+    - template: ../../steps/ci/pester.yml
+      parameters:
+        pesterVersion: ${{ parameters.pesterVersion }}
+        testsDirectory: ${{ parameters.testsDirectory }}
+        includeTag: ${{ parameters.includeTag }}
+        excludeTag: ${{ parameters.excludeTag }}
+        additionalModulePaths: $(AdditionalModulePaths)
+        codeCoverageDirectory: $(CodeCoverageDirectory)
+        configurationName: 'Pester Unit Tests'
+        show: ${{ parameters.show }}
+        publishCodeCoverage: false
