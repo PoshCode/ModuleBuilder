@@ -2,6 +2,6 @@ using module ModuleBuilder
 
 function Get-Source {
     [CmdletBinding()]
-    [Alias("gs")]
+    [Alias("gs","gsou")]
     param()
 }

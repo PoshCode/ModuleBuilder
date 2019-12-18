@@ -219,7 +219,7 @@ function Build-Module {
             $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
 
             if ($PublicFunctions -and -not $ModuleInfo.IgnoreAliasAttribute) {
-                if (($AliasesToExport = ($ParseResult | GetCommandAlias)[$PublicFunctions] | Select-Object -Unique)) {
+                if (($AliasesToExport = ($ParseResult | GetCommandAlias)[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
                     Update-Metadata -Path $OutputManifest -PropertyName AliasesToExport -Value $AliasesToExport
                 }
             }
