@@ -110,8 +110,8 @@ function Build-Module {
 
         # File encoding for output RootModule (defaults to UTF8)
         # Converted to System.Text.Encoding for PowerShell 6 (and something else for PowerShell 5)
-        [ValidateSet("UTF8","UTF7","ASCII","Unicode","UTF32")]
-        [string]$Encoding = "UTF8",
+        [ValidateSet("UTF8", "UTF8Bom", "UTF8NoBom", "UTF7", "ASCII", "Unicode", "UTF32")]
+        [string]$Encoding = $(if($IsCoreCLR) { "UTF8Bom" } else { "UTF8" }),
 
         # The prefix is either the path to a file (relative to the module folder) or text to put at the top of the file.
         # If the value of prefix resolves to a file, that file will be read in, otherwise, the value will be used.
@@ -133,8 +133,8 @@ function Build-Module {
     )
 
     begin {
-        if ($Encoding -ne "UTF8") {
-            Write-Warning "We strongly recommend you build your script modules with UTF8 encoding for maximum cross-platform compatibility."
+        if ($Encoding -notmatch "UTF8") {
+            Write-Warning "For maximum portability, we strongly recommend you build your script modules with UTF8 encoding (with a BOM, for backwards compatibility to PowerShell 5)."
         }
     }
     process {
