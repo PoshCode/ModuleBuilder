@@ -28,7 +28,7 @@ function SetModuleContent {
 
         # The encoding defaults to UTF8 (or UTF8NoBom on Core)
         [Parameter(DontShow)]
-        [string]$Encoding = $(if($IsCoreCLR) { "UTF8NoBom" } else { "UTF8" })
+        [string]$Encoding = $(if($IsCoreCLR) { "UTF8Bom" } else { "UTF8" })
     )
     begin {
         Push-Location $WorkingDirectory -StackName SetModuleContent
