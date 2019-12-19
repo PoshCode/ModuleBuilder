@@ -12,9 +12,10 @@ param(
     [Alias("ModuleVersion")]
     [string]$SemVer
 )
-
 # Sanitize parameters to pass to Build-Module
 $null = $PSBoundParameters.Remove('Test')
+$ErrorActionPreference = "Stop"
+Push-Location $PSScriptRoot -StackName BuildBuildModule
 
 if (-not $Semver) {
     if ($semver = gitversion -showvariable SemVer) {
@@ -22,9 +23,6 @@ if (-not $Semver) {
     }
 }
 
-
-$ErrorActionPreference = "Stop"
-Push-Location $PSScriptRoot -StackName BuildBuildModule
 try {
     # Build ModuleBuilder with ModuleBuilder:
     Write-Verbose "Compiling ModuleBuilderBootstrap module"

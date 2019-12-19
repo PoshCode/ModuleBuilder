@@ -1,6 +1,6 @@
+#requires -Module ModuleBuilder
 Describe "InitializeBuild" {
     . $PSScriptRoot\..\Convert-FolderSeparator.ps1
-    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     Context "It collects the initial data" {
 

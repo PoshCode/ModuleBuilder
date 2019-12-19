@@ -1,6 +1,6 @@
+#requires -Module ModuleBuilder
 Describe "Copy ReadMe" {
     . $PSScriptRoot\..\Convert-FolderSeparator.ps1
-    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     Context "There's no ReadMe" {
         # It should not even call Test-Path

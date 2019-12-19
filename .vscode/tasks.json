@@ -10,7 +10,10 @@
                 "isDefault": true
             },
             "type": "shell",
-            "command": "${workspaceFolder}\\build.ps1",
+            "command": "${workspaceFolder}/build.ps1",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "silent",
@@ -27,18 +30,10 @@
                 "isDefault": true
             },
             "type": "shell",
+            "command": "${workspaceFolder}/test.ps1",
             "options": {
                 "cwd": "${workspaceFolder}",
-                "env": {
-                    "PSModulePath": "${workspaceFolder}\\Output;${env:PSModulePath}"
-                }
             },
-            "command": "Invoke-Pester",
-            "args": [
-                "${workspaceFolder}\\Tests",
-                "-PesterOption", "@{ IncludeVSCodeMarker = $True }",
-                "-CodeCoverage", "${workspaceFolder}\\Output\\*.psm1"
-            ],
             "presentation": {
                 "echo": true,
                 "reveal": "always",

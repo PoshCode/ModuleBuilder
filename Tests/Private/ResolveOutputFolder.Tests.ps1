@@ -1,5 +1,5 @@
+#requires -Module ModuleBuilder
 Describe "ResolveOutputFolder" {
-    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     Context "Given an OutputDirectory and ModuleBase" {
 

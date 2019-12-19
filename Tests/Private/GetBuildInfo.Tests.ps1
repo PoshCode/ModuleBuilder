@@ -1,6 +1,6 @@
+#requires -Module ModuleBuilder
 Describe "GetBuildInfo" {
     . $PSScriptRoot\..\Convert-FolderSeparator.ps1
-    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     Mock Import-Metadata -ModuleName ModuleBuilder {
         @{
