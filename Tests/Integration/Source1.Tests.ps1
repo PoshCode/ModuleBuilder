@@ -12,11 +12,11 @@ Describe "Build-Module With Source1" {
         $Metadata = Import-Metadata $Output.Path
 
         It "Should update FunctionsToExport in the manifest" {
-            $Metadata.FunctionsToExport | Should -Be @("Get-Source")
+            $Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
         }
 
         It "Should update AliasesToExport in the manifest" {
-            $Metadata.AliasesToExport | Should -Be @("GS")
+            $Metadata.AliasesToExport -match "GS" | Should -Not -BeNullOrEmpty
         }
 
         It "Should de-dupe and move using statements to the top of the file" {
@@ -76,5 +76,17 @@ Describe "Build-Module With Source1" {
         It "Will comment out the original using statement in the original positions" {
             (Select-String -Pattern "^#\s*using" -Path $Module).Count | Should -Be 2
         }
+    }
+
+    Context "Regression test for #84: Multiple Aliases per command will Export" {
+        $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -Passthru
+        $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
+
+        $Metadata = Import-Metadata $Output.Path
+
+        It "Should update AliasesToExport in the manifest" {
+            $Metadata.AliasesToExport | Should -Be @("GS","GSou", "SS", "SSou")
+        }
+
     }
 }
