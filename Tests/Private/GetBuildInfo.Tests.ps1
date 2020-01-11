@@ -47,7 +47,7 @@ Describe "GetBuildInfo" {
 
         It "Returns the resolved Module path, SourceDirectories, and overridden OutputDirectory (via Invocation param)" {
             # if set in build.psd1 it will stay the same (i.e. relative)
-            (Convert-FolderSeparator $Result.ModuleManifest) |
+            (Convert-FolderSeparator $Result.SourcePath) |
                 Should -Be (Convert-FolderSeparator "TestDrive:\MyModule\Source\MyModule.psd1")
 
             $Result.SourceDirectories | Should -Be @("Classes", "Public")
@@ -56,7 +56,7 @@ Describe "GetBuildInfo" {
     }
 
     Context 'Error when calling GetBuildInfo the wrong way' {
-        It 'Should throw if the ModuleManifestPath does not exist' {
+        It 'Should throw if the SourcePath does not exist' {
             {InModuleScope -ModuleName ModuleBuilder {
                 GetBuildInfo -BuildManifest TestDrive:\NOTEXIST\Source\build.psd1
             }} | Should -Throw

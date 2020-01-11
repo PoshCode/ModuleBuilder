@@ -13,20 +13,21 @@ Describe "InitializeBuild" {
             Version    = "1.0.0"
         }'
 
+        # Note that "Path" is an alias for "SourcePath"
         Set-Content "TestDrive:\build.psd1" '@{
-            SourcePath = "TestDrive:\Source"
-            ModuleManifest  = "Source\MyModule.psd1"
+            Path = ".\Source\MyModule.psd1"
             SourceDirectories = @("Classes", "Private", "Public")
         }'
 
         $Result = @{}
 
-        It "Handles Build-Module parameters and the build.psd1 configuration" {
+        It "Handles Build-Module parameters, and the build.psd1 configuration" {
             Push-Location TestDrive:\
             $Result.Result = InModuleScope -ModuleName ModuleBuilder {
                 function Test-Build {
                     [CmdletBinding()]
                     param(
+                        [Alias("ModuleManifest", "Path")]
                         $SourcePath = ".\Source",
                         $SourceDirectories = @("Enum", "Classes", "Private", "Public"),
                         $OutputDirectory = ".\Output",
@@ -34,7 +35,7 @@ Describe "InitializeBuild" {
                     )
                     try {
                         Write-Warning $($MyInvocation.MyCommand | Out-String)
-                        InitializeBuild -SourcePath $SourcePath
+                        InitializeBuild -SourcePath $SourcePath -Debug
                     } catch {
                         $_
                     }
@@ -52,7 +53,7 @@ Describe "InitializeBuild" {
             $Result.Name | Should -Be "MyModule"
             $result.ModuleType | Should -Be "Manifest"
             (Convert-FolderSeparator $Result.ModuleBase)      | Should -Be (Convert-FolderSeparator "TestDrive:\Source")
-            (Convert-FolderSeparator $Result.ModuleManifest)  | Should -Be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
+            (Convert-FolderSeparator $Result.SourcePath)  | Should -Be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
         }
 
         It "Returns default values from the Build Command" {
@@ -64,7 +65,7 @@ Describe "InitializeBuild" {
         }
 
         It "Returns overriden values from parameters" {
-            $Result.SourcePath | Should -Be 'TestDrive:\'
+            $Result.SourcePath | Should -Be (Convert-Path 'TestDrive:\Source\MyModule.psd1')
         }
     }
 }

@@ -36,7 +36,7 @@ function InitializeBuild {
     ) -join "|^"
 
     # Finally, add all the information in the module manifest to the return object
-    $ModuleInfo = Get-Module (Get-Item $BuildInfo.ModuleManifest).FullName -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
+    $ModuleInfo = Get-Module (Get-Item $BuildInfo.SourcePath).FullName -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
 
     # If there are any problems that count, fail
     if ($Problems = $Problems.Where({ $_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore })) {
