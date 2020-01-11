@@ -31,6 +31,7 @@ function SetModuleContent {
         [string]$Encoding = $(if($IsCoreCLR) { "UTF8Bom" } else { "UTF8" })
     )
     begin {
+        Write-Debug "SetModuleContent WorkingDirectory $WorkingDirectory"
         Push-Location $WorkingDirectory -StackName SetModuleContent
         $ContentStarted = $false # There has been no content yet
 
