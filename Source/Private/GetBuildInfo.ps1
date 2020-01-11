@@ -2,15 +2,7 @@ function GetBuildInfo {
     [CmdletBinding()]
     param(
         # The path to the Build Manifest Build.psd1
-        [Parameter(Mandatory)]
-        [ValidateScript( {
-                if ((Test-Path $_) -and (Split-path -Leaf $_) -eq 'build.psd1') {
-                    $true
-                }
-                else {
-                    throw "The Module Manifest must point to a valid build.psd1 Data file"
-                }
-            })]
+        [Parameter()][AllowNull()]
         [string]$BuildManifest,
 
         # Pass MyInvocation from the Build-Command so we can read parameter values
@@ -19,9 +11,23 @@ function GetBuildInfo {
         $BuildCommandInvocation
     )
 
-    # Read the Module Manifest configuration file for default parameter values
-    Write-Debug "Load Build Manifest $BuildManifest"
-    $BuildInfo = Import-Metadata -Path $BuildManifest
+    $BuildInfo = if ($BuildManifest -and (Test-Path $BuildManifest)) {
+        if ((Split-path -Leaf $BuildManifest) -eq 'build.psd1') {
+            $BuildManifestParent = if ($BuildManifest) {
+                Split-Path -Parent $BuildManifest
+            } else {
+                Get-Location -PSProvider FileSystem
+            }
+            # Read the Module Manifest configuration file for default parameter values
+            Write-Debug "Load Build Manifest $BuildManifest"
+            Import-Metadata -Path $BuildManifest
+        } else {
+            @{ SourcePath = $BuildManifest }
+        }
+    } else {
+        @{}
+    }
+
     $CommonParameters = [System.Management.Automation.Cmdlet]::CommonParameters +
                         [System.Management.Automation.Cmdlet]::OptionalCommonParameters
     $BuildParameters = $BuildCommandInvocation.MyCommand.Parameters
@@ -70,9 +76,6 @@ function GetBuildInfo {
     Write-Debug "Finished parsing Build Manifest $BuildManifest"
 
     $BuildInfo = $BuildInfo | Update-Object $ParameterValues
-
-    # Resolve Build Manifest's parent folder to find the Absolute path
-    $BuildManifestParent = (Split-Path -Parent $BuildManifest)
 
     # Resolve Module manifest if not defined in Build.psd1
     if (-Not $BuildInfo.SourcePath -and $BuildManifestParent) {

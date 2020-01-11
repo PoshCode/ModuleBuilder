@@ -9,7 +9,7 @@ function ResolveBuildManifest {
     if ((Split-Path $SourcePath -Leaf) -eq 'build.psd1') {
         $BuildManifest = $SourcePath
     } elseif (Test-Path $SourcePath -PathType Leaf) {
-        # When you pass the ModuleManifest as parameter, you must have the Build Manifest in the same folder
+        # When you pass the SourcePath as parameter, you must have the Build Manifest in the same folder
         $BuildManifest = Join-Path (Split-Path -Parent $SourcePath) [Bb]uild.psd1
     } else {
         # It's a container, assume the Build Manifest is directly under
@@ -19,9 +19,7 @@ function ResolveBuildManifest {
     # Make sure we are resolving the absolute path to the manifest, and test it exists
     $ResolvedBuildManifest = (Resolve-Path $BuildManifest -ErrorAction SilentlyContinue).Path
 
-    if (-Not ($ResolvedBuildManifest)) {
-        throw "Couldn't resolve the Build Manifest at $BuildManifest"
-    } else {
+    if ($ResolvedBuildManifest) {
         $ResolvedBuildManifest
     }
 

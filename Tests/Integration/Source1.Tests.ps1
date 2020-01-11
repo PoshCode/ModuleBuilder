@@ -86,6 +86,39 @@ Describe "Build-Module With Source1" {
         It "Should update AliasesToExport in the manifest" {
             $Metadata.AliasesToExport | Should -Be @("GS","GSou", "SS", "SSou")
         }
+    }
+
+    Context "Supports building without a build.psd1" {
+        Copy-Item  $PSScriptRoot\Source1 $PSScriptRoot\Copy1 -Recurse
+        Remove-Item $PSScriptRoot\Copy1\build.psd1
+        Rename-Item $PSScriptRoot\Copy1\Source1.psd1 Copy1.psd1
+
+        $Build = @{ }
+
+        It "No longer fails if there's no build.psd1" {
+            $BuildParameters = @{
+                SourcePath               = "$PSScriptRoot\Copy1\Copy1.psd1"
+                OutputDirectory          = "..\Result1"
+                VersionedOutputDirectory = $true
+            }
+
+            $Build.Output = Build-Module @BuildParameters -Passthru
+        }
+
+        Remove-Item -Recurse $PSScriptRoot\Copy1
+
+
+        It "Creates the same module as with a build.psd1" {
+            $Build.Metadata = Import-Metadata $Build.Output.Path
+        }
+
+        It "Should update AliasesToExport in the manifest" {
+            $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "SS", "SSou")
+        }
+
+        It "Should update FunctionsToExport in the manifest" {
+            $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
+        }
 
     }
 }
