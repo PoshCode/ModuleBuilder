@@ -46,9 +46,10 @@ function InitializeBuild {
         throw "Unresolvable problems in module manifest"
     }
 
+    # Workaround the fact that Get-Module returns the DefaultCommandPrefix as Prefix
+    $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject @{ DefaultCommandPrefix = $ModuleInfo.Prefix; Prefix = "" }
     # Update the module manifest with our build configuration
     $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
-    $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject @{ DefaultCommandPrefix = $ModuleInfo.Prefix; Prefix = "" }
 
     $ModuleInfo
 }
