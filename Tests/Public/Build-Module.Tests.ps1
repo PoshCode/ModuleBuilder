@@ -76,11 +76,11 @@ Describe "Build-Module" {
             # These are actually all the values that we need
             [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\1.0.0"
-                Name = "MyModule"
-                ModuleBase = "TestDrive:\MyModule\"
+                Name            = "MyModule"
+                ModuleBase      = "TestDrive:\MyModule\"
                 CopyDirectories = @()
-                Encoding = "UTF8"
-                PublicFilter = "Public\*.ps1"
+                Encoding        = "UTF8"
+                PublicFilter    = "Public\*.ps1"
             }
         }
 
@@ -162,11 +162,11 @@ Describe "Build-Module" {
             # These are actually all the values that we need
             [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\1.0.0"
-                Name = "MyModule"
-                ModuleBase = "TestDrive:\MyModule\"
+                Name            = "MyModule"
+                ModuleBase      = "TestDrive:\MyModule\"
                 CopyDirectories = @()
-                Encoding = "UTF8"
-                PublicFilter = "Public\*.ps1"
+                Encoding        = "UTF8"
+                PublicFilter    = "Public\*.ps1"
             }
         }
 
@@ -227,11 +227,11 @@ Describe "Build-Module" {
             # These are actually all the values that we need
             [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\$Version"
-                Name = "MyModule"
-                ModuleBase = "TestDrive:\MyModule\"
+                Name            = "MyModule"
+                ModuleBase      = "TestDrive:\MyModule\"
                 CopyDirectories = @()
-                Encoding = "UTF8"
-                PublicFilter = "Public\*.ps1"
+                Encoding        = "UTF8"
+                PublicFilter    = "Public\*.ps1"
             }
         }
 
@@ -326,8 +326,8 @@ Describe "Build-Module" {
     Context "Setting the version and pre-release" {
         # $SemVer = "1.0.0-beta03+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
         $SemVer = @{
-            Version = "1.0.0"
-            Prerelease = "beta03"
+            Version       = "1.0.0"
+            Prerelease    = "beta03"
             BuildMetadata = "Sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
         }
         $global:ExpectedVersion = "1.0.0"
@@ -342,11 +342,11 @@ Describe "Build-Module" {
             # These are actually all the values that we need
             [PSCustomObject]@{
                 OutputDirectory = "TestDrive:\$Version"
-                Name = "MyModule"
-                ModuleBase = "TestDrive:\MyModule\"
+                Name            = "MyModule"
+                ModuleBase      = "TestDrive:\MyModule\"
                 CopyDirectories = @()
-                Encoding = "UTF8"
-                PublicFilter = "Public\*.ps1"
+                Encoding        = "UTF8"
+                PublicFilter    = "Public\*.ps1"
             }
         }
 
@@ -536,7 +536,7 @@ Describe "Build-Module" {
 
         Mock GetBuildInfo -ModuleName ModuleBuilder {
             [PSCustomObject]@{
-                ModuleManifest    = "TestDrive:\MyModule.psd1"
+                SourcePath        = "TestDrive:\MyModule.psd1"
                 Version           = [Version]"1.0.0"
                 OutputDirectory   = "./output"
                 Encoding          = 'UTF8'

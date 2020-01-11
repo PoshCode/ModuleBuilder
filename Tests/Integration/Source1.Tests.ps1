@@ -80,7 +80,6 @@ Describe "Build-Module With Source1" {
 
     Context "Regression test for #84: Multiple Aliases per command will Export" {
         $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -Passthru
-        $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
 
         $Metadata = Import-Metadata $Output.Path
 

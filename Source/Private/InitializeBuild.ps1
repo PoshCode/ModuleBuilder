@@ -39,14 +39,14 @@ function InitializeBuild {
     $ModuleInfo = Get-Module (Get-Item $BuildInfo.ModuleManifest).FullName -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
 
     # If there are any problems that count, fail
-    if ($Problems = $Problems.Where( {$_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore})) {
+    if ($Problems = $Problems.Where({ $_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore })) {
         foreach ($problem in $Problems) {
             Write-Error $problem
         }
         throw "Unresolvable problems in module manifest"
     }
 
-    # Update the ModuleManifest with our build configuration
+    # Update the module manifest with our build configuration
     $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
     $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject @{ DefaultCommandPrefix = $ModuleInfo.Prefix; Prefix = "" }
 
