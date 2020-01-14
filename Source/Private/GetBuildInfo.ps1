@@ -13,11 +13,6 @@ function GetBuildInfo {
 
     $BuildInfo = if ($BuildManifest -and (Test-Path $BuildManifest)) {
         if ((Split-path -Leaf $BuildManifest) -eq 'build.psd1') {
-            $BuildManifestParent = if ($BuildManifest) {
-                Split-Path -Parent $BuildManifest
-            } else {
-                Get-Location -PSProvider FileSystem
-            }
             # Read the Module Manifest configuration file for default parameter values
             Write-Debug "Load Build Manifest $BuildManifest"
             Import-Metadata -Path $BuildManifest
@@ -77,20 +72,34 @@ function GetBuildInfo {
 
     $BuildInfo = $BuildInfo | Update-Object $ParameterValues
 
-    # Resolve Module manifest if not defined in Build.psd1
-    if (-Not $BuildInfo.SourcePath -and $BuildManifestParent) {
-        # Resolve Build Manifest's parent folder to find the Absolute path
-        $ModuleName = Split-Path -Leaf $BuildManifestParent
+    $BuildManifestParent = if ($BuildManifest) {
+        Split-Path -Parent $BuildManifest
+    } else {
+        Get-Location -PSProvider FileSystem
+    }
 
-        # If we're in a "well known" source folder, look higher for a name
-        if ($ModuleName -in 'Source', 'src') {
-            $ModuleName = Split-Path (Split-Path -Parent $BuildManifestParent) -Leaf
+    # Resolve Module manifest if not defined in Build.psd1 or there's no Build.psd1
+    if (-Not $BuildInfo.SourcePath) {
+        # Find a module manifest (or maybe several)
+        $ModuleInfo = Get-ChildItem $BuildManifestParent -Recurse -Filter *.psd1 -ErrorAction SilentlyContinue |
+            ImportModuleManifest -ErrorAction SilentlyContinue
+        # If we found more than one module info, the only way we have of picking just one is if it matches a folder name
+        if (@($ModuleInfo).Count -gt 1) {
+            # Resolve Build Manifest's parent folder to find the Absolute path
+            $ModuleName = Split-Path -Leaf $BuildManifestParent
+            # If we're in a "well known" source folder, look higher for a name
+            if ($ModuleName -in 'Source', 'src') {
+                $ModuleName = Split-Path (Split-Path -Parent $BuildManifestParent) -Leaf
+            }
+            $ModuleInfo = @($ModuleInfo).Where{ $_.Name -eq $ModuleName }
         }
-
-        # As the Module Manifest did not specify the Module manifest, we expect the Module manifest in same folder
-        $SourcePath = Join-Path $BuildManifestParent "$ModuleName.psd1"
-        Write-Debug "Updating BuildInfo SourcePath to $SourcePath"
-        $BuildInfo = $BuildInfo | Update-Object @{ SourcePath = $SourcePath }
+        if (@($ModuleInfo).Count -eq 1) {
+            Write-Debug "Updating BuildInfo SourcePath to $SourcePath"
+            $BuildInfo = $BuildInfo | Update-Object @{ SourcePath = $ModuleInfo.Path }
+        }
+        if (-Not $BuildInfo.SourcePath) {
+            throw "Can't find a module manifest in $BuildManifestParent"
+        }
     }
 
     # Make sure the Path is set and points at the actual manifest, relative to Build.psd1 or absolute

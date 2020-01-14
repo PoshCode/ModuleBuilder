@@ -29,27 +29,11 @@ function InitializeBuild {
     Write-Debug "BuildCommand: $($BuildCommandInvocation.MyCommand | Out-String)"
     $BuildInfo = GetBuildInfo -BuildManifest $BuildManifest -BuildCommandInvocation $BuildCommandInvocation
 
-    # These errors are caused by trying to parse valid module manifests without compiling the module first
-    $ErrorsWeIgnore = "^" + @(
-        "Modules_InvalidRequiredModulesinModuleManifest"
-        "Modules_InvalidRootModuleInModuleManifest"
-    ) -join "|^"
-
     # Finally, add all the information in the module manifest to the return object
-    $ModuleInfo = Get-Module (Get-Item $BuildInfo.SourcePath).FullName -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
-
-    # If there are any problems that count, fail
-    if ($Problems = $Problems.Where({ $_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore })) {
-        foreach ($problem in $Problems) {
-            Write-Error $problem
-        }
-        throw "Unresolvable problems in module manifest"
+    if ($ModuleInfo = ImportModuleManifest $BuildInfo.SourcePath) {
+        # Update the module manifest with our build configuration and output it
+        Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
+    } else {
+        throw "Unresolvable problems in module manifest: '$($BuildInfo.SourcePath)'"
     }
-
-    # Workaround the fact that Get-Module returns the DefaultCommandPrefix as Prefix
-    $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject @{ DefaultCommandPrefix = $ModuleInfo.Prefix; Prefix = "" }
-    # Update the module manifest with our build configuration
-    $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
-
-    $ModuleInfo
 }
