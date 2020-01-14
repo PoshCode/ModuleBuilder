@@ -531,7 +531,7 @@ Describe "Build-Module" {
     Context "Does not fall over if you build from the drive root" {
 
         $null = New-Item "TestDrive:\build.psd1" -Type File -Force -Value "@{}"
-        $null = New-Item "TestDrive:\MyModule.psd1" -Type File -Force -value '@{ModuleVersion="1.0.0";Author="TEST"}'
+        $null = New-ModuleManifest "TestDrive:\MyModule.psd1" -ModuleVersion "1.0.0" -Author "Tester"
         $null = New-Item "TestDrive:\Public\Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
 
         Mock GetBuildInfo -ModuleName ModuleBuilder {

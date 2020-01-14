@@ -4,20 +4,15 @@ Describe "InitializeBuild" {
 
     Context "It collects the initial data" {
 
-        New-Item "TestDrive:\Source\build.psd1" -Type File -Force
-        New-Item "TestDrive:\Source\MyModule.psd1" -Type File -Force
-
-        Set-Content "TestDrive:\Source\MyModule.psd1" '@{
-            RootModule = "MyModule.psm1"
-            Author     = "Test Manager"
-            Version    = "1.0.0"
-        }'
-
         # Note that "Path" is an alias for "SourcePath"
-        Set-Content "TestDrive:\build.psd1" '@{
+        New-Item "TestDrive:\build.psd1" -Type File -Force -Value '@{
             Path = ".\Source\MyModule.psd1"
             SourceDirectories = @("Classes", "Private", "Public")
         }'
+
+        New-Item "TestDrive:\Source\" -Type Directory
+
+        New-ModuleManifest "TestDrive:\Source\MyModule.psd1" -RootModule "MyModule.psm1" -Author "Test Manager" -ModuleVersion "1.0.0"
 
         $Result = @{}
 
@@ -35,7 +30,7 @@ Describe "InitializeBuild" {
                     )
                     try {
                         Write-Warning $($MyInvocation.MyCommand | Out-String)
-                        InitializeBuild -SourcePath $SourcePath -Debug
+                        InitializeBuild -SourcePath $SourcePath
                     } catch {
                         $_
                     }
@@ -51,8 +46,8 @@ Describe "InitializeBuild" {
 
         It "Returns the ModuleInfo combined with the BuildInfo" {
             $Result.Name | Should -Be "MyModule"
-            $result.ModuleType | Should -Be "Manifest"
-            (Convert-FolderSeparator $Result.ModuleBase)      | Should -Be (Convert-FolderSeparator "TestDrive:\Source")
+            $Result.SourceDirectories | Should -Be @("Classes", "Private", "Public")
+            (Convert-FolderSeparator $Result.ModuleBase)  | Should -Be (Convert-FolderSeparator "TestDrive:\Source")
             (Convert-FolderSeparator $Result.SourcePath)  | Should -Be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
         }
 

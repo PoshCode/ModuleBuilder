@@ -11,8 +11,9 @@ Describe "GetBuildInfo" {
 
     Context "It collects the initial data" {
 
-        New-Item "TestDrive:\MyModule\Source\build.psd1" -Type File -Force
-        New-Item "TestDrive:\MyModule\Source\MyModule.psd1" -Type File -Force
+        # use -Force to create the subdirectories
+        New-Item -Force "TestDrive:\MyModule\Source\build.psd1" -Type File -Value "@{ Path = 'MyModule.psd1' }"
+        New-ModuleManifest "TestDrive:\MyModule\Source\MyModule.psd1" -Author Tester
 
         $Result = InModuleScope -ModuleName ModuleBuilder {
 
@@ -68,18 +69,12 @@ Describe "GetBuildInfo" {
             }} | Should -Throw
         }
 
-        It 'Should throw if the Module manifest does not exists' {
+        It 'Should throw if the Module manifest does not exist' {
+            # use -Force to create the subdirectories
             New-Item -Force TestDrive:\NoModuleManifest\Source\build.psd1 -ItemType File
             {InModuleScope -ModuleName ModuleBuilder {
                     GetBuildInfo -BuildManifest TestDrive:\NoModuleManifest\Source\build.psd1
             }} | Should -Throw
         }
     }
-
-    Context "Invalid module manifest" {
-        # In the current PowerShell 5.1 and 6.1
-        # I can't make Get-Module -ListAvailable throw on a manifest
-        # So I can't test the if($Problems = ... code
-    }
-
 }
