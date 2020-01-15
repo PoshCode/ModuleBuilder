@@ -17,6 +17,7 @@ function GetBuildInfo {
             Write-Debug "Load Build Manifest $BuildManifest"
             Import-Metadata -Path $BuildManifest
         } else {
+            Write-Debug "Use SourcePath $BuildManifest"
             @{ SourcePath = $BuildManifest }
         }
     } else {
@@ -48,11 +49,9 @@ function GetBuildInfo {
                     $null = $BuildInfo.Remove($k)
                 }
             }
-            # !$BuildInfo.ContainsKey($key) -or $BoundParameters.ContainsKey($key)
-
-            # The SourcePath is special: we overwrite the parameter value with the Build.psd1 value
-            # Otherwise, we overwrite build.psd1 values with bound parameters values
-            if (($key -ne "SourcePath" -or -not $BuildInfo.SourcePath) -and (-not $BuildInfo.ContainsKey($key) -or $BoundParameters.ContainsKey($key))) {
+            # Bound parameter values > build.psd1 values > default parameters values
+            if (-not $BuildInfo.ContainsKey($key) -or $BoundParameters.ContainsKey($key)) {
+                # Reading the current value of the $key variable returns either the bound parameter or the default
                 if ($null -ne ($value = Get-Variable -Name $key -ValueOnly -ErrorAction Ignore )) {
                     if ($value -ne ($null -as $parameter.Value.ParameterType)) {
                         $ParameterValues[$key] = $value
@@ -68,9 +67,18 @@ function GetBuildInfo {
             }
         }
     }
+    # BuildInfo.SourcePath should point to a module manifest
+    if ($BuildInfo.SourcePath -and $BuildInfo.SourcePath -ne $BuildManifest) {
+        $ParameterValues["SourcePath"] = $BuildInfo.SourcePath
+    }
+    # If SourcePath point to build.psd1, we should clear it
+    if ($ParameterValues["SourcePath"] -eq $BuildManifest) {
+        $ParameterValues.Remove("SourcePath")
+    }
     Write-Debug "Finished parsing Build Manifest $BuildManifest"
 
     $BuildInfo = $BuildInfo | Update-Object $ParameterValues
+    Write-Debug "Using Module Manifest $($BuildInfo.SourcePath)"
 
     $BuildManifestParent = if ($BuildManifest) {
         Split-Path -Parent $BuildManifest
@@ -78,7 +86,6 @@ function GetBuildInfo {
         Get-Location -PSProvider FileSystem
     }
 
-    # Resolve Module manifest if not defined in Build.psd1 or there's no Build.psd1
     if (-Not $BuildInfo.SourcePath) {
         # Find a module manifest (or maybe several)
         $ModuleInfo = Get-ChildItem $BuildManifestParent -Recurse -Filter *.psd1 -ErrorAction SilentlyContinue |
@@ -94,7 +101,7 @@ function GetBuildInfo {
             $ModuleInfo = @($ModuleInfo).Where{ $_.Name -eq $ModuleName }
         }
         if (@($ModuleInfo).Count -eq 1) {
-            Write-Debug "Updating BuildInfo SourcePath to $SourcePath"
+            Write-Debug "Updating BuildInfo SourcePath to $($ModuleInfo.Path)"
             $BuildInfo = $BuildInfo | Update-Object @{ SourcePath = $ModuleInfo.Path }
         }
         if (-Not $BuildInfo.SourcePath) {
@@ -102,13 +109,12 @@ function GetBuildInfo {
         }
     }
 
-    # Make sure the Path is set and points at the actual manifest, relative to Build.psd1 or absolute
+    # Make sure the SourcePath is absolute and points at an actual file
     if (!(Split-Path -IsAbsolute $BuildInfo.SourcePath) -and $BuildManifestParent) {
         $BuildInfo.SourcePath = Join-Path $BuildManifestParent $BuildInfo.SourcePath | Convert-Path
     } else {
         $BuildInfo.SourcePath = Convert-Path $BuildInfo.SourcePath
     }
-
     if (!(Test-Path $BuildInfo.SourcePath)) {
         throw "Can't find module manifest at the specified SourcePath: $($BuildInfo.SourcePath)"
     }
