@@ -1,5 +1,5 @@
+#requires -Module ModuleBuilder
 Describe "MoveUsingStatements" {
-
     Context "Necessary Parameters" {
         $CommandInfo = InModuleScope ModuleBuilder { Get-Command MoveUsingStatements }
 
@@ -96,7 +96,7 @@ Describe "MoveUsingStatements" {
         $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
             $null = Mock Write-Warning {}
             $null = Mock Set-Content {}
-            $null = Mock Write-Debug {} -ParameterFilter {$Message -eq "No Using Statement Error found." }
+            $null = Mock Write-Debug {} -ParameterFilter { $Message -eq "No using statement errors found." }
 
             {   param($RootModule)
                 ConvertToAst $RootModule | MoveUsingStatements
@@ -113,18 +113,17 @@ Describe "MoveUsingStatements" {
             Assert-MockCalled -CommandName Set-Content -Times 0 -ModuleName ModuleBuilder
         }
 
-        It 'Should not do anything when there are no Using Statements Errors' {
-
+        It 'Should not do anything when there are no using statement errors' {
             $testModuleFile = "$TestDrive\MyModule.psm1"
-            $PSM1File = "Using namespace System.IO; function x {}"
+            $PSM1File = "using namespace System.IO; function x {}"
             Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
 
-            &$MoveUsingStatementsCmd -RootModule $testModuleFile
+            &$MoveUsingStatementsCmd -RootModule $testModuleFile -Debug
 
-            Assert-MockCalled -CommandName Write-Debug -Times 1 -ModuleName ModuleBuilder
-            Assert-MockCalled -CommandName Set-Content -Times 0 -ModuleName ModuleBuilder
             (Get-Content -Raw $testModuleFile).Trim() | Should -Be $PSM1File
 
+            Assert-MockCalled -CommandName Set-Content -Times 0 -ModuleName ModuleBuilder
+            Assert-MockCalled -CommandName Write-Debug -Times 1 -ModuleName ModuleBuilder
         }
 
 
