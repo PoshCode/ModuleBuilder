@@ -26,7 +26,11 @@ function InitializeBuild {
     # GetBuildInfo reads the parameter values from the Build-Module command and combines them with the Manifest values
     $BuildManifest = ResolveBuildManifest $SourcePath
 
-    Write-Debug "BuildCommand: $($BuildCommandInvocation.MyCommand | Out-String)"
+    Write-Debug "BuildCommand: $(
+        @(
+            @($BuildCommandInvocation.MyCommand.Name)
+            @($BuildCommandInvocation.BoundParameters.GetEnumerator().ForEach{ "-{0} '{1}'" -f $_.Key, $_.Value })
+        ) -join ' ')"
     $BuildInfo = GetBuildInfo -BuildManifest $BuildManifest -BuildCommandInvocation $BuildCommandInvocation
 
     # Finally, add all the information in the module manifest to the return object
