@@ -26,29 +26,18 @@ function InitializeBuild {
     # GetBuildInfo reads the parameter values from the Build-Module command and combines them with the Manifest values
     $BuildManifest = ResolveBuildManifest $SourcePath
 
-    Write-Debug "BuildCommand: $($BuildCommandInvocation.MyCommand | Out-String)"
+    Write-Debug "BuildCommand: $(
+        @(
+            @($BuildCommandInvocation.MyCommand.Name)
+            @($BuildCommandInvocation.BoundParameters.GetEnumerator().ForEach{ "-{0} '{1}'" -f $_.Key, $_.Value })
+        ) -join ' ')"
     $BuildInfo = GetBuildInfo -BuildManifest $BuildManifest -BuildCommandInvocation $BuildCommandInvocation
 
-    # These errors are caused by trying to parse valid module manifests without compiling the module first
-    $ErrorsWeIgnore = "^" + @(
-        "Modules_InvalidRequiredModulesinModuleManifest"
-        "Modules_InvalidRootModuleInModuleManifest"
-    ) -join "|^"
-
     # Finally, add all the information in the module manifest to the return object
-    $ModuleInfo = Get-Module (Get-Item $BuildInfo.ModuleManifest).FullName -ListAvailable -WarningAction SilentlyContinue -ErrorAction SilentlyContinue -ErrorVariable Problems
-
-    # If there are any problems that count, fail
-    if ($Problems = $Problems.Where( {$_.FullyQualifiedErrorId -notmatch $ErrorsWeIgnore})) {
-        foreach ($problem in $Problems) {
-            Write-Error $problem
-        }
-        throw "Unresolvable problems in module manifest"
+    if ($ModuleInfo = ImportModuleManifest $BuildInfo.SourcePath) {
+        # Update the module manifest with our build configuration and output it
+        Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
+    } else {
+        throw "Unresolvable problems in module manifest: '$($BuildInfo.SourcePath)'"
     }
-
-    # Update the ModuleManifest with our build configuration
-    $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject $BuildInfo
-    $ModuleInfo = Update-Object -InputObject $ModuleInfo -UpdateObject @{ DefaultCommandPrefix = $ModuleInfo.Prefix; Prefix = "" }
-
-    $ModuleInfo
 }

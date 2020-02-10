@@ -1,5 +1,5 @@
+#requires -Module ModuleBuilder
 Describe "ConvertToAst" {
-    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     Context "It returns a ParseResult for file paths" {
         $ParseResult = InModuleScope ModuleBuilder {

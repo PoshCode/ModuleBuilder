@@ -1,32 +1,28 @@
+#requires -Module ModuleBuilder
 Describe "InitializeBuild" {
     . $PSScriptRoot\..\Convert-FolderSeparator.ps1
-    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     Context "It collects the initial data" {
 
-        New-Item "TestDrive:\Source\build.psd1" -Type File -Force
-        New-Item "TestDrive:\Source\MyModule.psd1" -Type File -Force
-
-        Set-Content "TestDrive:\Source\MyModule.psd1" '@{
-            RootModule = "MyModule.psm1"
-            Author     = "Test Manager"
-            Version    = "1.0.0"
-        }'
-
-        Set-Content "TestDrive:\build.psd1" '@{
-            SourcePath = "TestDrive:\Source"
-            ModuleManifest  = "Source\MyModule.psd1"
+        # Note that "Path" is an alias for "SourcePath"
+        New-Item "TestDrive:\build.psd1" -Type File -Force -Value '@{
+            Path = ".\Source\MyModule.psd1"
             SourceDirectories = @("Classes", "Private", "Public")
         }'
 
+        New-Item "TestDrive:\Source\" -Type Directory
+
+        New-ModuleManifest "TestDrive:\Source\MyModule.psd1" -RootModule "MyModule.psm1" -Author "Test Manager" -ModuleVersion "1.0.0"
+
         $Result = @{}
 
-        It "Handles Build-Module parameters and the build.psd1 configuration" {
+        It "Handles Build-Module parameters, and the build.psd1 configuration" {
             Push-Location TestDrive:\
             $Result.Result = InModuleScope -ModuleName ModuleBuilder {
                 function Test-Build {
                     [CmdletBinding()]
                     param(
+                        [Alias("ModuleManifest", "Path")]
                         $SourcePath = ".\Source",
                         $SourceDirectories = @("Enum", "Classes", "Private", "Public"),
                         $OutputDirectory = ".\Output",
@@ -50,9 +46,9 @@ Describe "InitializeBuild" {
 
         It "Returns the ModuleInfo combined with the BuildInfo" {
             $Result.Name | Should -Be "MyModule"
-            $result.ModuleType | Should -Be "Manifest"
-            (Convert-FolderSeparator $Result.ModuleBase)      | Should -Be (Convert-FolderSeparator "TestDrive:\Source")
-            (Convert-FolderSeparator $Result.ModuleManifest)  | Should -Be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
+            $Result.SourceDirectories | Should -Be @("Classes", "Private", "Public")
+            (Convert-FolderSeparator $Result.ModuleBase)  | Should -Be (Convert-FolderSeparator "TestDrive:\Source")
+            (Convert-FolderSeparator $Result.SourcePath)  | Should -Be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
         }
 
         It "Returns default values from the Build Command" {
@@ -64,7 +60,7 @@ Describe "InitializeBuild" {
         }
 
         It "Returns overriden values from parameters" {
-            $Result.SourcePath | Should -Be 'TestDrive:\'
+            $Result.SourcePath | Should -Be (Convert-Path 'TestDrive:\Source\MyModule.psd1')
         }
     }
 }

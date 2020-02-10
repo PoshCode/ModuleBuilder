@@ -1,5 +1,5 @@
+#requires -Module ModuleBuilder
 Describe "ResolveBuildManifest" {
-    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot\..\..\Source
 
@@ -25,16 +25,22 @@ Describe "ResolveBuildManifest" {
         $Expected | Should -Be (Join-Path ${Global:Test Root Path} "build.psd1")
     }
 
-    It "Should throw when passed a wrong absolute module manifest" {
-        {InModuleScope ModuleBuilder { ResolveBuildManifest (Join-Path (Join-Path ${Global:Test Root Path} ERROR) ModuleBuilder.psd1) }} | Should -Throw
+    It "Returns nothing when passed a wrong absolute module manifest" {
+        InModuleScope ModuleBuilder {
+            ResolveBuildManifest (Join-Path (Join-Path ${Global:Test Root Path} ERROR) ModuleBuilder.psd1) | Should -BeNullOrEmpty
+        }
     }
 
-    It "Should throw when passed the wrong folder path" {
-        {InModuleScope ModuleBuilder { ResolveBuildManifest (Join-Path ${Global:Test Root Path} "..") }} | Should -Throw
+    It "Returns nothing when passed the wrong folder path" {
+        InModuleScope ModuleBuilder {
+            ResolveBuildManifest (Join-Path ${Global:Test Root Path} "..") | Should -BeNullOrEmpty
+        }
     }
 
-    It "Should throw when passed the wrong folder relative path" {
-        {InModuleScope ModuleBuilder { ResolveBuildManifest (Join-Path . ..) }} | Should -Throw
+    It "Returns nothing when passed the wrong folder relative path" {
+        InModuleScope ModuleBuilder {
+            ResolveBuildManifest (Join-Path . ..) | Should -BeNullOrEmpty
+        }
     }
 
 }

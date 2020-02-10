@@ -32,12 +32,12 @@ function MoveUsingStatements {
 
     # Avoid modifying the file if there's no Parsing Error caused by Using Statements or other errors
     if (!$ParseErrors.Where{$_.ErrorId -eq 'UsingMustBeAtStartOfScript'}) {
-        Write-Debug "No Using Statement Error found."
+        Write-Debug "No using statement errors found."
         return
     }
     # Avoid modifying the file if there's other parsing errors than Using Statements misplaced
     if ($ParseErrors.Where{$_.ErrorId -ne 'UsingMustBeAtStartOfScript'}) {
-        Write-Warning "Parsing errors found. Skipping Moving Using statements."
+        Write-Warning "Parsing errors found. Skipping moving using statements."
         return
     }
 
@@ -71,9 +71,8 @@ function MoveUsingStatements {
     )
 
     if ($ParseErrors) {
-        Write-Warning "Oops, it seems that we introduced parsing error(s) while moving the Using Statements. Cancelling changes."
-    }
-    else {
+        Write-Warning "We introduced parsing error(s) while attempting to move using statements. Cancelling changes."
+    } else {
         $null = Set-Content -Value $ScriptText -Path $RootModule -Encoding $Encoding
     }
 }

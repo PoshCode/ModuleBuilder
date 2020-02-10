@@ -1,5 +1,5 @@
+#requires -Module ModuleBuilder
 Describe "Convert-LineNumber" {
-    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     $ModulePath = Join-Path (Get-Module ModuleBuilder).ModuleBase ModuleBuilder.psm1
     $ModuleContent = Get-Content $ModulePath

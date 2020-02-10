@@ -1,5 +1,5 @@
+#requires -Module ModuleBuilder
 Describe "GetCommandAlias" {
-    Import-Module ModuleBuilder -DisableNameChecking -Verbose:$False
 
     Context "Mandatory Parameter" {
         $CommandInfo = InModuleScope ModuleBuilder { Get-Command GetCommandAlias }

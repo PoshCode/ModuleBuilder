@@ -98,12 +98,15 @@ For best results, you need to organize your module project similarly to how this
 
 1. Create a `source` folder with a `build.psd1` file and your module manifest in it
 2. In the `build.psd1` specify the relative **Path** to your module's manifest, e.g. `@{ Path = "ModuleBuilder.psd1" }`
-3. In your manifest, make sure the `FunctionsToExport` entry is not commented out. You can leave it empty
+3. In your manifest, make sure a few values are not commented out. You can leave them empty, because they'll be overwritten:
+    - `FunctionsToExport` will be updated with the _file names_ that match the `PublicFilter`
+    - `AliasesToExport` will be updated with the values from `[Alias()]` attributes on commands
+    - `Prerelease` and `ReleaseNotes` in the `PSData` hashtable in `PrivateData`
 
 Once you start working on the module, you'll create sub-folders in source, and put script files in them with only **one** function in each file. You should name the files with _the same name_ as the function that's in them -- especially in the public folder, where we use the file name (without the extension) to determine the exported functions.
 
 1. By convention, use folders named "Classes" (and/or "Enum"), "Private", and "Public"
-2. By convention, the functions in "Public" will be exported from the module
+2. By convention, the functions in "Public" will be exported from the module (you can override the `PublicFilter`)
 3. To force classes to be in a certain order, you can prefix their file names with numbers, like `01-User.ps1`
 
 There are a *lot* of conventions in `Build-Module`, expressed as default values for its parameters. These defaults are documented in the help for Build-Module. You can override any parameter to `Build-Module` by passing it, or by adding keys to the `build.psd1` file with your preferences.
