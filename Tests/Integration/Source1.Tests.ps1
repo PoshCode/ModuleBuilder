@@ -88,7 +88,7 @@ Describe "Regression test for #84: Multiple Aliases per command will Export" -Ta
 }
 
 Describe "Supports building without a build.psd1" -Tag Integration {
-    Copy-Item  $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
+    Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
     Remove-Item TestDrive:\Source1\build.psd1
 
     $Build = @{ }
@@ -114,6 +114,38 @@ Describe "Supports building without a build.psd1" -Tag Integration {
     It "Should update FunctionsToExport in the manifest" {
         $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
     }
+}
+Describe "Supports building without a build.psd1 and not specifying a module manifest" -Tag Integration {
+    Copy-Item $PSScriptRoot\Source1 TestDrive:\source -Recurse
+    Remove-Item TestDrive:\source\build.psd1
+
+    Push-Location -StackName 'IntegrationTest' -Path TestDrive:\
+
+    $Build = @{ }
+
+    It "No longer fails if there's no build.psd1" {
+        $BuildParameters = @{
+            SourcePath               = "TestDrive:\source"
+            OutputDirectory          = "TestDrive:\Result1"
+            VersionedOutputDirectory = $true
+        }
+
+        $Build.Output = Build-Module @BuildParameters -Passthru
+    }
+
+    It "Creates the same module as with a build.psd1" {
+        $Build.Metadata = Import-Metadata $Build.Output.Path
+    }
+
+    It "Should update AliasesToExport in the manifest" {
+        $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "SS", "SSou")
+    }
+
+    It "Should update FunctionsToExport in the manifest" {
+        $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
+    }
+
+    Pop-Location -StackName 'IntegrationTest'
 }
 
 Describe "Regression test for #88 not copying prefix files" -Tag Integration, Regression {

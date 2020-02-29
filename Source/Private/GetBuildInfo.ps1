@@ -77,16 +77,13 @@ function GetBuildInfo {
     }
     Write-Debug "Finished parsing Build Manifest $BuildManifest"
 
-    $BuildInfo = $BuildInfo | Update-Object $ParameterValues
-    Write-Debug "Using Module Manifest $($BuildInfo.SourcePath)"
-
     $BuildManifestParent = if ($BuildManifest) {
         Split-Path -Parent $BuildManifest
     } else {
         Get-Location -PSProvider FileSystem
     }
 
-    if (-Not $BuildInfo.SourcePath) {
+    if ((-not $BuildInfo.SourcePath) -and $ParameterValues["SourcePath"] -notmatch '\.psd1') {
         # Find a module manifest (or maybe several)
         $ModuleInfo = Get-ChildItem $BuildManifestParent -Recurse -Filter *.psd1 -ErrorAction SilentlyContinue |
             ImportModuleManifest -ErrorAction SilentlyContinue
@@ -102,12 +99,15 @@ function GetBuildInfo {
         }
         if (@($ModuleInfo).Count -eq 1) {
             Write-Debug "Updating BuildInfo SourcePath to $($ModuleInfo.Path)"
-            $BuildInfo = $BuildInfo | Update-Object @{ SourcePath = $ModuleInfo.Path }
+            $ParameterValues["SourcePath"] = $ModuleInfo.Path
         }
-        if (-Not $BuildInfo.SourcePath) {
+        if (-Not $ModuleInfo) {
             throw "Can't find a module manifest in $BuildManifestParent"
         }
     }
+
+    $BuildInfo = $BuildInfo | Update-Object $ParameterValues
+    Write-Debug "Using Module Manifest $($BuildInfo.SourcePath)"
 
     # Make sure the SourcePath is absolute and points at an actual file
     if (!(Split-Path -IsAbsolute $BuildInfo.SourcePath) -and $BuildManifestParent) {
