@@ -276,5 +276,6 @@ function Build-Module {
         } finally {
             Pop-Location -StackName Build-Module -ErrorAction SilentlyContinue
         }
+        Write-Progress "Building $($ModuleInfo.Name)" -Completed
     }
 }
