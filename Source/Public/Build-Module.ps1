@@ -17,7 +17,7 @@ function Build-Module {
             The optimization process:
             1. The OutputDirectory is created
             2. All psd1/psm1/ps1xml files (except build.psd1) in the Source will be copied to the output
-            3. If specified, $CopyDirectories (relative to the Source) will be copied to the output
+            3. If specified, $CopyPaths (relative to the Source) will be copied to the output
             4. The ModuleName.psm1 will be generated (overwritten completely) by concatenating all .ps1 files in the $SourceDirectories subdirectories
             5. The ModuleVersion and ExportedFunctions in the ModuleName.psd1 may be updated (depending on parameters)
 
@@ -88,7 +88,8 @@ function Build-Module {
         # Folders which should be copied intact to the module output
         # Can be relative to the  module folder
         [AllowEmptyCollection()]
-        [string[]]$CopyDirectories = @(),
+        [Alias("CopyDirectories")]
+        [string[]]$CopyPaths = @(),
 
         # Folders which contain source .ps1 scripts to be concatenated into the module
         # Defaults to Enum, Classes, Private, Public
@@ -194,9 +195,9 @@ function Build-Module {
             Write-Verbose "Copy files to $OutputDirectory"
             # Copy the files and folders which won't be processed
             Copy-Item *.psm1, *.psd1, *.ps1xml -Exclude "build.psd1" -Destination $OutputDirectory -Force
-            if ($ModuleInfo.CopyDirectories) {
-                Write-Verbose "Copy Entire Directories: $($ModuleInfo.CopyDirectories)"
-                Copy-Item -Path $ModuleInfo.CopyDirectories -Recurse -Destination $OutputDirectory -Force
+            if ($ModuleInfo.CopyPaths) {
+                Write-Verbose "Copy Entire Directories: $($ModuleInfo.CopyPaths)"
+                Copy-Item -Path $ModuleInfo.CopyPaths -Recurse -Destination $OutputDirectory -Force
             }
 
             Write-Verbose "Combine scripts to $RootModule"

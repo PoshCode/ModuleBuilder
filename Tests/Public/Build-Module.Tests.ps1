@@ -49,6 +49,14 @@ Describe "Build-Module" {
             $parameters["Target"].Attributes.Where{$_ -is [ValidateSet]}.ValidValues | Should -Be "Clean", "Build", "CleanBuild"
         }
 
+        It "supports an optional string array parameter CopyPaths (which used to be CopyDirectories)" {
+            $parameters.ContainsKey("CopyPaths") | Should -Be $true
+
+            # Techincally we could implement this a few other ways ...
+            $parameters["CopyPaths"].ParameterType | Should -Be ([string[]])
+            $parameters["CopyPaths"].Aliases | Should -Contain "CopyDirectories"
+        }
+
         It "has an Passthru switch parameter" {
             $parameters.ContainsKey("Passthru") | Should -Be $true
             $parameters["Passthru"].ParameterType | Should -Be ([switch])
@@ -229,7 +237,7 @@ Describe "Build-Module" {
                 OutputDirectory = "TestDrive:\$Version"
                 Name            = "MyModule"
                 ModuleBase      = "TestDrive:\MyModule\"
-                CopyDirectories = @()
+                CopyPaths = @()
                 Encoding        = "UTF8"
                 PublicFilter    = "Public\*.ps1"
             }
@@ -344,7 +352,7 @@ Describe "Build-Module" {
                 OutputDirectory = "TestDrive:\$Version"
                 Name            = "MyModule"
                 ModuleBase      = "TestDrive:\MyModule\"
-                CopyDirectories = @()
+                CopyPaths = @()
                 Encoding        = "UTF8"
                 PublicFilter    = "Public\*.ps1"
             }
@@ -455,7 +463,7 @@ Describe "Build-Module" {
                     OutputDirectory = "TestDrive:\$Version"
                     Name            = "MyModule"
                     ModuleBase      = "TestDrive:\MyModule\"
-                    CopyDirectories = @()
+                    CopyPaths = @()
                     Encoding        = "UTF8"
                     PublicFilter    = "Public\*.ps1"
                 }
@@ -549,6 +557,40 @@ Describe "Build-Module" {
         It "Builds the Module in the designated output folder" {
             $Result.ModuleBase | Should -Be ("TestDrive:\output" | Convert-Path).TrimEnd('\')
             'TestDrive:\output\MyModule.psm1' | Should -FileContentMatch 'MATCHING TEST CONTENT'
+        }
+    }
+
+    Context "Copies additional items specified in CopyPaths" {
+
+        $null = New-Item "TestDrive:\build.psd1" -Type File -Force -Value "@{}"
+        $null = New-ModuleManifest "TestDrive:\MyModule.psd1" -ModuleVersion "1.0.0" -Author "Tester"
+        $null = New-Item "TestDrive:\Public\Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
+        $null = New-Item "TestDrive:\MyModule.format.ps1xml" -Type File -Value '<Configuration />' -Force
+        $null = New-Item "TestDrive:\lib\imaginary1.dll" -Type File -Value '1' -Force
+        $null = New-Item "TestDrive:\lib\subdir\imaginary2.dll" -Type File -Value '2' -Force
+
+        Mock GetBuildInfo -ModuleName ModuleBuilder {
+            [PSCustomObject]@{
+                SourcePath        = "TestDrive:\MyModule.psd1"
+                Version           = [Version]"1.0.0"
+                OutputDirectory   = "./output"
+                CopyPaths         = "./lib", "./MyModule.format.ps1xml"
+                Encoding          = 'UTF8'
+                SourceDirectories = @('Public')
+            }
+        }
+
+        $Result = Build-Module -SourcePath 'TestDrive:\build.psd1' -OutputDirectory '.\output' -Passthru -Target Build
+
+        It "Copies single files that are in CopyPaths" {
+            $Result.ModuleBase | Should -Be ("TestDrive:\output" | Convert-Path).TrimEnd('\')
+            'TestDrive:\output\MyModule.format.ps1xml' | Should -Exist
+            'TestDrive:\output\MyModule.format.ps1xml' | Should -FileContentMatch '<Configuration />'
+        }
+
+        It "Recursively copies all the files in folders that are in CopyPaths" {
+            'TestDrive:\output\lib\imaginary1.dll' | Should -FileContentMatch '1'
+            'TestDrive:\output\lib\subdir\imaginary2.dll' | Should -FileContentMatch '2'
         }
     }
 }
