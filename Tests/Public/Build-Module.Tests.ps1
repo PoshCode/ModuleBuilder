@@ -9,6 +9,9 @@ Describe "Build-Module" {
             $parameters["SourcePath"].ParameterType | Should -Be ([string])
             $parameters["SourcePath"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
         }
+        It "throws if the SourcePath doesn't exist" {
+            { Build-Module -SourcePath TestDrive:\NoSuchPath } | Should -Throw "Source must point to a valid module"
+        }
 
         It "has an optional string parameter for the OutputDirectory" {
             $parameters.ContainsKey("OutputDirectory") | Should -Be $true
@@ -16,20 +19,27 @@ Describe "Build-Module" {
             $parameters["OutputDirectory"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
         }
 
-        It "has an optional parameter for setting the Version"{
+        It "has an optional parameter for setting the Version" {
             $parameters.ContainsKey("Version") | Should -Be $true
             $parameters["Version"].ParameterType | Should -Be ([version])
             $parameters["Version"].ParameterSets.Keys | Should -Not -Be "__AllParameterSets"
         }
 
-        It "has an optional parameter for setting the Encoding"{
+        It "has an optional parameter for setting the Encoding" {
             $parameters.ContainsKey("Encoding") | Should -Be $true
             # Note that in PS Core, we can't use encoding types for parameters
             $parameters["Encoding"].ParameterType | Should -Be ([string])
             $parameters["Encoding"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
         }
 
-        It "has an optional string parameter for a Prefix"{
+        It "Warns if you set the encoding to anything but UTF8" {
+            $warns = @()
+            # Note: Using WarningAction Stop just to avoid testing anything else here ;)
+            try { Build-Module -Encoding ASCII -WarningAction Stop -WarningVariable +warns } catch {}
+            $warns.Message | Should -Match "recommend you build your script modules with UTF8 encoding"
+        }
+
+        It "has an optional string parameter for a Prefix" {
             $parameters.ContainsKey("Prefix") | Should -Be $true
             $parameters["Prefix"].ParameterType | Should -Be ([string])
             $parameters["Prefix"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
