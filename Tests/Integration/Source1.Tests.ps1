@@ -89,6 +89,13 @@ Describe "Regression test for #84: Multiple Aliases per command will Export" -Ta
 
 Describe "Supports building without a build.psd1" -Tag Integration {
     Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
+    # This is the old build, with a build.psd1
+    $Output = Build-Module TestDrive:\Source1\build.psd1 -Passthru
+    $ManifestContent = Get-Content $Output.Path
+    $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
+    Remove-Item (Split-Path $Output.Path) -Recurse
+
+    # Then remove the build.psd1 and rebuild it
     Remove-Item TestDrive:\Source1\build.psd1
 
     $Build = @{ }
@@ -105,6 +112,8 @@ Describe "Supports building without a build.psd1" -Tag Integration {
 
     It "Creates the same module as with a build.psd1" {
         $Build.Metadata = Import-Metadata $Build.Output.Path
+        Get-Content $Build.Output.Path | Should -Be $ManifestContent
+        Get-Content ([IO.Path]::ChangeExtension($Build.Output.Path, ".psm1")) | Should -Be $ModuleContent
     }
 
     It "Should update AliasesToExport in the manifest" {
@@ -115,8 +124,16 @@ Describe "Supports building without a build.psd1" -Tag Integration {
         $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
     }
 }
-Describe "Supports building without a build.psd1 and not specifying a module manifest" -Tag Integration {
+Describe "Supports building discovering the module without a build.psd1" -Tag Integration {
     Copy-Item $PSScriptRoot\Source1 TestDrive:\source -Recurse
+
+    # This is the old build, with a build.psd1
+    $Output = Build-Module TestDrive:\source\build.psd1 -Passthru
+    $ManifestContent = Get-Content $Output.Path
+    $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
+    Remove-Item (Split-Path $Output.Path) -Recurse
+
+    # Then remove the build.psd1 and rebuild it
     Remove-Item TestDrive:\source\build.psd1
 
     Push-Location -StackName 'IntegrationTest' -Path TestDrive:\
@@ -124,17 +141,13 @@ Describe "Supports building without a build.psd1 and not specifying a module man
     $Build = @{ }
 
     It "No longer fails if there's no build.psd1" {
-        $BuildParameters = @{
-            SourcePath               = "TestDrive:\source"
-            OutputDirectory          = "TestDrive:\Result1"
-            VersionedOutputDirectory = $true
-        }
-
-        $Build.Output = Build-Module @BuildParameters -Passthru
+        $Build.Output = Build-Module -Passthru
     }
 
     It "Creates the same module as with a build.psd1" {
         $Build.Metadata = Import-Metadata $Build.Output.Path
+        Get-Content $Build.Output.Path | Should -Be $ManifestContent
+        Get-Content ([IO.Path]::ChangeExtension($Build.Output.Path, ".psm1")) | Should -Be $ModuleContent
     }
 
     It "Should update AliasesToExport in the manifest" {
