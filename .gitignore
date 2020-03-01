@@ -3,3 +3,4 @@
 obj/
 Output/
 Tools/
+coverage.xml

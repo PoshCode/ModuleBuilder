@@ -33,7 +33,10 @@ Write-Host "Invoke-Pester for Module $($ModuleUnderTest) version $($ModuleUnderT
 
 if (-not $SkipCodeCoverage) {
     # Get code coverage for the psm1 file to a coverage.xml that we can mess with later
-    Invoke-Pester ./Tests -CodeCoverage $ModuleUnderTest.Path -CodeCoverageOutputFile ./coverage.xml -Show $Show -PesterOption @{ IncludeVSCodeMarker = $IncludeVSCodeMarker }
+    Invoke-Pester ./Tests -Show $Show -PesterOption @{
+        IncludeVSCodeMarker = $IncludeVSCodeMarker
+    } -CodeCoverage $ModuleUnderTest.Path -CodeCoverageOutputFile ./coverage.xml -PassThru |
+        Convert-CodeCoverage -SourceRoot ./Source -Relative
 } else {
     Invoke-Pester ./Tests -Show $Show -PesterOption @{ IncludeVSCodeMarker = $IncludeVSCodeMarker }
 }
