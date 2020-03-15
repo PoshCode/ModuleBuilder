@@ -26,6 +26,10 @@ Describe "Convert-LineNumber" {
         }
     }
 
+    It "Should throw if the SourceFile doesn't exist" {
+        { Convert-LineNumber -SourceFile TestDrive:\NoSuchFile -SourceLineNumber 10 } | Should Throw "'TestDrive:\NoSuchFile' does not exist"
+    }
+
     It 'Should work with an error PositionMessage' {
         $line = Select-String -Path $ModulePath 'function ParseLineNumber {' | % LineNumber
 

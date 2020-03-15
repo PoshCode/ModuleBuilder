@@ -39,11 +39,10 @@ function Convert-LineNumber {
             $SourceFile = $Invocation.SourceFile
             $SourceLineNumber = $Invocation.SourceLineNumber
         }
-        $PSScriptRoot = Split-Path $SourceFile
-
         if(!(Test-Path $SourceFile)) {
             throw "'$SourceFile' does not exist"
         }
+        $PSScriptRoot = Split-Path $SourceFile
 
         Push-Location $PSScriptRoot
         try {

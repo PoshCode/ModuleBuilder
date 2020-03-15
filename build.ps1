@@ -13,7 +13,6 @@ param(
     [string]$SemVer
 )
 # Sanitize parameters to pass to Build-Module
-$null = $PSBoundParameters.Remove('Test')
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot -StackName BuildBuildModule
 

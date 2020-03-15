@@ -11,15 +11,10 @@ function GetBuildInfo {
         $BuildCommandInvocation
     )
 
-    $BuildInfo = if ($BuildManifest -and (Test-Path $BuildManifest)) {
-        if ((Split-path -Leaf $BuildManifest) -eq 'build.psd1') {
-            # Read the Module Manifest configuration file for default parameter values
-            Write-Debug "Load Build Manifest $BuildManifest"
-            Import-Metadata -Path $BuildManifest
-        } else {
-            Write-Debug "Use SourcePath $BuildManifest"
-            @{ SourcePath = $BuildManifest }
-        }
+    $BuildInfo = if ($BuildManifest -and (Test-Path $BuildManifest) -and (Split-path -Leaf $BuildManifest) -eq 'build.psd1') {
+        # Read the build.psd1 configuration file for default parameter values
+        Write-Debug "Load Build Manifest $BuildManifest"
+        Import-Metadata -Path $BuildManifest
     } else {
         @{}
     }

@@ -9,6 +9,9 @@ Describe "Build-Module" {
             $parameters["SourcePath"].ParameterType | Should -Be ([string])
             $parameters["SourcePath"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
         }
+        It "throws if the SourcePath doesn't exist" {
+            { Build-Module -SourcePath TestDrive:\NoSuchPath } | Should -Throw "Source must point to a valid module"
+        }
 
         It "has an optional string parameter for the OutputDirectory" {
             $parameters.ContainsKey("OutputDirectory") | Should -Be $true
@@ -16,20 +19,27 @@ Describe "Build-Module" {
             $parameters["OutputDirectory"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
         }
 
-        It "has an optional parameter for setting the Version"{
+        It "has an optional parameter for setting the Version" {
             $parameters.ContainsKey("Version") | Should -Be $true
             $parameters["Version"].ParameterType | Should -Be ([version])
             $parameters["Version"].ParameterSets.Keys | Should -Not -Be "__AllParameterSets"
         }
 
-        It "has an optional parameter for setting the Encoding"{
+        It "has an optional parameter for setting the Encoding" {
             $parameters.ContainsKey("Encoding") | Should -Be $true
             # Note that in PS Core, we can't use encoding types for parameters
             $parameters["Encoding"].ParameterType | Should -Be ([string])
             $parameters["Encoding"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
         }
 
-        It "has an optional string parameter for a Prefix"{
+        It "Warns if you set the encoding to anything but UTF8" {
+            $warns = @()
+            # Note: Using WarningAction Stop just to avoid testing anything else here ;)
+            try { Build-Module -Encoding ASCII -WarningAction Stop -WarningVariable +warns } catch {}
+            $warns.Message | Should -Match "recommend you build your script modules with UTF8 encoding"
+        }
+
+        It "has an optional string parameter for a Prefix" {
             $parameters.ContainsKey("Prefix") | Should -Be $true
             $parameters["Prefix"].ParameterType | Should -Be ([string])
             $parameters["Prefix"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
@@ -47,6 +57,14 @@ Describe "Build-Module" {
             # Techincally we could implement this a few other ways ...
             $parameters["Target"].ParameterType | Should -Be ([string])
             $parameters["Target"].Attributes.Where{$_ -is [ValidateSet]}.ValidValues | Should -Be "Clean", "Build", "CleanBuild"
+        }
+
+        It "supports an optional string array parameter CopyPaths (which used to be CopyDirectories)" {
+            $parameters.ContainsKey("CopyPaths") | Should -Be $true
+
+            # Techincally we could implement this a few other ways ...
+            $parameters["CopyPaths"].ParameterType | Should -Be ([string[]])
+            $parameters["CopyPaths"].Aliases | Should -Contain "CopyDirectories"
         }
 
         It "has an Passthru switch parameter" {
@@ -229,7 +247,7 @@ Describe "Build-Module" {
                 OutputDirectory = "TestDrive:\$Version"
                 Name            = "MyModule"
                 ModuleBase      = "TestDrive:\MyModule\"
-                CopyDirectories = @()
+                CopyPaths = @()
                 Encoding        = "UTF8"
                 PublicFilter    = "Public\*.ps1"
             }
@@ -344,7 +362,7 @@ Describe "Build-Module" {
                 OutputDirectory = "TestDrive:\$Version"
                 Name            = "MyModule"
                 ModuleBase      = "TestDrive:\MyModule\"
-                CopyDirectories = @()
+                CopyPaths = @()
                 Encoding        = "UTF8"
                 PublicFilter    = "Public\*.ps1"
             }
@@ -455,7 +473,7 @@ Describe "Build-Module" {
                     OutputDirectory = "TestDrive:\$Version"
                     Name            = "MyModule"
                     ModuleBase      = "TestDrive:\MyModule\"
-                    CopyDirectories = @()
+                    CopyPaths = @()
                     Encoding        = "UTF8"
                     PublicFilter    = "Public\*.ps1"
                 }
@@ -549,6 +567,40 @@ Describe "Build-Module" {
         It "Builds the Module in the designated output folder" {
             $Result.ModuleBase | Should -Be ("TestDrive:\output" | Convert-Path).TrimEnd('\')
             'TestDrive:\output\MyModule.psm1' | Should -FileContentMatch 'MATCHING TEST CONTENT'
+        }
+    }
+
+    Context "Copies additional items specified in CopyPaths" {
+
+        $null = New-Item "TestDrive:\build.psd1" -Type File -Force -Value "@{}"
+        $null = New-ModuleManifest "TestDrive:\MyModule.psd1" -ModuleVersion "1.0.0" -Author "Tester"
+        $null = New-Item "TestDrive:\Public\Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
+        $null = New-Item "TestDrive:\MyModule.format.ps1xml" -Type File -Value '<Configuration />' -Force
+        $null = New-Item "TestDrive:\lib\imaginary1.dll" -Type File -Value '1' -Force
+        $null = New-Item "TestDrive:\lib\subdir\imaginary2.dll" -Type File -Value '2' -Force
+
+        Mock GetBuildInfo -ModuleName ModuleBuilder {
+            [PSCustomObject]@{
+                SourcePath        = "TestDrive:\MyModule.psd1"
+                Version           = [Version]"1.0.0"
+                OutputDirectory   = "./output"
+                CopyPaths         = "./lib", "./MyModule.format.ps1xml"
+                Encoding          = 'UTF8'
+                SourceDirectories = @('Public')
+            }
+        }
+
+        $Result = Build-Module -SourcePath 'TestDrive:\build.psd1' -OutputDirectory '.\output' -Passthru -Target Build
+
+        It "Copies single files that are in CopyPaths" {
+            $Result.ModuleBase | Should -Be ("TestDrive:\output" | Convert-Path).TrimEnd('\')
+            'TestDrive:\output\MyModule.format.ps1xml' | Should -Exist
+            'TestDrive:\output\MyModule.format.ps1xml' | Should -FileContentMatch '<Configuration />'
+        }
+
+        It "Recursively copies all the files in folders that are in CopyPaths" {
+            'TestDrive:\output\lib\imaginary1.dll' | Should -FileContentMatch '1'
+            'TestDrive:\output\lib\subdir\imaginary2.dll' | Should -FileContentMatch '2'
         }
     }
 }
