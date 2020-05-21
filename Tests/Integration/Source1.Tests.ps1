@@ -140,7 +140,7 @@ Describe "Supports building without a build.psd1 that has parent folder with a n
 
     It "No longer fails if there's no build.psd1" {
         $BuildParameters = @{
-            SourcePath               = "TestDrive:\s\Source1.psd1"
+            SourcePath               = "TestDrive:\s"
             OutputDirectory          = "TestDrive:\Result1"
             VersionedOutputDirectory = $true
         }
