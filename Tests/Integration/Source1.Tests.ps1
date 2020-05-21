@@ -124,6 +124,45 @@ Describe "Supports building without a build.psd1" -Tag Integration {
         $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
     }
 }
+
+Describe "Supports building without a build.psd1 that has parent folder with a name different than module name" -Tag Integration {
+    Copy-Item $PSScriptRoot\Source1 TestDrive:\s -Recurse
+    # This is the old build, with a build.psd1
+    $Output = Build-Module TestDrive:\s\build.psd1 -Passthru
+    $ManifestContent = Get-Content $Output.Path
+    $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
+    Remove-Item (Split-Path $Output.Path) -Recurse
+
+    # Then remove the build.psd1 and rebuild it
+    Remove-Item TestDrive:\s\build.psd1
+
+    $Build = @{ }
+
+    It "No longer fails if there's no build.psd1" {
+        $BuildParameters = @{
+            SourcePath               = "TestDrive:\s\Source1.psd1"
+            OutputDirectory          = "TestDrive:\Result1"
+            VersionedOutputDirectory = $true
+        }
+
+        $Build.Output = Build-Module @BuildParameters -Passthru
+    }
+
+    It "Creates the same module as with a build.psd1" {
+        $Build.Metadata = Import-Metadata $Build.Output.Path
+        Get-Content $Build.Output.Path | Should -Be $ManifestContent
+        Get-Content ([IO.Path]::ChangeExtension($Build.Output.Path, ".psm1")) | Should -Be $ModuleContent
+    }
+
+    It "Should update AliasesToExport in the manifest" {
+        $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "SS", "SSou")
+    }
+
+    It "Should update FunctionsToExport in the manifest" {
+        $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
+    }
+}
+
 Describe "Supports building discovering the module without a build.psd1" -Tag Integration {
     Copy-Item $PSScriptRoot\Source1 TestDrive:\source -Recurse
 
