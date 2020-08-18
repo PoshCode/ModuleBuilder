@@ -35,10 +35,10 @@ function MoveUsingStatements {
         Write-Debug "No using statement errors found."
         return
     }
-    # Avoid modifying the file if there's other parsing errors than Using Statements misplaced
+
+    # as per issue https://github.com/PoshCode/ModuleBuilder/issues/96
     if ($ParseErrors.Where{$_.ErrorId -ne 'UsingMustBeAtStartOfScript'}) {
-        Write-Warning "Parsing errors found. Skipping moving using statements."
-        return
+        Write-Verbose "Parsing errors found. We'll still attempt to Move using statements."
     }
 
     # Find all Using statements including those non erroring (to conserve their order)
@@ -63,14 +63,16 @@ function MoveUsingStatements {
 
     $ScriptText = $ScriptText.Insert(0, ($StatementsToCopy -join "`r`n") + "`r`n")
 
+    $ParseErrorsAfterMovingUsings = [System.Management.Automation.Language.ParseError[]]::new(0)
+
     # Verify we haven't introduced new Parsing errors
     $null = [System.Management.Automation.Language.Parser]::ParseInput(
         $ScriptText,
         [ref]$null,
-        [ref]$ParseErrors
+        [ref]$ParseErrorsAfterMovingUsings
     )
 
-    if ($ParseErrors) {
+    if ($ParseErrorsAfterMovingUsings.count -gt $ParseErrors.Count) {
         Write-Warning "We introduced parsing error(s) while attempting to move using statements. Cancelling changes."
     } else {
         $null = Set-Content -Value $ScriptText -Path $RootModule -Encoding $Encoding
