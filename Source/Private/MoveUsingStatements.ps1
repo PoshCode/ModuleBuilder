@@ -16,7 +16,7 @@ function MoveUsingStatements {
             those changes won't be applied to the file.
     #>
     [CmdletBinding()]
-    Param(
+    param(
         # Path to the PSM1 file to amend
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ValueFromPipeline)]
         [System.Management.Automation.Language.Ast]$AST,
@@ -27,54 +27,58 @@ function MoveUsingStatements {
 
         # The encoding defaults to UTF8 (or UTF8NoBom on Core)
         [Parameter(DontShow)]
-        [string]$Encoding = $(if ($IsCoreCLR) { "UTF8NoBom" } else { "UTF8" })
+        [string]$Encoding = $(if ($IsCoreCLR) {
+                "UTF8NoBom"
+            } else {
+                "UTF8"
+            })
     )
-
-    # Avoid modifying the file if there's no Parsing Error caused by Using Statements or other errors
-    if (!$ParseErrors.Where{$_.ErrorId -eq 'UsingMustBeAtStartOfScript'}) {
-        Write-Debug "No using statement errors found."
-        return
-    }
-
-    # as per issue https://github.com/PoshCode/ModuleBuilder/issues/96
-    if ($ParseErrors.Where{$_.ErrorId -ne 'UsingMustBeAtStartOfScript'}) {
-        Write-Verbose "Parsing errors found. We'll still attempt to Move using statements."
-    }
-
-    # Find all Using statements including those non erroring (to conserve their order)
-    $UsingStatementExtents = $AST.FindAll(
-        {$Args[0] -is [System.Management.Automation.Language.UsingStatementAst]},
-        $false
-    ).Extent
-
-    # Edit the Script content by commenting out existing statements (conserving line numbering)
-    $ScriptText = $AST.Extent.Text
-    $InsertedCharOffset = 0
-    $StatementsToCopy = New-Object System.Collections.ArrayList
-    foreach ($UsingSatement in $UsingStatementExtents) {
-        $ScriptText = $ScriptText.Insert($UsingSatement.StartOffset + $InsertedCharOffset, '#')
-        $InsertedCharOffset++
-
-        # Keep track of unique statements we'll need to insert at the top
-        if (!$StatementsToCopy.Contains($UsingSatement.Text)) {
-            $null = $StatementsToCopy.Add($UsingSatement.Text)
+    process {
+        # Avoid modifying the file if there's no Parsing Error caused by Using Statements or other errors
+        if (!$ParseErrors.Where{ $_.ErrorId -eq 'UsingMustBeAtStartOfScript' }) {
+            Write-Debug "No using statement errors found."
+            return
+        } else {
+            # as decided https://github.com/PoshCode/ModuleBuilder/issues/96
+            Write-Debug "Parsing errors found. We'll still attempt to Move using statements."
         }
-    }
 
-    $ScriptText = $ScriptText.Insert(0, ($StatementsToCopy -join "`r`n") + "`r`n")
+        # Find all Using statements including those non erroring (to conserve their order)
+        $UsingStatementExtents = $AST.FindAll(
+            { $Args[0] -is [System.Management.Automation.Language.UsingStatementAst] },
+            $false
+        ).Extent
 
-    $ParseErrorsAfterMovingUsings = [System.Management.Automation.Language.ParseError[]]::new(0)
+        # Edit the Script content by commenting out existing statements (conserving line numbering)
+        $ScriptText = $AST.Extent.Text
+        $InsertedCharOffset = 0
+        $StatementsToCopy = New-Object System.Collections.ArrayList
+        foreach ($UsingSatement in $UsingStatementExtents) {
+            $ScriptText = $ScriptText.Insert($UsingSatement.StartOffset + $InsertedCharOffset, '#')
+            $InsertedCharOffset++
 
-    # Verify we haven't introduced new Parsing errors
-    $null = [System.Management.Automation.Language.Parser]::ParseInput(
-        $ScriptText,
-        [ref]$null,
-        [ref]$ParseErrorsAfterMovingUsings
-    )
+            # Keep track of unique statements we'll need to insert at the top
+            if (!$StatementsToCopy.Contains($UsingSatement.Text)) {
+                $null = $StatementsToCopy.Add($UsingSatement.Text)
+            }
+        }
 
-    if ($ParseErrorsAfterMovingUsings.count -gt $ParseErrors.Count) {
-        Write-Warning "We introduced parsing error(s) while attempting to move using statements. Cancelling changes."
-    } else {
+        $ScriptText = $ScriptText.Insert(0, ($StatementsToCopy -join "`r`n") + "`r`n")
         $null = Set-Content -Value $ScriptText -Path $RootModule -Encoding $Encoding
+
+        # Verify we haven't introduced new Parsing errors
+        $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            $RootModule,
+            [ref]$null,
+            [ref]$ParseErrors
+        )
+
+        if ($ParseErrors.Count) {
+            $Message = $ParseErrors |
+                Format-Table -Auto @{n = "File"; expr = { $_.Extent.File | Split-Path -Leaf }},
+                                @{n = "Line"; expr = { $_.Extent.StartLineNumber }},
+                                Extent, ErrorId, Message | Out-String
+            Write-Warning "Parse errors in build output:`n$Message"
+        }
     }
 }
