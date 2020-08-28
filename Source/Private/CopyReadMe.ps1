@@ -21,21 +21,22 @@ function CopyReadMe {
         # If set, overwrite the existing readme
         [Switch]$Force
     )
+    process {
+        # Copy the readme file as an about_ help file
+        Write-Verbose "Test for ReadMe: $Pwd\$($ReadMe)"
+        if ($ReadMe -and (Test-Path $ReadMe -PathType Leaf)) {
+            # Make sure there's a language path
+            $LanguagePath = Join-Path $OutputDirectory $Culture
+            if (!(Test-Path $LanguagePath -PathType Container)) {
+                $null = New-Item $LanguagePath -Type Directory -Force
+            }
+            Write-Verbose "Copy ReadMe to: $LanguagePath"
 
-    # Copy the readme file as an about_ help file
-    Write-Verbose "Test for ReadMe: $Pwd\$($ReadMe)"
-    if($ReadMe -and (Test-Path $ReadMe -PathType Leaf)) {
-        # Make sure there's a language path
-        $LanguagePath = Join-Path $OutputDirectory $Culture
-        if(!(Test-Path $LanguagePath -PathType Container)) {
-            $null = New-Item $LanguagePath -Type Directory -Force
-        }
-        Write-Verbose "Copy ReadMe to: $LanguagePath"
-
-        $about_module = Join-Path $LanguagePath "about_$($ModuleName).help.txt"
-        if(!(Test-Path $about_module)) {
-            Write-Verbose "Turn readme into about_module"
-            Copy-Item -LiteralPath $ReadMe -Destination $about_module
+            $about_module = Join-Path $LanguagePath "about_$($ModuleName).help.txt"
+            if (!(Test-Path $about_module)) {
+                Write-Verbose "Turn readme into about_module"
+                Copy-Item -LiteralPath $ReadMe -Destination $about_module -Force:$Force
+            }
         }
     }
 }
