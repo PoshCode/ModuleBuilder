@@ -235,7 +235,7 @@ function Build-Module {
                 if ($Prerelease) {
                     Write-Verbose "Update Manifest at $OutputManifest with Prerelease: $Prerelease"
                     Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value $Prerelease
-                } else {
+                } elseif ($PSCmdlet.ParameterSetName -eq "SemanticVersion" -or $PSBoundParameters.ContainsKey("Prerelease")) {
                     Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value ""
                 }
             } elseif($Prerelease) {
