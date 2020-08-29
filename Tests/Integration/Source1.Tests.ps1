@@ -172,3 +172,32 @@ Describe "Regression test for #88 not copying prefix files" -Tag Integration, Re
         $ModuleInfo[0] | Should -be "using module Configuration"
     }
 }
+
+Describe "Regression test for #40.2 not copying suffix if prefix" -Tag Integration, Regression {
+    Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
+
+    New-Item TestDrive:\Source1\_GlobalScope.ps1 -Value '$Global:Module = "Testing"'
+
+    $metadata = Import-Metadata TestDrive:\Source1\build.psd1
+    $metadata += @{
+        Prefix = ".\_GlobalScope.ps1"
+        Suffix = ".\_GlobalScope.ps1"
+    }
+    $metadata | Export-Metadata TestDrive:\Source1\build.psd1
+
+    $Output = Build-Module TestDrive:\Source1 -Passthru
+
+    $Metadata = Import-Metadata $Output.Path
+
+    It "Should inject the content of the _GlobalScope file at the TOP and BOTTOM" {
+        $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
+        $Code = Get-Content $Module
+        $Code[0] | Should -be "using module ModuleBuilder" # because we moved it, from GetFinale
+        $Code[1] | Should -be "#Region '.\_GlobalScope.ps1' 0"
+        $Code[2] | Should -be '$Global:Module = "Testing"'
+
+        $Code[-3] | Should -be '$Global:Module = "Testing"'
+        $Code[-2] | Should -be "#EndRegion '.\_GlobalScope.ps1' 2"
+        $Code[-1] | Should -be ""
+    }
+}
