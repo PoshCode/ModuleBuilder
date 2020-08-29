@@ -56,13 +56,23 @@ Describe "MoveUsingStatements" {
                 ErrorAfter   = 0
             },
             @{
-                TestCaseName = 'Not move anything if there are (other) parse errors'
+                TestCaseName = 'Move using statements even if types are used'
+                PSM1File     = "function x {`r`n}`r`n" +
+                "using namespace System.IO`r`n`r`n" + #UsingMustBeAtStartOfScript
+                "function y {`r`n}`r`n" +
+                "using namespace System.Collections.Generic" + #UsingMustBeAtStartOfScript
+                "function z { [Dictionary[String,PSObject]]::new() }" #TypeNotFound
+                ErrorBefore  = 3
+                ErrorAfter   = 0
+            },
+            @{
+                TestCaseName = 'Move using statements even when there are (other) parse errors'
                 PSM1File     = "using namespace System.IO`r`n`r`n" +
                 "function x { `r`n}`r`n" +
                 "using namespace System.Drawing`r`n" + # UsingMustBeAtStartOfScript
                 "function y { `r`n}`r`n}" # Extra } at the end
                 ErrorBefore  = 2
-                ErrorAfter   = 2
+                ErrorAfter   = 1
             }
         )
 
@@ -91,6 +101,7 @@ Describe "MoveUsingStatements" {
             $ErrorFound.Count | Should -Be $ErrorAfter
         }
     }
+
     Context "When MoveUsingStatements should do nothing" {
 
         $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
@@ -101,16 +112,6 @@ Describe "MoveUsingStatements" {
             {   param($RootModule)
                 ConvertToAst $RootModule | MoveUsingStatements
             }
-        }
-
-        It 'Should Warn and skip when there are Parsing errors other than Using Statements' {
-            $testModuleFile = "$TestDrive/MyModule.psm1"
-            $PSM1File = "Using namespace System.IO`r`n function xyz {}`r`n}`r`nUsing namespace System.Drawing" # extra }                Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
-            Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
-
-            &$MoveUsingStatementsCmd -RootModule $testModuleFile
-            Assert-MockCalled -CommandName Write-Warning -Times 1 -ModuleName ModuleBuilder
-            Assert-MockCalled -CommandName Set-Content -Times 0 -ModuleName ModuleBuilder
         }
 
         It 'Should not do anything when there are no using statement errors' {
@@ -124,30 +125,6 @@ Describe "MoveUsingStatements" {
 
             Assert-MockCalled -CommandName Set-Content -Times 0 -ModuleName ModuleBuilder
             Assert-MockCalled -CommandName Write-Debug -Times 1 -ModuleName ModuleBuilder
-        }
-
-
-        It 'Should not modify file when introducing parsing errors' {
-
-            $testModuleFile = "$TestDrive\MyModule.psm1"
-            $PSM1File = "function x {}`r`nUsing namespace System.IO;"
-            Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
-
-            InModuleScope ModuleBuilder {
-                $null = Mock New-Object {
-                    # Introducing Parsing Error in the file
-                    $Flag = [System.Collections.ArrayList]::new()
-                    $null = $Flag.Add("MyParsingError}")
-                    $PSCmdlet.WriteObject($Flag, $false)
-                }
-            }
-
-            &$MoveUsingStatementsCmd -RootModule $testModuleFile
-
-            Assert-MockCalled -CommandName Set-Content -Times 0 -ModuleName ModuleBuilder
-            Assert-MockCalled -CommandName Write-Warning -Times 1 -ModuleName ModuleBuilder
-            (Get-Content -Raw $testModuleFile).Trim() | Should -Be $PSM1File
-
         }
     }
 }

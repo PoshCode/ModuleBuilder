@@ -10,6 +10,8 @@ function SetModuleContent {
 
             The goal here is to pretend this is a pipeline, for the sake of memory and file IO
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "OutputPath", Justification = "The rule is buggy")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "Encoding", Justification = "The rule is buggy ")]
     [CmdletBinding()]
     param(
         # Where to write the joined output
@@ -37,7 +39,7 @@ function SetModuleContent {
 
         # Create a proxy command style scriptblock for Set-Content to keep the file handle open
         $SetContentCmd = $ExecutionContext.InvokeCommand.GetCommand('Microsoft.PowerShell.Management\Set-Content', [System.Management.Automation.CommandTypes]::Cmdlet)
-        $SetContent = {& $SetContentCmd -Path $OutputPath -Encoding $Encoding }.GetSteppablePipeline($myInvocation.CommandOrigin)
+        $SetContent = {& $SetContentCmd -Path $OutputPath -Encoding $Encoding}.GetSteppablePipeline($myInvocation.CommandOrigin)
         $SetContent.Begin($true)
     }
     process  {

@@ -2,7 +2,8 @@ function GetBuildInfo {
     [CmdletBinding()]
     param(
         # The path to the Build Manifest Build.psd1
-        [Parameter()][AllowNull()]
+        [Parameter()]
+        [AllowNull()]
         [string]$BuildManifest,
 
         # Pass MyInvocation from the Build-Command so we can read parameter values

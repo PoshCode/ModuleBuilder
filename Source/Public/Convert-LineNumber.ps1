@@ -25,10 +25,7 @@ function Convert-LineNumber {
         [psobject]$InputObject,
 
         [Parameter(ParameterSetName="FromInvocationInfo")]
-        [switch]$Passthru,
-
-        # Output paths as short paths, relative to the SourceRoot
-        [switch]$Relative
+        [switch]$Passthru
     )
     begin {
         $filemap = @{}
@@ -42,14 +39,12 @@ function Convert-LineNumber {
         if(!(Test-Path $SourceFile)) {
             throw "'$SourceFile' does not exist"
         }
-        $PSScriptRoot = Split-Path $SourceFile
-
-        Push-Location $PSScriptRoot
+        Push-Location (Split-Path $SourceFile)
         try {
             if (!$filemap.ContainsKey($SourceFile)) {
                 # Note: the new pattern is #Region but the old one was # BEGIN
-                $matches = Select-String '^(?:#Region|# BEGIN) (?<SourceFile>.*) (?<LineNumber>\d+)?$' -Path $SourceFile
-                $filemap[$SourceFile] = @($matches.ForEach{
+                $regions = Select-String '^(?:#Region|# BEGIN) (?<SourceFile>.*) (?<LineNumber>\d+)?$' -Path $SourceFile
+                $filemap[$SourceFile] = @($regions.ForEach{
                         [PSCustomObject]@{
                             PSTypeName = "BuildSourceMapping"
                             SourceFile = $_.Matches[0].Groups["SourceFile"].Value.Trim("'")

@@ -17,10 +17,7 @@ function Convert-CodeCoverage {
         # The output of `Invoke-Pester -Pasthru`
         # Note: Pester doesn't apply a custom type name
         [Parameter(ValueFromPipeline)]
-        [PSObject]$InputObject,
-
-        # Output paths as short paths, relative to the SourceRoot
-        [switch]$Relative
+        [PSObject]$InputObject
     )
     process {
         Push-Location $SourceRoot
