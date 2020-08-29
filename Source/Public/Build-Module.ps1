@@ -181,6 +181,10 @@ function Build-Module {
                     Where-Object LastWriteTime -gt $NewestBuild |
                     Select-Object -First 1 -ExpandProperty LastWriteTime
                 if ($null -eq $IsNew) {
+                    # This is mostly for testing ...
+                    if ($Passthru) {
+                        Get-Module $OutputManifest -ListAvailable
+                    }
                     return # Skip the build
                 }
             }
