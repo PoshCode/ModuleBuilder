@@ -180,8 +180,8 @@ Describe "Regression test for #40.2 not copying suffix if prefix" -Tag Integrati
 
     $metadata = Import-Metadata TestDrive:\Source1\build.psd1
     $metadata += @{
-        Prefix = ".\_GlobalScope.ps1"
-        Suffix = ".\_GlobalScope.ps1"
+        Prefix = "./_GlobalScope.ps1"
+        Suffix = "./_GlobalScope.ps1"
     }
     $metadata | Export-Metadata TestDrive:\Source1\build.psd1
 
@@ -193,11 +193,11 @@ Describe "Regression test for #40.2 not copying suffix if prefix" -Tag Integrati
         $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
         $Code = Get-Content $Module
         $Code[0] | Should -be "using module ModuleBuilder" # because we moved it, from GetFinale
-        $Code[1] | Should -be "#Region '.\_GlobalScope.ps1' 0"
+        $Code[1] | Should -be "#Region './_GlobalScope.ps1' 0"
         $Code[2] | Should -be '$Global:Module = "Testing"'
 
         $Code[-3] | Should -be '$Global:Module = "Testing"'
-        $Code[-2] | Should -be "#EndRegion '.\_GlobalScope.ps1' 2"
+        $Code[-2] | Should -be "#EndRegion './_GlobalScope.ps1' 2"
         $Code[-1] | Should -be ""
     }
 }
