@@ -1,4 +1,5 @@
 #requires -Module ModuleBuilder
+. $PSScriptRoot\..\Convert-FolderSeparator.ps1
 
 Describe "When we call Build-Module" -Tag Integration {
     $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -Passthru
@@ -193,11 +194,54 @@ Describe "Regression test for #40.2 not copying suffix if prefix" -Tag Integrati
         $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
         $Code = Get-Content $Module
         $Code[0] | Should -be "using module ModuleBuilder" # because we moved it, from GetFinale
-        $Code[1] | Should -be "#Region './_GlobalScope.ps1' 0"
+        $Code[1] | Should -be "#Region '$('./_GlobalScope.ps1' -replace '/', ([IO.Path]::DirectorySeparatorChar))' 0"
         $Code[2] | Should -be '$Global:Module = "Testing"'
 
         $Code[-3] | Should -be '$Global:Module = "Testing"'
-        $Code[-2] | Should -be "#EndRegion './_GlobalScope.ps1' 2"
+        $Code[-2] | Should -be "#EndRegion '$('./_GlobalScope.ps1' -replace '/', ([IO.Path]::DirectorySeparatorChar))' 2"
         $Code[-1] | Should -be ""
+    }
+}
+
+# There's no such thing as a drive root on unix
+if ($PSVersionTable.Platform -eq "Win32NT") {
+    Describe "Able to build from the drive root" {
+        $null = New-ModuleManifest "TestDrive:/MyModule.psd1" -ModuleVersion "1.0.0" -Author "Tester"
+        $null = New-Item "TestDrive:/Public/Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
+
+        $Result = Build-Module -SourcePath 'TestDrive:/MyModule.psd1' -Version "1.0.0" -OutputDirectory './output' -Encoding UTF8 -SourceDirectories @('Public') -Target Build -Passthru
+
+        It "Builds the Module in the designated output folder" {
+            $Result.ModuleBase | Convert-FolderSeparator | Should -Be (Convert-FolderSeparator "TestDrive:/Output/MyModule")
+            'TestDrive:/Output/MyModule/MyModule.psm1' | Convert-FolderSeparator | Should -FileContentMatch 'MATCHING TEST CONTENT'
+        }
+    }
+}
+
+Describe "Copies additional items specified in CopyPaths" {
+
+    $null = New-Item "TestDrive:/build.psd1" -Type File -Force -Value "@{
+        SourcePath      = 'TestDrive:/MyModule.psd1'
+        SourceDirectories = @('Public')
+        OutputDirectory = './output'
+        CopyPaths       = './lib', './MyModule.format.ps1xml'
+    }"
+    $null = New-ModuleManifest "TestDrive:/MyModule.psd1" -ModuleVersion "1.0.0" -Author "Tester"
+    $null = New-Item "TestDrive:/Public/Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
+    $null = New-Item "TestDrive:/MyModule.format.ps1xml" -Type File -Value '<Configuration />' -Force
+    $null = New-Item "TestDrive:/lib/imaginary1.dll" -Type File -Value '1' -Force
+    $null = New-Item "TestDrive:/lib/subdir/imaginary2.dll" -Type File -Value '2' -Force
+
+    $Result = Build-Module -SourcePath 'TestDrive:/build.psd1' -OutputDirectory './output' -Version '1.0.0' -Passthru -Target Build
+
+    It "Copies single files that are in CopyPaths" {
+        (Convert-FolderSeparator $Result.ModuleBase) | Should -Be (Convert-FolderSeparator "$TestDrive/output/MyModule")
+        'TestDrive:/output/MyModule/MyModule.format.ps1xml' | Should -Exist
+        'TestDrive:/output/MyModule/MyModule.format.ps1xml' | Should -FileContentMatch '<Configuration />'
+    }
+
+    It "Recursively copies all the files in folders that are in CopyPaths" {
+        'TestDrive:/output/MyModule/lib/imaginary1.dll' | Should -FileContentMatch '1'
+        'TestDrive:/output/MyModule/lib/subdir/imaginary2.dll' | Should -FileContentMatch '2'
     }
 }

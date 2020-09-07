@@ -1,7 +1,7 @@
-function global:Convert-FolderSeparator {
+filter global:Convert-FolderSeparator {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, ValueFromPipeline)]
         [string]$Path,
         [switch]$Relative,
         [switch]$Validate
@@ -34,6 +34,8 @@ function global:Convert-FolderSeparator {
         Write-Verbose "Result: $Result"
         $Path = $Path -replace ([regex]::escape($ConvertedPath)), $Result
     }
+    # if it's a testdrive path, it should be a testdrive path
+    $Path = $Path.Replace($TestDrive,"TestDrive:")
     if ($Drive) {
         $Path -replace "\w*:", "$($Drive):"
     } else {

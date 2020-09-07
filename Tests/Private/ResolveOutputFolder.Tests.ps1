@@ -1,5 +1,6 @@
 #requires -Module ModuleBuilder
 Describe "ResolveOutputFolder" {
+    . $PSScriptRoot\..\Convert-FolderSeparator.ps1
     $CommandInTest = InModuleScope ModuleBuilder { Get-Command ResolveOutputFolder }
     filter ToTestDrive { "$_".Replace($TestDrive, "TestDrive:") }
 
@@ -56,26 +57,26 @@ Describe "ResolveOutputFolder" {
             param($Source, $Output, $Result)
 
             $Parameters = @{
-                Source = "TestDrive:/$Source"
-                Output = "TestDrive:/$Output"
+                Source = Convert-FolderSeparator "TestDrive:/$Source"
+                Output = Convert-FolderSeparator "TestDrive:/$Output"
             }
 
             $Actual = &$CommandInTest @Parameters -Name ModuleName -Target Build -Version 1.2.3 | ToTestDrive
             $Actual | Should -Exist
-            $Actual | Should -Be "TestDrive:/$Result"
+            $Actual | Should -Be (Convert-FolderSeparator "TestDrive:/$Result")
         }
 
         It "From '<Source>' to '<Output>' -ForceVersion creates '<Forced>'" -TestCases $TestCases {
             param($Source, $Output, $Forced)
 
             $Parameters = @{
-                Source = "TestDrive:/$Source"
-                Output = "TestDrive:/$Output"
+                Source = Convert-FolderSeparator "TestDrive:/$Source"
+                Output = Convert-FolderSeparator "TestDrive:/$Output"
             }
 
             $Actual = &$CommandInTest @Parameters -Name ModuleName -Target Build -Version 1.2.3 -Force | ToTestDrive
             $Actual | Should -Exist
-            $Actual | Should -Be "TestDrive:/$Forced"
+            $Actual | Should -Be (Convert-FolderSeparator "TestDrive:/$Forced")
         }
     }
     Context "Cleaned ModuleName" {
@@ -83,11 +84,11 @@ Describe "ResolveOutputFolder" {
             param($Source, $Output, $Result)
 
             $Parameters = @{
-                Source = "TestDrive:/$Source"
-                Output = "TestDrive:/$Output"
+                Source = Convert-FolderSeparator "TestDrive:/$Source"
+                Output = Convert-FolderSeparator "TestDrive:/$Output"
             }
 
-            $null = New-Item -ItemType Directory "TestDrive:/$Result" -Force
+            $null = New-Item -ItemType Directory (Convert-FolderSeparator "TestDrive:/$Result") -Force
 
             # There's no output when we're cleaning
             &$CommandInTest @Parameters -Name ModuleName -Version 1.2.3 -Target Clean | Should -BeNullOrEmpty
@@ -100,16 +101,16 @@ Describe "ResolveOutputFolder" {
             param($Source, $Output, $Forced)
 
             $Parameters = @{
-                Source = "TestDrive:/$Source"
-                Output = "TestDrive:/$Output"
+                Source = Convert-FolderSeparator "TestDrive:/$Source"
+                Output = Convert-FolderSeparator "TestDrive:/$Output"
             }
             $null = New-Item -ItemType Directory "TestDrive:/$Forced" -Force
 
             # There's no output when we're cleaning
             &$CommandInTest @Parameters -Name ModuleName -Version 1.2.3 -Force -Target Clean | Should -BeNullOrEmpty
-            "TestDrive:/$Forced" | Should -Not -Exist
+            "TestDrive:/$Forced" | Convert-FolderSeparator | Should -Not -Exist
             # NOTE: This is only true because we made it above
-            "TestDrive:/$Forced" | Split-Path | Should -Exist
+            "TestDrive:/$Forced" | Convert-FolderSeparator | Split-Path | Should -Exist
         }
     }
     Context "Error Cases" {
@@ -118,8 +119,8 @@ Describe "ResolveOutputFolder" {
             New-Item TestDrive:/ModuleName/1.2.3 -ItemType File -Value "Hello World"
 
             $Parameters = @{
-                Source = "TestDrive:/ModuleName/Source"
-                Output = "TestDrive:/ModuleName/"
+                Source = Convert-FolderSeparator "TestDrive:/ModuleName/Source"
+                Output = Convert-FolderSeparator "TestDrive:/ModuleName/"
             }
 
             { &$CommandInTest @Parameters -Name ModuleName -Target Build -Version 1.2.3 -Force } | Should -throw "There is a file in the way"
