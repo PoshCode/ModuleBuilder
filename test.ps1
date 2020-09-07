@@ -1,6 +1,7 @@
 #requires -Module PowerShellGet, Pester
 using namespace Microsoft.PackageManagement.Provider.Utility
 param(
+    [switch]$SkipScriptAnalyzer,
     [switch]$SkipCodeCoverage,
     [switch]$HideSuccess,
     [switch]$IncludeVSCodeMarker
@@ -41,6 +42,10 @@ if (-not $SkipCodeCoverage) {
     Invoke-Pester ./Tests -Show $Show -PesterOption @{ IncludeVSCodeMarker = $IncludeVSCodeMarker }
 }
 
+Write-Host
+if (-not $SkipScriptAnalyzer) {
+    Invoke-ScriptAnalyzer $ModuleUnderTest.Path
+}
 Pop-Location
 
 # Re-enable default parameters after testing

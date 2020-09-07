@@ -4,6 +4,7 @@ function GetRelativePath {
             Returns the relative path, or $Path if the paths don't share the same root.
             For backward compatibility, this is [System.IO.Path]::GetRelativePath for .NET 4.x
     #>
+    [OutputType([string])]
     [CmdletBinding()]
     param(
         # The source path the result should be relative to. This path is always considered to be a directory.
