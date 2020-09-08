@@ -2,6 +2,9 @@ function Convert-CodeCoverage {
     <#
         .SYNOPSIS
             Convert the file name and line numbers from Pester code coverage of "optimized" modules to the source
+        .DESCRIPTION
+            Converts the code coverage line numbers from Pester to the source file paths.
+            The returned file name is always the relative path stored in the module.
         .EXAMPLE
             Invoke-Pester .\Tests -CodeCoverage (Get-ChildItem .\Output -Filter *.psm1).FullName -PassThru |
                 Convert-CodeCoverage -SourceRoot .\Source -Relative

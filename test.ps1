@@ -36,7 +36,7 @@ if (-not $SkipCodeCoverage) {
     Invoke-Pester ./Tests -Show $Show -PesterOption @{
         IncludeVSCodeMarker = $IncludeVSCodeMarker
     } -CodeCoverage $ModuleUnderTest.Path -CodeCoverageOutputFile ./coverage.xml -PassThru |
-        Convert-CodeCoverage -SourceRoot ./Source -Relative
+        Convert-CodeCoverage -SourceRoot ./Source
 } else {
     Invoke-Pester ./Tests -Show $Show -PesterOption @{ IncludeVSCodeMarker = $IncludeVSCodeMarker }
 }
