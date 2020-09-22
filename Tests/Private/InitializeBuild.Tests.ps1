@@ -26,6 +26,8 @@ Describe "InitializeBuild" {
                         $SourcePath = ".\Source",
                         $SourceDirectories = @("Enum", "Classes", "Private", "Public"),
                         $OutputDirectory = ".\Output",
+                        $VersionedOutputDirectory = $true,
+                        $UnversionedOutputDirectory = $true,
                         $Suffix
                     )
                     try {
@@ -61,6 +63,10 @@ Describe "InitializeBuild" {
 
         It "Returns overriden values from parameters" {
             $Result.SourcePath | Should -Be (Convert-Path 'TestDrive:\Source\MyModule.psd1')
+        }
+
+        It "Sets VersionedOutputDirectory FALSE when UnversionedOutputDirectory is TRUE" {
+            $Result.VersionedOutputDirectory | Should -Be $false
         }
     }
 }

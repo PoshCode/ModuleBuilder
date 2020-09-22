@@ -125,6 +125,59 @@ Describe "Supports building without a build.psd1" -Tag Integration {
         $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
     }
 }
+
+
+Describe "Defaults to VersionedOutputDirectory" -Tag Integration {
+    Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
+    # This is the old build, with a build.psd1
+    $Output = Build-Module TestDrive:\Source1\build.psd1 -Passthru
+    $ManifestContent = Get-Content $Output.Path
+    $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
+    Remove-Item (Split-Path $Output.Path) -Recurse
+
+    # Then remove the build.psd1 and rebuild it
+    Remove-Item TestDrive:\Source1\build.psd1
+
+    $Build = @{ }
+
+    It "Builds into a folder with version by default" {
+        $BuildParameters = @{
+            SourcePath                 = "TestDrive:\Source1\Source1.psd1"
+            OutputDirectory            = "TestDrive:\Output1"
+        }
+
+        $Build.Output = Build-Module @BuildParameters -Passthru
+        (Convert-FolderSeparator $Build.Output.Path) | Should -Be (Convert-FolderSeparator "TestDrive:\Output1\Source1\1.0.0\Source1.psd1")
+    }
+
+    It "Builds into a folder with no version when UnversionedOutputDirectory" {
+        $BuildParameters = @{
+            SourcePath                 = "TestDrive:\Source1\Source1.psd1"
+            OutputDirectory            = "TestDrive:\Output2"
+            UnversionedOutputDirectory = $true
+        }
+
+        $Build.Output = Build-Module @BuildParameters -Passthru
+        (Convert-FolderSeparator $Build.Output.Path) | Should -Be (Convert-FolderSeparator "TestDrive:\Output2\Source1\Source1.psd1")
+    }
+
+    It "Creates the same module as with a build.psd1" {
+        $Build.Metadata = Import-Metadata $Build.Output.Path
+        Get-Content $Build.Output.Path | Should -Be $ManifestContent
+        Get-Content ([IO.Path]::ChangeExtension($Build.Output.Path, ".psm1")) | Should -Be $ModuleContent
+    }
+
+    It "Should update AliasesToExport in the manifest" {
+        $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "SS", "SSou")
+    }
+
+    It "Should update FunctionsToExport in the manifest" {
+        $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
+    }
+}
+
+
+
 Describe "Supports building discovering the module without a build.psd1" -Tag Integration {
     Copy-Item $PSScriptRoot\Source1 TestDrive:\source -Recurse
 
@@ -212,8 +265,8 @@ if ($PSVersionTable.Platform -eq "Win32NT") {
         $Result = Build-Module -SourcePath 'TestDrive:/MyModule.psd1' -Version "1.0.0" -OutputDirectory './output' -Encoding UTF8 -SourceDirectories @('Public') -Target Build -Passthru
 
         It "Builds the Module in the designated output folder" {
-            $Result.ModuleBase | Convert-FolderSeparator | Should -Be (Convert-FolderSeparator "TestDrive:/Output/MyModule")
-            'TestDrive:/Output/MyModule/MyModule.psm1' | Convert-FolderSeparator | Should -FileContentMatch 'MATCHING TEST CONTENT'
+            $Result.ModuleBase | Convert-FolderSeparator | Should -Be (Convert-FolderSeparator "TestDrive:/Output/MyModule/1.0.0")
+            'TestDrive:/Output/MyModule/1.0.0/MyModule.psm1' | Convert-FolderSeparator | Should -FileContentMatch 'MATCHING TEST CONTENT'
         }
     }
 }
@@ -235,13 +288,13 @@ Describe "Copies additional items specified in CopyPaths" {
     $Result = Build-Module -SourcePath 'TestDrive:/build.psd1' -OutputDirectory './output' -Version '1.0.0' -Passthru -Target Build
 
     It "Copies single files that are in CopyPaths" {
-        (Convert-FolderSeparator $Result.ModuleBase) | Should -Be (Convert-FolderSeparator "$TestDrive/output/MyModule")
-        'TestDrive:/output/MyModule/MyModule.format.ps1xml' | Should -Exist
-        'TestDrive:/output/MyModule/MyModule.format.ps1xml' | Should -FileContentMatch '<Configuration />'
+        (Convert-FolderSeparator $Result.ModuleBase) | Should -Be (Convert-FolderSeparator "$TestDrive/output/MyModule/1.0.0")
+        'TestDrive:/output/MyModule/1.0.0/MyModule.format.ps1xml' | Should -Exist
+        'TestDrive:/output/MyModule/1.0.0/MyModule.format.ps1xml' | Should -FileContentMatch '<Configuration />'
     }
 
     It "Recursively copies all the files in folders that are in CopyPaths" {
-        'TestDrive:/output/MyModule/lib/imaginary1.dll' | Should -FileContentMatch '1'
-        'TestDrive:/output/MyModule/lib/subdir/imaginary2.dll' | Should -FileContentMatch '2'
+        'TestDrive:/output/MyModule/1.0.0/lib/imaginary1.dll' | Should -FileContentMatch '1'
+        'TestDrive:/output/MyModule/1.0.0/lib/subdir/imaginary2.dll' | Should -FileContentMatch '2'
     }
 }

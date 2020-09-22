@@ -5,16 +5,6 @@ Describe "ResolveOutputFolder" {
     filter ToTestDrive { "$_".Replace($TestDrive, "TestDrive:") }
 
     $TestCases = [Hashtable[]]@(
-        @{  Source = "Source"
-            Output = "Output"
-            Result = "Output/ModuleName"
-            Forced = "Output/ModuleName/1.2.3"
-        }
-        @{  Output = "ModuleName/Output"
-            Source = "ModuleName/Source"
-            Result = "ModuleName/Output/ModuleName"
-            Forced = "ModuleName/Output/ModuleName/1.2.3"
-        }
         @{  # Be like Jaykul
             Source = "ModuleName/Source"
             Output = "ModuleName"
@@ -26,6 +16,18 @@ Describe "ResolveOutputFolder" {
             Output = "1/b"
             Result = "1/b/ModuleName"
             Forced = "1/b/ModuleName/1.2.3"
+        }
+        @{  # The default option would be Module/Source build to Module/Output
+            Source = "ModuleName/Source"
+            Output = "ModuleName/Output"
+            Result = "ModuleName/Output/ModuleName"
+            Forced = "ModuleName/Output/ModuleName/1.2.3"
+        }
+        @{  # Which is the same even without the common named parent
+            Source = "Source"
+            Output = "Output"
+            Result = "Output/ModuleName"
+            Forced = "Output/ModuleName/1.2.3"
         }
         @{  # An edge case, build straight to a modules folder
             Source = "ModuleName/Source"
@@ -57,8 +59,8 @@ Describe "ResolveOutputFolder" {
             param($Source, $Output, $Result)
 
             $Parameters = @{
-                Source = Convert-FolderSeparator "TestDrive:/$Source"
-                Output = Convert-FolderSeparator "TestDrive:/$Output"
+                Source = Convert-FolderSeparator "$TestDrive/$Source"
+                Output = Convert-FolderSeparator "$TestDrive/$Output"
             }
 
             $Actual = &$CommandInTest @Parameters -Name ModuleName -Target Build -Version 1.2.3 | ToTestDrive

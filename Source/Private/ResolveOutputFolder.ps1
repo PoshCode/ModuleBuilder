@@ -51,7 +51,8 @@ function ResolveOutputFolder {
             $OutputDirectory = Join-Path $OutputDirectory $ModuleName
         }
         # Ensure the OutputDirectory is not a parent of the SourceDirectory
-        if (-not (GetRelativePath $OutputDirectory $Source).StartsWith("..")) {
+        $RelativeOutputPath = GetRelativePath $OutputDirectory $Source
+        if (-not $RelativeOutputPath.StartsWith("..") -and $RelativeOutputPath -ne $Source) {
             Write-Verbose "Added Version to OutputDirectory path: $OutputDirectory"
             $OutputDirectory = Join-Path $OutputDirectory $Version
         }

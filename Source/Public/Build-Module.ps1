@@ -38,6 +38,7 @@ function Build-Module {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Build is approved now")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "", Justification="Parameter handling is in InitializeBuild")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidDefaultValueSwitchParameter", "", Justification = "VersionedOutputDirectory is Deprecated")]
     [CmdletBinding(DefaultParameterSetName="SemanticVersion")]
     [Alias("build")]
     param(
@@ -54,16 +55,16 @@ function Build-Module {
         [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
 
         # Where to build the module. Defaults to "..\Output" adjacent to the "SourcePath" folder.
-        # The actual OutputDirectory may be a subfolder of this, because the path always ends with \ModuleName or \ModuleName\Version
-        # -OutputDirectory ..\Output,  the actual path is ..\Output\ModuleName or ..\Output\ModuleName\1.2.3
-        # -OutputDirectory ..\,        the actual path is ..\Output\ModuleName or ..\Output\ModuleName\1.2.3
-        # -OutputDirectory ..\b\10.2,  the actual path is ..\b\10.2\ModuleName\1.2.3
-        # -OutputDirectory ..\b\ModuleName\1.2.3, the actual path is ..\b\ModuleName\1.2.3
+        # The ACTUAL output may be in a subfolder of this path ending with the module name and version
+        # The default value is ..\Output which results in the build going to ..\Output\ModuleName\1.2.3
         [Alias("Destination")]
         [string]$OutputDirectory = "..\Output",
 
-        # If set (true) adds a folder named after the version number to the OutputDirectory
-        [switch]$VersionedOutputDirectory,
+        # DEPRECATED. Now defaults true, producing a OutputDirectory with a version number as the last folder
+        [switch]$VersionedOutputDirectory = $true,
+
+        # Overrides the VersionedOutputDirectory, producing an OutputDirectory without a version number as the last folder
+        [switch]$UnversionedOutputDirectory,
 
         # Semantic version, like 1.0.3-beta01+sha.22c35ffff166f34addc49a3b80e622b543199cc5
         # If the SemVer has metadata (after a +), then the full Semver will be added to the ReleaseNotes
@@ -131,9 +132,8 @@ function Build-Module {
         #   - Clean deletes the build output folder
         #   - Build builds the module output
         #   - CleanBuild first deletes the build output folder and then builds the module back into it
-        # Note that if you specify -VersionedOutputDirectory, the folder to be deleted is the version folder
-        # For -OutputDirectory ..\Output -SemVer 1.2.3 -Versioned the path to clean is ..\Output\ModuleName\1.2.3
-        # For -OutputDirectory ..\, the path to clean is ..\Output\ModuleName (the ..\Output path wouldn't be removed)
+        # Note that the folder to be deleted is the actual calculated output folder, with the version number
+        # So for the default OutputDirectory with version 1.2.3, the path to clean is: ..\Output\ModuleName\1.2.3
         [ValidateSet("Clean", "Build", "CleanBuild")]
         [string]$Target = "CleanBuild",
 
