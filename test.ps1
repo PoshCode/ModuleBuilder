@@ -1,5 +1,6 @@
 #requires -Module PowerShellGet, Pester
 using namespace Microsoft.PackageManagement.Provider.Utility
+using namespace System.Management.Automation
 param(
     [switch]$SkipScriptAnalyzer,
     [switch]$SkipCodeCoverage,
@@ -14,13 +15,13 @@ $PSDefaultParameterValues += @{}
 $PSDefaultParameterValues["Disabled"] = $true
 
 # Find a built module as a version-numbered folder:
-$FullModulePath = Get-ChildItem [0-9]* -Directory | Sort-Object { $_.Name -as [SemanticVersion[]] } |
+$FoundModule = Get-ChildItem [0-9]* -Directory | Sort-Object { $_.Name -as [SemanticVersion[]] } |
     Select-Object -Last 1 -Ov Version |
     Get-ChildItem -Filter "$($ModuleName).psd1"
 
-    if (!$FullModulePath) {
-        throw "Can't find $($ModuleName).psd1 in $($Version.FullName)"
-    }
+if (!$FoundModule) {
+    throw "Can't find $($ModuleName).psd1 in $($Version.FullName)"
+}
 
 $Show = if ($HideSuccess) {
     "Fails"
@@ -28,8 +29,8 @@ $Show = if ($HideSuccess) {
     "All"
 }
 
-Remove-Module (Split-Path $ModuleName -Leaf) -ErrorAction Ignore -Force
-$ModuleUnderTest = Import-Module $FullModulePath -PassThru -Force -DisableNameChecking -Verbose:$false
+Remove-Module $ModuleName -ErrorAction Ignore -Force
+$ModuleUnderTest = Import-Module $FoundModule.FullName -PassThru -Force -DisableNameChecking -Verbose:$false
 Write-Host "Invoke-Pester for Module $($ModuleUnderTest) version $($ModuleUnderTest.Version)"
 
 if (-not $SkipCodeCoverage) {

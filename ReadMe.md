@@ -32,53 +32,49 @@ cd Modulebuilder
 
 #### 2. Install dependencies
 
-We have a few modules which are required for building. They're listed in `RequiredModules.psd1` -- the `.\Install-RequiredModule.ps1` script installs them (it defaults to CurrentUser scope, but has a `-Scope` parameter if you're running elevated and want to install them for the `AllUsers`). They only change rarely, so you won't need to run this repeatedly.
+We have a few modules which are required for building. They're listed in `RequiredModules.psd1` -- the `Install-RequiredModule` script installs them (it defaults to CurrentUser scope, but has a `-Scope` parameter if you're running elevated and want to install them for the `AllUsers`). They only change rarely, so you shouldn't need to run this repeatedly, but it does _import_ the modules too, so if you need to use newer versions of these modules (like Pester 5), you can use this to import the ones we need:
 
 ```powershell
-.\Install-RequiredModule.ps1
+./Install-RequiredModule.ps1
 ```
 
 #### 3. Run the `build.ps1` script.
 
-By default, the build script uses [gitversion](/gittols/gitversion) to calculate the version of the build automatically:
+By default, the build script uses [gitversion](/gittols/gitversion) to calculate the version of the build automatically, and will put the build in a folder like "ModuleBuilder\2.0.0" where 2.0.0 is the current version number.
 
 ```powershell
-.\build.ps1
+./build.ps1
 ```
 
-If you don't have gitversion handy, you can just specify a version for the `-Semver` parameter:
+If you don't have `gitversion` handy, you can just specify a version for the `-Semver` parameter:
 
 ```powershell
-.\build.ps1 -Semver 2.0.0-beta
+./build.ps1 -Semver 2.1.0-beta
 ```
 
-#### 4. Make the compiled module available to Powershell
+#### 4. Run tests with Pester
 
-The `.\build.ps1` process will output the path to the folder named with the current version number, like "1.0.0" -- the compiled psm1 and psd1 files are in that folder. In order for PowerShell to find them when you ask it to import, they need to be in the PSModulePath.  PowerShell expects to find modules in a folder with a matching name that sits in one of the folders in your PSModulePath.
-
-Since we cloned the "ModuleBuilder" project into a "ModuleBuilder" folder, the easiest thing to do is just add the parent of the `ModuleBuilder` folder to your PSModulePath. Personally, I keep all my git repos in my user folder at `~\Projects` and I add that to my PSModulePath in my profile script. You could do it temporarily for your current PowerShell session by running this:
+The `test.ps1` script runs Pester and ScriptAnalyzer. It finds the build output from our `build.ps1` script in the default build output location -- that is, right next to these scripts in the root of the repository. It actually removes the `ModuleBuilder` module and re-imports the highest version in that root:
 
 ```powershell
-$Env:PSModulePath += ';' + (Resolve-Path ..)
+./test.ps1
 ```
 
-Alternatively, you could copy the build output to your PSModulePath -- but then you need to start by creating the new "ModuleBuilder" folder to put the version number folder in. You could do that as you build by running something like this instead of just running the `.\build.ps1` script:
+If you want to test against a different version, you can import it manually and `Invoke-Pester` yourself.
+
+##### You have a lot of other options here ...
+
+You could import the module explicitly from the output path:
 
 ```powershell
-$UserModules = Join-Path (Split-Path $Profile.CurrentUserAllHosts) "Modules\ModuleBuilder"
-New-Item $UserModules -Type Directory -Force
-Copy-Item (.\build.ps1) -Destination $UserModules -Force -Recurse
+./build.ps1 | Split-Path | Import-Module -Force
 ```
 
-You final directory stucture Would look something like this: `C:\Users\Jaykul\Documents\PowerShell\Modules\ModuleBuilder\1.0.0\`
-
-#### 5. Run tests with Pester
+You could build into your personal Modules directory, instead:
 
 ```powershell
-Invoke-Pester
+./build -Output ($Profile | Split-Path | Join-Path -ChildPath Modules)
 ```
-Note: If Pester completely fails you likely haven't loaded the module properly. Try running `Import-Module ModuleBuilder` and see step 4.
-
 ### What's in the module, so far:
 
 #### `Build-Module`
