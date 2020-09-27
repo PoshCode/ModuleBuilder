@@ -40,8 +40,16 @@ We have a few modules which are required for building. They're listed in `Requir
 
 #### 3. Run the `build.ps1` script.
 
+By default, the build script uses [gitversion](/gittols/gitversion) to calculate the version of the build automatically:
+
 ```powershell
 .\build.ps1
+```
+
+If you don't have gitversion handy, you can just specify a version for the `-Semver` parameter:
+
+```powershell
+.\build.ps1 -Semver 2.0.0-beta
 ```
 
 #### 4. Make the compiled module available to Powershell

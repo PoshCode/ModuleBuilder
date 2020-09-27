@@ -33,6 +33,11 @@ function InitializeBuild {
         ) -join ' ')"
     $BuildInfo = GetBuildInfo -BuildManifest $BuildManifest -BuildCommandInvocation $BuildCommandInvocation
 
+    # Override VersionedOutputDirectory with UnversionedOutputDirectory
+    if ($BuildInfo.UnversionedOutputDirectory -and $BuildInfo.VersionedOutputDirectory) {
+        $BuildInfo.VersionedOutputDirectory = $false
+    }
+
     # Finally, add all the information in the module manifest to the return object
     if ($ModuleInfo = ImportModuleManifest $BuildInfo.SourcePath) {
         # Update the module manifest with our build configuration and output it

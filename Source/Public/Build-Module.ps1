@@ -38,6 +38,7 @@ function Build-Module {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Build is approved now")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "", Justification="Parameter handling is in InitializeBuild")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidDefaultValueSwitchParameter", "", Justification = "VersionedOutputDirectory is Deprecated")]
     [CmdletBinding(DefaultParameterSetName="SemanticVersion")]
     [Alias("build")]
     param(
@@ -53,13 +54,17 @@ function Build-Module {
         [Alias("ModuleManifest", "Path")]
         [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
 
-        # Where to build the module.
-        # Defaults to an ..\output folder (adjacent to the "SourcePath" folder)
+        # Where to build the module. Defaults to "..\Output" adjacent to the "SourcePath" folder.
+        # The ACTUAL output may be in a subfolder of this path ending with the module name and version
+        # The default value is ..\Output which results in the build going to ..\Output\ModuleName\1.2.3
         [Alias("Destination")]
         [string]$OutputDirectory = "..\Output",
 
-        # If set (true) adds a folder named after the version number to the OutputDirectory
-        [switch]$VersionedOutputDirectory,
+        # DEPRECATED. Now defaults true, producing a OutputDirectory with a version number as the last folder
+        [switch]$VersionedOutputDirectory = $true,
+
+        # Overrides the VersionedOutputDirectory, producing an OutputDirectory without a version number as the last folder
+        [switch]$UnversionedOutputDirectory,
 
         # Semantic version, like 1.0.3-beta01+sha.22c35ffff166f34addc49a3b80e622b543199cc5
         # If the SemVer has metadata (after a +), then the full Semver will be added to the ReleaseNotes
@@ -122,7 +127,13 @@ function Build-Module {
         [Alias("ExportModuleMember","Postfix")]
         [string]$Suffix,
 
-        # Controls whether or not there is a build or cleanup performed
+        # Controls whether we delete the output folder and whether we build the output
+        # There are three options:
+        #   - Clean deletes the build output folder
+        #   - Build builds the module output
+        #   - CleanBuild first deletes the build output folder and then builds the module back into it
+        # Note that the folder to be deleted is the actual calculated output folder, with the version number
+        # So for the default OutputDirectory with version 1.2.3, the path to clean is: ..\Output\ModuleName\1.2.3
         [ValidateSet("Clean", "Build", "CleanBuild")]
         [string]$Target = "CleanBuild",
 
@@ -154,37 +165,29 @@ function Build-Module {
             Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
             Write-Verbose  "Building $($ModuleInfo.Name)"
 
-            # Output file names
+            # Ensure the OutputDirectory (exists for build, or is cleaned otherwise)
             $OutputDirectory = $ModuleInfo | ResolveOutputFolder
+            if ($Target -notmatch "Build") {
+                return
+            }
             $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
             $OutputManifest = Join-Path $OutputDirectory "$($ModuleInfo.Name).psd1"
             Write-Verbose  "Output to: $OutputDirectory"
 
-            if ($Target -match "Clean") {
-                Write-Verbose "Cleaning $OutputDirectory"
-                if (Test-Path $OutputDirectory -PathType Leaf) {
-                    throw "Unable to build. There is a file in the way at $OutputDirectory"
+            # Skip the build if it's up to date already
+            Write-Verbose "Target $Target"
+            $NewestBuild = (Get-Item $RootModule -ErrorAction SilentlyContinue).LastWriteTime
+            $IsNew = Get-ChildItem $ModuleInfo.ModuleBase -Recurse |
+                Where-Object LastWriteTime -gt $NewestBuild |
+                Select-Object -First 1 -ExpandProperty LastWriteTime
+
+            if ($null -eq $IsNew) {
+                # This is mostly for testing ...
+                if ($Passthru) {
+                    Get-Module $OutputManifest -ListAvailable
                 }
-                if (Test-Path $OutputDirectory -PathType Container) {
-                    if (Get-ChildItem $OutputDirectory\*) {
-                        Remove-Item $OutputDirectory\* -Recurse -Force
-                    }
-                }
-                if ($Target -notmatch "Build") {
-                    return # No build, just cleaning
-                }
-            } else {
-                # If we're not cleaning, skip the build if it's up to date already
-                Write-Verbose "Target $Target"
-                $NewestBuild = (Get-Item $RootModule -ErrorAction SilentlyContinue).LastWriteTime
-                $IsNew = Get-ChildItem $ModuleInfo.ModuleBase -Recurse |
-                    Where-Object LastWriteTime -gt $NewestBuild |
-                    Select-Object -First 1 -ExpandProperty LastWriteTime
-                if ($null -eq $IsNew) {
-                    return # Skip the build
-                }
+                return # Skip the build
             }
-            $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
 
             # Note that the module manifest parent folder is the "root" of the source directories
             Push-Location $ModuleInfo.ModuleBase -StackName Build-Module
@@ -235,7 +238,7 @@ function Build-Module {
                 if ($Prerelease) {
                     Write-Verbose "Update Manifest at $OutputManifest with Prerelease: $Prerelease"
                     Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value $Prerelease
-                } else {
+                } elseif ($PSCmdlet.ParameterSetName -eq "SemanticVersion" -or $PSBoundParameters.ContainsKey("Prerelease")) {
                     Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value ""
                 }
             } elseif($Prerelease) {

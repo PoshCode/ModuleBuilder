@@ -26,7 +26,7 @@
     Write-Debug "Path: $path"
     Push-Location
     Set-Location $Path
-    
+
     #not safe!
     #populate what info we can from the path
     $username, $repo = ((git remote -v | ?{$_ -like "*(push)"}).replace('.git','') -split '\s+')[1].split("/") | select -last 2
@@ -37,7 +37,7 @@
     Write-Debug "Username: $username"
     Write-Debug "Repository: $repo"
     Write-Debug "Branch: $branch"
-    
+
     $status = git status --short|?{$_ -match '(.)(.)\s+(.+)'} | %{[pscustomobject]@{X=$matches[1];Y=$matches[2];File=$matches[3]}}
     if($status)
     {
@@ -48,13 +48,13 @@
         }
     }
     Write-Verbose "Status: Committed and up to date"
-    
+
     ## update version and commit?
     ## this will be replaced, just a test for commit purposes
     $psd1 = gi ((gi $path).name + ".psd1")
     Write-Debug "PSD1: $psd1"
 
-    
+
     $psd1data = (gc $psd1) | %{
     if($_ -match 'moduleversion\s*=(.+)')
     {
@@ -65,7 +65,7 @@
         $versionfull = "$versionshort.$(Get-Date -Format "yyyyMMdd.HHmm")"
         "ModuleVersion='$versionfull'"
         Write-Verbose "New Versioin: $versionfull"
- 
+
     }
     else{$_}
     }
@@ -78,7 +78,7 @@
     Write-Verbose "Commiting version data"
     git commit -a -m "Release Commit - Version Tag $versionfull" | Out-Null
     git push origin $branch
-    
+
     Write-Verbose "Creating tag"
     $tag = "V$versionshort"
     git tag -a $tag -m "Auto Release version $versionfull"
@@ -86,41 +86,41 @@
 
     Write-Verbose "Getting Github auth token"
     $token = Get-GitToken -Credential $Credential
-    
+
     Write-Verbose "Creating the release"
     $GHRelease = New-GitHubRelease -username $username -repo $repo -token $token -tag $tag -branch $branch -Title $title -Description $Description -draft:$draft.IsPresent -Prerelease:$Prerelease.IsPresent
-    
+
     ## create a release folder, maybe clear it first?
-    
+
     $releaseFolder = join-path $path Release
     Write-Verbose "Creating release folder"
-    mkdir $releaseFolder -ea 0 | out-null
-       
+    New-Item -ItemType Directory $releaseFolder -ea 0 | out-null
+
     #create a folder for module files
     Write-Verbose "Creating copy of module"
     $modtemp = join-path $releaseFolder $moduleName
     Write-Debug "creating temp folder: $modtemp"
-    mkdir $modtemp -ea 0 | Out-Null
+    New-Item -ItemType Directory $modtemp -ea 0 | Out-Null
     #get all files
     $filenames = git ls-tree -r $branch --name-only | ? {$_ -notlike ".*"}
     $files = $filenames | %{join-path . $_} | gi
     #copy files to module temp/release location
     copy $files $modtemp
-    
-    Write-Verbose "Signing moved files"    
+
+    Write-Verbose "Signing moved files"
     if($Certificate)
     {
         gci $modtemp | Set-AuthenticodeSignature -Certificate $Certificate | Out-Null
     }
 
-    
+
     ## create packages
     #poshcode/nuget/chocolatey
     ipmo $modtemp -Global
     sleep 1
     Write-Verbose "Creating nuget package"
     $nugetfiles = Compress-Module -Module $moduleName -OutputPath $releaseFolder -Force
-    
+
     #exclude xml
     #todo: move packageinfo/nuspec to repo add/overwite etc
     #todo: rename nuget file to remove extend version info
@@ -191,7 +191,7 @@ function New-GitHubRepo {
         # The name of the Repository to create
         [Parameter(Mandatory=$true)]
         [String]$Name,
-        # A short description of the repository 
+        # A short description of the repository
         [String]$Description,
         # A URL with more information about the repository
         [String]$Homepage,

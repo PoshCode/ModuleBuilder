@@ -48,7 +48,7 @@ function SetModuleContent {
                 Write-Verbose "Adding $SourceName"
                 $SetContent.Process("#Region '$SourceName' 0")
                 Get-Content $SourceName -OutVariable source | ForEach-Object { $SetContent.Process($_) }
-                $SetContent.Process("#EndRegion '$SourceName' $($Source.Count)")
+                $SetContent.Process("#EndRegion '$SourceName' $($Source.Count+1)")
             } else {
                 if(!$ContentStarted) {
                     $SetContent.Process("#Region 'PREFIX' 0")
