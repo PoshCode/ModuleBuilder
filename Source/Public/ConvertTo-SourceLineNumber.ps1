@@ -1,4 +1,4 @@
-function Convert-LineNumber {
+function ConvertTo-SourceLineNumber {
     <#
         .SYNOPSIS
             Convert the line number in a built module to a file and line number in source
@@ -7,23 +7,29 @@ function Convert-LineNumber {
         .EXAMPLE
             Convert-LineNumber -PositionMessage "At C:\Users\Joel\OneDrive\Documents\PowerShell\Modules\ErrorMaker\ErrorMaker.psm1:27 char:4"
     #>
+    [Alias("Convert-LineNumber")]
     [CmdletBinding(DefaultParameterSetName="FromString")]
     param(
         # A position message as found in PowerShell's error messages, ScriptStackTrace, or InvocationInfo
         [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName="FromString")]
         [string]$PositionMessage,
 
+        # The SourceFile (from an InvocationInfo) is the module psm1 path
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, Position=0, ParameterSetName="FromInvocationInfo")]
         [Alias("PSCommandPath", "File", "ScriptName", "Script")]
         [string]$SourceFile,
 
+        # The SourceLineNumber (from an InvocationInfo) is the module line number
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, Position=1, ParameterSetName="FromInvocationInfo")]
         [Alias("LineNumber", "Line", "ScriptLineNumber")]
         [int]$SourceLineNumber,
 
+        # The actual InvocationInfo
         [Parameter(ValueFromPipeline, DontShow, ParameterSetName="FromInvocationInfo")]
         [psobject]$InputObject,
 
+        # If set, passes through the InputObject, overwriting the SourceFile and SourceLineNumber.
+        # Otherwise, creates a new SourceLocation object with just those properties.
         [Parameter(ParameterSetName="FromInvocationInfo")]
         [switch]$Passthru
     )
@@ -31,12 +37,12 @@ function Convert-LineNumber {
         $filemap = @{}
     }
     process {
-        if($PSCmdlet.ParameterSetName -eq "FromString") {
+        if ($PSCmdlet.ParameterSetName -eq "FromString") {
             $Invocation = ParseLineNumber $PositionMessage
             $SourceFile = $Invocation.SourceFile
             $SourceLineNumber = $Invocation.SourceLineNumber
         }
-        if(!(Test-Path $SourceFile)) {
+        if (!(Test-Path $SourceFile)) {
             throw "'$SourceFile' does not exist"
         }
         Push-Location (Split-Path $SourceFile)
@@ -44,6 +50,10 @@ function Convert-LineNumber {
             if (!$filemap.ContainsKey($SourceFile)) {
                 # Note: the new pattern is #Region but the old one was # BEGIN
                 $regions = Select-String '^(?:#Region|# BEGIN) (?<SourceFile>.*) (?<LineNumber>\d+)?$' -Path $SourceFile
+                if ($regions.Count -eq 0) {
+                    Write-Warning "No SourceMap for $SourceFile"
+                    return
+                }
                 $filemap[$SourceFile] = @($regions.ForEach{
                         [PSCustomObject]@{
                             PSTypeName = "BuildSourceMapping"
