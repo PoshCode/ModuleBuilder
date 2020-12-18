@@ -7,6 +7,10 @@
     "powershell.codeFormatting.preset": "OTBS",
     "powershell.codeFormatting.ignoreOneLineBlock": false,
     "powershell.codeFormatting.newLineAfterCloseBrace": false,
+    "powershell.codeFormatting.pipelineIndentationStyle": "IncreaseIndentationForFirstPipeline",
+    "powershell.codeFormatting.alignPropertyValuePairs": true,
+    "powershell.codeFormatting.autoCorrectAliases": true,
+    "powershell.codeFormatting.useCorrectCasing": true,
     "files.associations": {
         "*.ps1xml": "xml"
     }

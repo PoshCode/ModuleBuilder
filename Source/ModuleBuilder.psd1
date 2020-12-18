@@ -1,13 +1,13 @@
 @{
     # The module version should be SemVer.org compatible
-    ModuleVersion          = "1.1.0"
+    ModuleVersion          = "0.0.0"
 
     # PrivateData is where all third-party metadata goes
     PrivateData            = @{
         # PrivateData.PSData is the PowerShell Gallery data
         PSData             = @{
             # Prerelease string should be here, so we can set it
-            Prerelease     = 'beta'
+            Prerelease     = 'source'
 
             # Release Notes have to be here, so we can update them
             ReleaseNotes   = '
