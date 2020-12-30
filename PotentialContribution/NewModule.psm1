@@ -51,7 +51,7 @@ function New-Module {
       [Switch]$Force,
 
       # If set, appends to (increments) existing modules without prompting.
-      # THe Updgrade switch will leave any customizations to your module in place:
+      # The Upgrade switch will leave any customizations to your module in place:
       # * It doesn't alter the psm1 (but will create one if it's missing)
       # * It only changes the manifest module version, and any explicitly set parameters
       [Switch]$Upgrade,
@@ -81,7 +81,7 @@ function New-Module {
       [PSDefaultValue(Help = {"'A collection of script files by ${Env:UserName}' (uses the value from the Author parmeter)"})]
       [string]${Description} = "A collection of script files by $Author",
 
-      # The vresion of the module 
+      # The version of the module 
       # (This is a passthru for New-ModuleManifest)
       [Parameter()]
       [PSDefaultValue(Help = "1.0 (when -Upgrade is set, increments the existing value to the nearest major version number)")]
