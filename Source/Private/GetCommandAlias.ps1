@@ -15,8 +15,8 @@ function GetCommandAlias {
     }
     process {
         foreach($function in $AST.FindAll(
-            { $Args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] },
-            $false )
+                { $Args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] },
+                $false )
         ) {
             $Result[$function.Name] = $function.Body.ParamBlock.Attributes.Where{
                 $_.TypeName.Name -eq "Alias" }.PositionalArguments.Value
