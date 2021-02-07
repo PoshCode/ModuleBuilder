@@ -65,7 +65,7 @@ function GetCommandAlias {
                     -and $aliasCommandAst.CommandElements[$_].ParameterName -eq 'Scope'
                 ) {
                     # Value (the scope) is in the next item in the array.
-                    if ($aliasCommandAst.CommandElements[$_ + 1].Value -eq 'Global') {
+                    if ($aliasCommandAst.CommandElements[$_ + 1].Value -imatch 'Global') {
                         $isGlobal = $true
                     }
                 }
