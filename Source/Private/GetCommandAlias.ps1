@@ -4,6 +4,7 @@ function GetCommandAlias {
             Parses one or more files for aliases and returns a list of alias names.
     #>
     [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '', Justification='There are issues reported for this rule in PSScriptAnalyzer repository when setting variables in a ForEach-Object. This suppression should be removed once that issue in PSScriptAnalyzer is resolved.')]
     param(
         # Path to the PSM1 file to amend
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ValueFromPipeline)]
