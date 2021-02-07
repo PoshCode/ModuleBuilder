@@ -51,33 +51,56 @@ function GetCommandAlias {
             <#
                 Named parameter 'Name' has position parameter 0 in all three commands
                 (New-Alias, Set-Alias, and Remove-Alias). That means that the alias
-                name is in either item 1 (positional) or item 2 (named) in the
-                CommandElements array.
+                name is in either item 1 if positional or in any other element in the
+                array if named.
+
+                Scope must always be a named parameter.
             #>
 
-            # Evaluate if the command uses named parameter Name.
-            if ($aliasCommandAst.CommandElements[1] -is [System.Management.Automation.Language.CommandParameterAst]) {
-                # Value is in third item in the array.
-                $aliasName = $aliasCommandAst.CommandElements[2].Value
+            $isGlobal = $false
+
+            # Evaluate if the command uses named parameter Scope set to Global. Always start at second element.
+            1..($aliasCommandAst.CommandElements.Count - 1) | ForEach-Object -Process {
+                if ($aliasCommandAst.CommandElements[$_] -is [System.Management.Automation.Language.CommandParameterAst] `
+                    -and $aliasCommandAst.CommandElements[$_].ParameterName -eq 'Scope'
+                ) {
+                    # Value (the scope) is in the next item in the array.
+                    if ($aliasCommandAst.CommandElements[$_ + 1].Value -eq 'Global') {
+                        $isGlobal = $true
+                    }
+                }
             }
 
-            # Evaluate if the command uses positional parameter 1.
-            if ($aliasCommandAst.CommandElements[1] -is [System.Management.Automation.Language.StringConstantExpressionAst]) {
-                # Value is in second item in the array.
-                $aliasName = $aliasCommandAst.CommandElements[1].Value
-            }
+            if (-not $isGlobal) {
+                $aliasName = $null
 
-            if ($aliasCommandAst.CommandElements[0].Value -eq 'Remove-Alias') {
-                Write-Warning -Message "Found an alias '$aliasName' that is removed using Remove-Alias, assuming the alias should not be exported."
+                # Evaluate if the command uses positional parameter 1.
+                if ($aliasCommandAst.CommandElements[1] -is [System.Management.Automation.Language.StringConstantExpressionAst]) {
+                    # Value is in second item in the array.
+                    $aliasName = $aliasCommandAst.CommandElements[1].Value
+                } else {
+                    # Evaluate if the command uses named parameter Name. Always start at second element.
+                    1..($aliasCommandAst.CommandElements.Count - 1) | ForEach-Object -Process {
+                        if ($aliasCommandAst.CommandElements[$_] -is [System.Management.Automation.Language.CommandParameterAst] `
+                            -and $aliasCommandAst.CommandElements[$_].ParameterName -eq 'Name'
+                        ) {
+                            # Value (the alias name) is in the next item in the array.
+                            $aliasName = $aliasCommandAst.CommandElements[$_ + 1].Value
+                        }
+                    }
+                }
 
-                <#
-                    Save the alias name to the end so that it can be removed from
-                    the resulting list of aliases.
-                #>
-                $RemovedAliases += $aliasName
-            }
-            else {
-                $Result[$aliasName] = $aliasName
+                if ($aliasCommandAst.CommandElements[0].Value -eq 'Remove-Alias') {
+                    Write-Warning -Message "Found an alias '$aliasName' that is removed using Remove-Alias, assuming the alias should not be exported."
+
+                    <#
+                        Save the alias name to the end so that it can be removed from
+                        the resulting list of aliases.
+                    #>
+                    $RemovedAliases += $aliasName
+                } else {
+                    $Result[$aliasName] = $aliasName
+                }
             }
         }
     }
