@@ -14,6 +14,14 @@ function GetCommandAlias {
         $Result = [Ordered]@{}
     }
     process {
+        foreach($function in $AST.FindAll(
+            { $Args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] },
+            $false )
+        ) {
+            $Result[$function.Name] = $function.Body.ParamBlock.Attributes.Where{
+                $_.TypeName.Name -eq "Alias" }.PositionalArguments.Value
+        }
+
         <#
             Search for New-Alias, Set-Alias, and Remove-Alias.
 
@@ -72,24 +80,9 @@ function GetCommandAlias {
                 $Result[$aliasName] = $aliasName
             }
         }
-
-        # Search for attribute [(Alias())] on parameter blocks.
-        $astFilter = {
-            $args[0] -is [System.Management.Automation.Language.AttributeAst] `
-            -and $args[0].Parent -is [System.Management.Automation.Language.ParamBlockAst] `
-            -and $args[0].TypeName.Name -eq 'Alias'
-        }
-
-        $attributeAsts = $AST.FindAll($astFilter, $true)
-
-        foreach ($attributeAst in $attributeAsts) {
-            $functionName = $attributeAst.Parent.Parent.Parent.Name
-
-            $Result[$functionName] += $attributeAst.PositionalArguments.Value
-        }
     }
     end {
-        # Return the aliases that wasn't removed.
+        # Return the aliases after filtering out those that was removed by `Remove-Alias`.
         $Result | Where-Object -FilterScript { $_.Keys -notin $RemovedAliases }
     }
 }
