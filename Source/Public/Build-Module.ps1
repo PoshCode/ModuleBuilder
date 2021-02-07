@@ -219,19 +219,8 @@ function Build-Module {
             $ParseResult = ConvertToAst $RootModule
             $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
 
-            if (-not $ModuleInfo.IgnoreAliasAttribute) {
-                $AliasesToExport = @()
-
-                if ($ModuleInfo.PublicFilter) {
-                    $PublicScripts = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue
-                }
-
-                if ($PublicScripts) {
-                    #$AliasesToExport += ($ParseResult | GetCommandAlias)[$PublicFunctions]
-                    $AliasesToExport = GetCommandAlias -Path $PublicScripts
-                }
-
-                if (($AliasesToExport = $AliasesToExport | ForEach-Object { $_ } | Select-Object -Unique)) {
+            if ($PublicFunctions -and -not $ModuleInfo.IgnoreAliasAttribute) {
+                if (($AliasesToExport = ($ParseResult | GetCommandAlias)[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
                     Update-Metadata -Path $OutputManifest -PropertyName AliasesToExport -Value $AliasesToExport
                 }
             }
