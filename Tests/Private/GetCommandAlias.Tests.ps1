@@ -62,13 +62,13 @@ Describe "GetCommandAlias" {
             New-Alias -Name 'Alias1' -Value 'Write-Verbose'
             New-Alias -Value 'Write-Verbose' -Name 'Alias2'
             New-Alias 'Alias3' 'Write-Verbose'
-            " | Out-File -FilePath "$TestDrive\MockBuiltModule.psm1" -Encoding ascii -Force
+            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
         }
 
         It "returns a hashtable with correct aliases" {
             $Result = InModuleScope ModuleBuilder {
                 $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive\MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
+                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
 
                 GetCommandAlias -Ast $mockAST
             }
@@ -87,13 +87,13 @@ Describe "GetCommandAlias" {
             Set-Alias -Name 'Alias1' -Value 'Write-Verbose'
             Set-Alias -Value 'Write-Verbose' -Name 'Alias2'
             Set-Alias 'Alias3' 'Write-Verbose'
-            " | Out-File -FilePath "$TestDrive\MockBuiltModule.psm1" -Encoding ascii -Force
+            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
         }
 
         It "returns a hashtable with correct aliases" {
             $Result = InModuleScope ModuleBuilder {
                 $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive\MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
+                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
 
                 GetCommandAlias -Ast $mockAST
             }
@@ -117,13 +117,13 @@ Describe "GetCommandAlias" {
             }
 
             New-Alias -Name 'Alias3' -Value 'Write-Verbose'
-            " | Out-File -FilePath "$TestDrive\MockBuiltModule.psm1" -Encoding ascii -Force
+            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
         }
 
         It "returns a hashtable with just the aliases at script-level" {
             $Result = InModuleScope ModuleBuilder {
                 $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive\MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
+                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
 
                 GetCommandAlias -Ast $mockAST
             }
@@ -155,13 +155,13 @@ Describe "GetCommandAlias" {
             New-Alias -Scope Global 'Alias14' 'Write-Verbose'
 
             New-Alias 'Alias15' 'Write-Verbose'
-            " | Out-File -FilePath "$TestDrive\MockBuiltModule.psm1" -Encoding ascii -Force
+            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
         }
 
         It "returns a hashtable with correct aliases" {
             $Result = InModuleScope ModuleBuilder {
                 $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive\MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
+                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
 
                 GetCommandAlias -Ast $mockAST
             }
@@ -178,7 +178,7 @@ Describe "GetCommandAlias" {
             New-Alias -Name 'Alias1' -Value 'Write-Verbose'
             New-Alias -Name 'Alias2' -Value 'Write-Verbose'
             Remove-Alias -Name 'Alias2'
-            " | Out-File -FilePath "$TestDrive\MockBuiltModule.psm1" -Encoding ascii -Force
+            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
 
             Mock -CommandName Write-Warning -ModuleName 'ModuleBuilder'
 
@@ -187,7 +187,7 @@ Describe "GetCommandAlias" {
         It "returns a hashtable with correct aliases" {
             $Result = InModuleScope ModuleBuilder {
                 $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive\MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
+                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
 
                 GetCommandAlias -Ast $mockAST
             }
