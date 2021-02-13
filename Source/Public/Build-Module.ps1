@@ -108,8 +108,10 @@ function Build-Module {
         # A switch that allows you to disable the update of the AliasesToExport
         # By default, (if PublicFilter is not empty, and this is not set)
         # Build-Module updates the module manifest FunctionsToExport and AliasesToExport
-        # with the combination of all the values in [Alias()] attributes on public functions in the module
-        [switch]$IgnoreAliasAttribute,
+        # with the combination of all the values in [Alias()] attributes on public functions
+        # and aliases created with `New-ALias` or `Set-Alias` at script level in the module
+        [Alias("IgnoreAliasAttribute")]
+        [switch]$IgnoreAlias,
 
         # File encoding for output RootModule (defaults to UTF8)
         # Converted to System.Text.Encoding for PowerShell 6 (and something else for PowerShell 5)
