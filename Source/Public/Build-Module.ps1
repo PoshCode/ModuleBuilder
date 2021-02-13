@@ -210,10 +210,14 @@ function Build-Module {
             # We have to force the Encoding to string because PowerShell Core made up encodings
             SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
 
+            if (-not $ModuleInfo.IgnoreAlias) {
+                $AliasesToExport = $ParseResult | GetCommandAlias
+            }
+
             # If there is a PublicFilter, update ExportedFunctions
             if ($ModuleInfo.PublicFilter) {
                 # SilentlyContinue because there don't *HAVE* to be public functions
-                if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Where-Object BaseName -in $AllScripts.BaseName | Select-Object -ExpandProperty BaseName)) {
+                if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.BaseName -in $AllScripts.BaseName -and $_.BaseName -notin $AliasesToExport } | Select-Object -ExpandProperty BaseName)) {
                     Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
                 }
             }
@@ -222,7 +226,7 @@ function Build-Module {
             $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
 
             if ($PublicFunctions -and -not $ModuleInfo.IgnoreAlias) {
-                if (($AliasesToExport = ($ParseResult | GetCommandAlias)[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
+                if (($AliasesToExport = $AliasesToExport[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
                     Update-Metadata -Path $OutputManifest -PropertyName AliasesToExport -Value $AliasesToExport
                 }
             }
