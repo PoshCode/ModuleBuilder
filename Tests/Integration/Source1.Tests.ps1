@@ -62,7 +62,7 @@ Describe "Regression test for #55: I can pass SourceDirectories and PublicFilter
     $Metadata = Import-Metadata $Output.Path
 
     It "Should not have any FunctionsToExport if SourceDirectories don't match the PublicFilter" {
-        $Metadata.FunctionsToExport | Should -Be @("GetFinale", "GetPreview")
+        $Metadata.FunctionsToExport | Should -Be @("Get-TestNotExportedAliases", "GetFinale", "GetPreview")
     }
 
     It "Should update AliasesToExport in the manifest" {
