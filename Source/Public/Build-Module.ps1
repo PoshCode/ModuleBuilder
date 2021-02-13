@@ -210,6 +210,9 @@ function Build-Module {
             # We have to force the Encoding to string because PowerShell Core made up encodings
             SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
 
+            $ParseResult = ConvertToAst $RootModule
+            $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
+
             if (-not $ModuleInfo.IgnoreAlias) {
                 $AliasesToExport = $ParseResult | GetCommandAlias
             }
@@ -221,9 +224,6 @@ function Build-Module {
                     Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
                 }
             }
-
-            $ParseResult = ConvertToAst $RootModule
-            $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
 
             if ($PublicFunctions -and -not $ModuleInfo.IgnoreAlias) {
                 if (($AliasesToExport = $AliasesToExport[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
