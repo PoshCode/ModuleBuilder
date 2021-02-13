@@ -221,7 +221,7 @@ function Build-Module {
             $ParseResult = ConvertToAst $RootModule
             $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
 
-            if ($PublicFunctions -and -not $ModuleInfo.IgnoreAliasAttribute) {
+            if ($PublicFunctions -and -not $ModuleInfo.IgnoreAlias) {
                 if (($AliasesToExport = ($ParseResult | GetCommandAlias)[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
                     Update-Metadata -Path $OutputManifest -PropertyName AliasesToExport -Value $AliasesToExport
                 }
