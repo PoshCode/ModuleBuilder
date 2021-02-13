@@ -57,6 +57,7 @@ Describe "GetCommandAlias" {
 
     Context "Parsing Code For New-Alias" {
         BeforeAll {
+            # Must write a mock module script file and parse it to replicate real conditions
             "
             New-Alias -Name 'Alias1' -Value 'Write-Verbose'
             New-Alias -Value 'Write-Verbose' -Name 'Alias2'
@@ -81,6 +82,7 @@ Describe "GetCommandAlias" {
 
     Context "Parsing Code For Set-Alias" {
         BeforeAll {
+            # Must write a mock module script file and parse it to replicate real conditions
             "
             Set-Alias -Name 'Alias1' -Value 'Write-Verbose'
             Set-Alias -Value 'Write-Verbose' -Name 'Alias2'
@@ -105,6 +107,7 @@ Describe "GetCommandAlias" {
 
     Context "Parsing Code For New-Alias" {
         BeforeAll {
+            # Must write a mock module script file and parse it to replicate real conditions
             "
             function Get-Something {
                 param()
@@ -133,6 +136,7 @@ Describe "GetCommandAlias" {
 
     Context "Parsing Code For *-Alias Using Global Scope" {
         BeforeAll {
+            # Must write a mock module script file and parse it to replicate real conditions
             "
             Set-Alias -Name 'Alias1' -Value 'Write-Verbose' -Scope Global
             Set-Alias -Name 'Alias2' -Value 'Write-Verbose' -Scope 'Global'
@@ -169,6 +173,7 @@ Describe "GetCommandAlias" {
 
     Context "Parsing Code For Remove-Alias" {
         BeforeAll {
+            # Must write a mock module script file and parse it to replicate real conditions
             "
             New-Alias -Name 'Alias1' -Value 'Write-Verbose'
             New-Alias -Name 'Alias2' -Value 'Write-Verbose'
