@@ -107,6 +107,10 @@ function GetCommandAlias {
     }
     end {
         # Return the aliases after filtering out those that was removed by `Remove-Alias`.
-        $Result | Where-Object -FilterScript { $_.Keys -notin $RemovedAliases }
+        $RemovedAliases | ForEach-Object -Process {
+            $Result.Remove($_)
+        }
+
+        $Result
     }
 }
