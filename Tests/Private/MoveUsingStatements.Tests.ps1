@@ -29,7 +29,7 @@ Describe "MoveUsingStatements" {
 
         $TestCases = @(
             @{
-                TestCaseName = 'Move all using statements in `n terminated files to the top'
+                TestCaseName = 'Moves all using statements in `n terminated files to the top'
                 PSM1File     = "function x {`n}`n" +
                 "using namespace System.IO`n`n" + #UsingMustBeAtStartOfScript
                 "function y {`n}`n" +
@@ -38,7 +38,7 @@ Describe "MoveUsingStatements" {
                 ErrorAfter   = 0
             },
             @{
-                TestCaseName = 'Move all using statements in `r`n terminated files to the top'
+                TestCaseName = 'Moves all using statements in`r`n terminated files to the top'
                 PSM1File     = "function x {`r`n}`r`n" +
                 "USING namespace System.IO`r`n`r`n" + #UsingMustBeAtStartOfScript
                 "function y {`r`n}`r`n" +
@@ -47,16 +47,32 @@ Describe "MoveUsingStatements" {
                 ErrorAfter   = 0
             },
             @{
-                TestCaseName = 'Not change the content again if there are no out-of-place using statements'
+                TestCaseName = 'Prevents duplicate using statements'
+                PSM1File     = "using namespace System.IO`r`n" + #UsingMustBeAtStartOfScript
+                "function x {`r`n}`r`n`r`n" +
+                "using namespace System.IO`r`n" + #UsingMustBeAtStartOfScript
+                "function y {`r`n}`r`n" +
+                "USING namespace System.IO" #UsingMustBeAtStartOfScript
+                ExpectedResult  = "using namespace System.IO`r`n" +
+                "#using namespace System.IO`r`n" +
+                "function x {`r`n}`r`n`r`n" +
+                "#using namespace System.IO`r`n" +
+                "function y {`r`n}`r`n" +
+                "#USING namespace System.IO"
+                ErrorBefore  = 2
+                ErrorAfter   = 0
+            },
+            @{
+                TestCaseName = 'Does not change the content again if there are no out-of-place using statements'
                 PSM1File     = "using namespace System.IO`r`n`r`n" +
                 "using namespace System.Drawing`r`n" +
-                "function x { `r`n}`r`n" +
-                "function y { `r`n}`r`n"
+                "function x {`r`n}`r`n" +
+                "function y {`r`n}`r`n"
                 ErrorBefore  = 0
                 ErrorAfter   = 0
             },
             @{
-                TestCaseName = 'Move using statements even if types are used'
+                TestCaseName = 'Moves using statements even if types are used'
                 PSM1File     = "function x {`r`n}`r`n" +
                 "using namespace System.IO`r`n`r`n" + #UsingMustBeAtStartOfScript
                 "function y {`r`n}`r`n" +
@@ -66,18 +82,18 @@ Describe "MoveUsingStatements" {
                 ErrorAfter   = 0
             },
             @{
-                TestCaseName = 'Move using statements even when there are (other) parse errors'
+                TestCaseName = 'Moves using statements even when there are (other) parse errors'
                 PSM1File     = "using namespace System.IO`r`n`r`n" +
-                "function x { `r`n}`r`n" +
+                "function x {`r`n}`r`n" +
                 "using namespace System.Drawing`r`n" + # UsingMustBeAtStartOfScript
-                "function y { `r`n}`r`n}" # Extra } at the end
+                "function y {`r`n}`r`n}" # Extra } at the end
                 ErrorBefore  = 2
                 ErrorAfter   = 1
             }
         )
 
-        It 'It should <TestCaseName>' -TestCases $TestCases {
-            param($TestCaseName, $PSM1File, $ErrorBefore, $ErrorAfter)
+        It '<TestCaseName>' -TestCases $TestCases {
+            param($TestCaseName, $PSM1File, $ErrorBefore, $ErrorAfter, $ExpectedResult)
 
             $testModuleFile = "$TestDrive/MyModule.psm1"
             Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
@@ -99,6 +115,10 @@ Describe "MoveUsingStatements" {
                 [ref]$ErrorFound
             )
             $ErrorFound.Count | Should -Be $ErrorAfter
+            if ($ExpectedResult) {
+                $ActualResult = Get-Content $testModuleFile -Raw
+                $ActualResult.Trim() | Should -Be $ExpectedResult -Because "there should be no duplicate using statements in:`n$ActualResult"
+            }
         }
     }
 
