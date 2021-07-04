@@ -39,6 +39,7 @@ jobs:
         name: ScriptAnalyzer
         path: ${{github.workspace}}/PSScriptAnalyzerSettings.psd1
   lint:
+    needs: build
     name: Run PSScriptAnalyzer
     runs-on: ubuntu-latest
     steps:
@@ -47,12 +48,12 @@ jobs:
     - name: Invoke-ScriptAnalyzer
       uses: devblackops/github-action-psscriptanalyzer@master
   test:
+    needs: build
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [windows-2016, windows-latest, ubuntu-latest, macos-latest]
-    needs: build
     steps:
     - name: Download Build Output
       uses: actions/download-artifact@v2
