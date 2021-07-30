@@ -2,7 +2,7 @@
 @{
     "Configuration"    = "[1.3.1,2.0)"
     "ModuleBuilder"    = "1.*"
-    "Pester"           = "[4.5.0,5.0)"
+    "Pester"           = "[4.10.1,5.0)"
     "PowerShellGet"    = "2.0.4"
     "PSScriptAnalyzer" = "1.*"
 }

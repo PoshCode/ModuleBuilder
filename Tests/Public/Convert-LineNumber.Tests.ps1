@@ -2,22 +2,24 @@
 Describe "Convert-LineNumber" {
     # use the integration test code
     BeforeAll {
-        Build-Module $PSScriptRoot\..\Integration\Source1\build.psd1 -Passthru
+        Build-Module $PSScriptRoot/../Integration/Source1/build.psd1 -Passthru
         Push-Location $PSScriptRoot -StackName Convert-CodeCoverage
 
-        $global:Convert_LineNumber_ModulePath = Convert-Path ".\..\Integration\Result1\Source1\1.0.0\Source1.psm1"
-        $global:Convert_LineNumber_ModuleSource = Convert-Path ".\..\Integration\Source1"
+        $global:Convert_LineNumber_ModulePath = Convert-Path "./../Integration/Result1/Source1/1.0.0/Source1.psm1"
+        $global:Convert_LineNumber_ModuleSource = Convert-Path "./../Integration/Source1"
         $global:Convert_LineNumber_ModuleContent = Get-Content $global:Convert_LineNumber_ModulePath
+        ${global:\} = [io.path]::DirectorySeparatorChar
+
+        $global:TestCases = @(
+            @{ outputLine = 6; sourceFile = ".${\}Private${\}GetFinale.ps1"; sourceLine = 4 }
+            @{ outputLine = 18; sourceFile = ".${\}Private${\}GetPreview.ps1"; sourceLine = 7 }
+            @{ outputLine = 25; sourceFile = ".${\}Public${\}Get-Source.ps1"; sourceLine = 5 }
+        )
     }
     AfterAll {
         Pop-Location -StackName Convert-CodeCoverage
     }
 
-    $TestCases = @(
-        @{ outputLine = 6;  sourceFile = ".\Private\GetFinale.ps1";  sourceLine = 4 }
-        @{ outputLine = 18; sourceFile = ".\Private\GetPreview.ps1"; sourceLine = 7 }
-        @{ outputLine = 25; sourceFile = ".\Public\Get-Source.ps1";  sourceLine = 5 }
-    )
 
     It "Should map line <outputLine> in the Module to line <sourceLine> in the source of <sourceFile>" -TestCases $TestCases {
         param($outputLine, $sourceFile, $sourceLine)
@@ -35,8 +37,8 @@ Describe "Convert-LineNumber" {
     }
 
     It "Should throw if the SourceFile doesn't exist" {
-        { Convert-LineNumber -SourceFile TestDrive:\NoSuchFile -SourceLineNumber 10 } |
-            Should -Throw "'TestDrive:\NoSuchFile' does not exist"
+        { Convert-LineNumber -SourceFile TestDrive:/NoSuchFile -SourceLineNumber 10 } |
+            Should -Throw "'TestDrive:/NoSuchFile' does not exist"
     }
 
     It 'Should work with an error PositionMessage' {
@@ -44,13 +46,13 @@ Describe "Convert-LineNumber" {
 
         $SourceLocation = "At ${Convert_LineNumber_ModulePath}:$line char:17" | Convert-LineNumber
         # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
-        $SourceLocation.SourceFile | Should -Be ".\Public\Set-Source.ps1"
+        $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Set-Source.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 1
     }
 
     It 'Should work with ScriptStackTrace messages' {
 
-        $SourceFile = Join-Path $Convert_LineNumber_ModuleSource Public\Set-Source.ps1 | Convert-Path
+        $SourceFile = Join-Path $Convert_LineNumber_ModuleSource Public/Set-Source.ps1 | Convert-Path
 
         $outputLine = Select-String -Path $Convert_LineNumber_ModulePath "sto͞o′pĭd" | % LineNumber
         $sourceLine = Select-String -Path $SourceFile "sto͞o′pĭd" | % LineNumber
@@ -58,7 +60,7 @@ Describe "Convert-LineNumber" {
         $SourceLocation = "At Set-Source, ${Convert_LineNumber_ModulePath}: line $outputLine" | Convert-LineNumber
 
         # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
-        $SourceLocation.SourceFile | Should -Be ".\Public\Set-Source.ps1"
+        $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Set-Source.ps1"
         $SourceLocation.SourceLineNumber | Should -Be $sourceLine
     }
 
@@ -73,7 +75,7 @@ Describe "Convert-LineNumber" {
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru
         # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
-        $SourceLocation.SourceFile | Should -Be ".\Public\Get-Source.ps1"
+        $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Get-Source.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 5
         $SourceLocation.Function | Should -Be 'Get-Source'
     }
