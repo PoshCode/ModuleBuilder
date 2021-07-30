@@ -1,7 +1,9 @@
 #requires -Module ModuleBuilder
 Describe "ResolveBuildManifest" {
-
-    [string]${Global:Test Root Path} = Resolve-Path $PSScriptRoot\..\..\Source
+    # use the integration test code
+    BeforeAll {
+        [string]${Global:Test Root Path} = Convert-Path "$PSScriptRoot/../Integration/Source1"
+    }
 
     It "Should return the build.psd1 path when passed the build.psd1 path" {
         $Expected = InModuleScope ModuleBuilder { ResolveBuildManifest (Join-Path ${Global:Test Root Path} "build.psd1") }
@@ -9,7 +11,7 @@ Describe "ResolveBuildManifest" {
     }
 
     It "Should return the build.psd1 path when passed the module manifest path" {
-        $Expected = InModuleScope ModuleBuilder { ResolveBuildManifest (Join-Path ${Global:Test Root Path} 'ModuleBuilder.psd1') }
+        $Expected = InModuleScope ModuleBuilder { ResolveBuildManifest (Join-Path ${Global:Test Root Path} 'Source1.psd1') }
         $Expected | Should -Be (Join-Path ${Global:Test Root Path} "build.psd1")
     }
 
@@ -19,10 +21,10 @@ Describe "ResolveBuildManifest" {
     }
 
     It "Should return the build.psd1 path when passed the relative path of the source folder" {
-        Push-Location $PSScriptRoot -StackName TestRelativePath
-        $Expected = InModuleScope ModuleBuilder { ResolveBuildManifest "..\..\Source" }
-        Pop-Location -StackName TestRelativePath
+        Push-Location $PSScriptRoot
+        $Expected = InModuleScope ModuleBuilder { ResolveBuildManifest "../Integration/Source1" }
         $Expected | Should -Be (Join-Path ${Global:Test Root Path} "build.psd1")
+        Pop-Location
     }
 
     It "Returns nothing when passed a wrong absolute module manifest" {
@@ -33,7 +35,7 @@ Describe "ResolveBuildManifest" {
 
     It "Returns nothing when passed the wrong folder path" {
         InModuleScope ModuleBuilder {
-            ResolveBuildManifest (Join-Path ${Global:Test Root Path} "..") | Should -BeNullOrEmpty
+            ResolveBuildManifest (Join-Path ${Global:Test Root Path} "../..") | Should -BeNullOrEmpty
         }
     }
 
@@ -42,5 +44,4 @@ Describe "ResolveBuildManifest" {
             ResolveBuildManifest (Join-Path . ..) | Should -BeNullOrEmpty
         }
     }
-
 }

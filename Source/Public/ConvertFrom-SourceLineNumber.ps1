@@ -1,7 +1,7 @@
 function ConvertFrom-SourceLineNumber {
     <#
         .SYNOPSIS
-            Convert the line number in a built module to a file and line number in source
+            Convert a source file path and line number to the line number in the built output
         .EXAMPLE
             ConvertFrom-SourceLineNumber -Module ~\2.0.0\ModuleBuilder.psm1 -SourceFile ~\Source\Public\Build-Module.ps1 -Line 27
     #>
