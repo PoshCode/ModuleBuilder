@@ -8,12 +8,6 @@ function MoveUsingStatements {
 
             This function uses AST to comment out those statements (to preserver line numbering)
             and insert them (conserving order) at the top of the script.
-
-            Should the merged RootModule already have errors not related to the Using statements,
-            or no errors caused by misplaced Using statements, this steps is skipped.
-
-            If moving (comment & copy) the Using statements introduce parsing errors to the script,
-            those changes won't be applied to the file.
     #>
     [CmdletBinding()]
     param(
@@ -52,15 +46,14 @@ function MoveUsingStatements {
         # Edit the Script content by commenting out existing statements (conserving line numbering)
         $ScriptText = $AST.Extent.Text
         $InsertedCharOffset = 0
-        $StatementsToCopy = New-Object System.Collections.ArrayList
+        $StatementsToCopy = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+
         foreach ($UsingSatement in $UsingStatementExtents) {
             $ScriptText = $ScriptText.Insert($UsingSatement.StartOffset + $InsertedCharOffset, '#')
             $InsertedCharOffset++
 
             # Keep track of unique statements we'll need to insert at the top
-            if (!$StatementsToCopy.Contains($UsingSatement.Text)) {
-                $null = $StatementsToCopy.Add($UsingSatement.Text)
-            }
+            $null = $StatementsToCopy.Add($UsingSatement.Text)
         }
 
         $ScriptText = $ScriptText.Insert(0, ($StatementsToCopy -join "`r`n") + "`r`n")

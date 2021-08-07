@@ -65,10 +65,13 @@ function GetBuildInfo {
     }
     # BuildInfo.SourcePath should point to a module manifest
     if ($BuildInfo.SourcePath -and $BuildInfo.SourcePath -ne $BuildManifest) {
+        Write-Debug "  Updating: SourcePath"
+        Write-Debug "    To: $($BuildInfo.SourcePath)"
         $ParameterValues["SourcePath"] = $BuildInfo.SourcePath
     }
     # If SourcePath point to build.psd1, we should clear it
     if ($ParameterValues["SourcePath"] -eq $BuildManifest) {
+        Write-Debug "  Removing: SourcePath"
         $ParameterValues.Remove("SourcePath")
     }
     Write-Debug "Finished parsing Build Manifest $BuildManifest"
@@ -80,25 +83,31 @@ function GetBuildInfo {
     }
 
     if ((-not $BuildInfo.SourcePath) -and $ParameterValues["SourcePath"] -notmatch '\.psd1') {
+        Write-Debug "  Searching: SourcePath"
         # Find a module manifest (or maybe several)
         $ModuleInfo = Get-ChildItem $BuildManifestParent -Recurse -Filter *.psd1 -ErrorAction SilentlyContinue |
             ImportModuleManifest -ErrorAction SilentlyContinue
         # If we found more than one module info, the only way we have of picking just one is if it matches a folder name
         if (@($ModuleInfo).Count -gt 1) {
-            # Resolve Build Manifest's parent folder to find the Absolute path
-            $ModuleName = Split-Path -Leaf $BuildManifestParent
-            # If we're in a "well known" source folder, look higher for a name
-            if ($ModuleName -in 'Source', 'src') {
-                $ModuleName = Split-Path (Split-Path -Parent $BuildManifestParent) -Leaf
+            Write-Debug (@(@("  Found $(@($ModuleInfo).Count):") + @($ModuleInfo.Path)) -join "`n            ")
+            # It can't be a module that needs building unless it has either:
+            $ModuleInfo = $ModuleInfo.Where{
+                $Root = Split-Path $_.Path
+                @(
+                    # - A build.psd1 next to it
+                    Test-Path (Join-Path $Root "build.ps1") -PathType Leaf
+                    # - A Public (or Private) folder with source scripts in it
+                    Test-Path (Join-Path $Root "Public") -PathType Container
+                    Test-Path (Join-Path $Root "Private") -PathType Container
+                ) -contains $true
             }
-            $ModuleInfo = @($ModuleInfo).Where{ $_.Name -eq $ModuleName }
+            Write-Debug (@(@("  Filtered $(@($ModuleInfo).Count):") + @($ModuleInfo.Path)) -join "`n            ")
         }
         if (@($ModuleInfo).Count -eq 1) {
             Write-Debug "Updating BuildInfo SourcePath to $($ModuleInfo.Path)"
             $ParameterValues["SourcePath"] = $ModuleInfo.Path
-        }
-        if (-Not $ModuleInfo) {
-            throw "Can't find a module manifest in $BuildManifestParent"
+        } else {
+            throw "Can't determine the module manifest in $BuildManifestParent"
         }
     }
 
