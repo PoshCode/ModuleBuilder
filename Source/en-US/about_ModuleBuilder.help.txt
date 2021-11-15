@@ -17,7 +17,7 @@ LONG DESCRIPTION
 
     The module is opinionated and expects a few conventions to be respected so that it can:
     - compile the module into a single PSM1 for improved performance
-    - execute Pester tests on the built artefact
+    - execute Pester tests on the built artifact
     - Report correct code coverage against the source's file and line numbers
       (as it was before merging into the single PSM1)
     - bootstrap your repository with required dependencies
