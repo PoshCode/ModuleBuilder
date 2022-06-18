@@ -52,21 +52,22 @@ Describe "Regression test for #55: I can pass SourceDirectories" -Tag Integratio
 }
 
 Describe "Regression test for #55: I can pass SourceDirectories and PublicFilter" -Tag Integration, Regression {
-    $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -SourceDirectories "Private" -PublicFilter "P*\*" -Passthru
-    $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
+    BeforeAll {
+        $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -SourceDirectories "Private" -PublicFilter "Pub*\*" -Passthru
+        $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
+        $Metadata = Import-Metadata $Output.Path
+    }
 
     It "Should not put the module's DefaultCommandPrefix into the psm1 as code. Duh!" {
         $Module | Should -Not -FileContentMatch '^Source$'
     }
 
-    $Metadata = Import-Metadata $Output.Path
-
     It "Should not have any FunctionsToExport if SourceDirectories don't match the PublicFilter" {
-        $Metadata.FunctionsToExport | Should -Be @("Get-TestNotExportedAliases", "GetFinale", "GetPreview")
+        $Metadata.FunctionsToExport | Should -BeNullOrEmpty
     }
 
     It "Should update AliasesToExport in the manifest" {
-        $Metadata.AliasesToExport | Should -Be @("GF", "GP")
+        $Metadata.AliasesToExport | Should -Be @("Get-MyAlias")
     }
 
     It "Should de-dupe and move using statements to the top of the file" {
@@ -111,6 +112,36 @@ Describe "Supports building without a build.psd1" -Tag Integration {
         $Build.Output = Build-Module @BuildParameters -Passthru
     }
 
+    It "Works even based on current path" {
+        $BuildParameters = @{
+            OutputDirectory          = "TestDrive:\Result1"
+            VersionedOutputDirectory = $true
+        }
+        Push-Location TestDrive:\Source1
+        try {
+            $Build.Output = Build-Module @BuildParameters -Passthru
+        } finally {
+            Pop-Location
+        }
+    }
+
+    # This test case for coverage of "If we found more than one module info"
+    It "Ignores extra manifest files" {
+        $BuildParameters = @{
+            OutputDirectory          = "TestDrive:\Result1"
+            VersionedOutputDirectory = $true
+        }
+        Push-Location TestDrive:\Source1
+        New-Item SubModule -ItemType Directory
+        Copy-Item Source1.psd1 .\SubModule\SubModule.psd1
+
+        try {
+            $Build.Output = Build-Module @BuildParameters -Passthru
+        } finally {
+            Pop-Location
+        }
+    }
+
     It "Creates the same module as with a build.psd1" {
         $Build.Metadata = Import-Metadata $Build.Output.Path
         Get-Content $Build.Output.Path | Should -Be $ManifestContent
@@ -125,7 +156,6 @@ Describe "Supports building without a build.psd1" -Tag Integration {
         $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
     }
 }
-
 
 Describe "Defaults to VersionedOutputDirectory" -Tag Integration {
     Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
@@ -175,8 +205,6 @@ Describe "Defaults to VersionedOutputDirectory" -Tag Integration {
         $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
     }
 }
-
-
 
 Describe "Supports building discovering the module without a build.psd1" -Tag Integration {
     Copy-Item $PSScriptRoot\Source1 TestDrive:\source -Recurse
