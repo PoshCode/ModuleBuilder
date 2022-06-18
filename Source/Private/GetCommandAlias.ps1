@@ -1,116 +1,126 @@
+# This is used only to parse the parameters to New|Set|Remove-Alias
+class AliasParameterVisitor : System.Management.Automation.Language.AstVisitor {
+    [string]$Parameter = $null
+    [string]$Command = $null
+    [string]$Name = $null
+    [string]$Value = $null
+    [string]$Scope = $null
+
+    # Parameter Names
+    [System.Management.Automation.Language.AstVisitAction] VisitCommandParameter([System.Management.Automation.Language.CommandParameterAst]$ast) {
+        $this.Parameter = $ast.ParameterName
+        return [System.Management.Automation.Language.AstVisitAction]::Continue
+    }
+
+    # Parameter Values
+    [System.Management.Automation.Language.AstVisitAction] VisitStringConstantExpression([System.Management.Automation.Language.StringConstantExpressionAst]$ast) {
+        # The FIRST command element is always the command name
+        if (!$this.Command) {
+            $this.Command = $ast.Value
+            return [System.Management.Automation.Language.AstVisitAction]::Continue
+        } else {
+            switch ($this.Parameter) {
+                "Scope" {
+                    $this.Scope = $ast.Value
+                }
+                "Name" {
+                    $this.Name = $ast.Value
+                }
+                "Value" {
+                    $this.Value = $ast.Value
+                }
+                "Force" {
+                    if ($ast.Value) {
+                        # Force parameter was passed as named parameter with a positional parameter after it which is alias name
+                        $this.Name = $ast.Value
+                    }
+                }
+                default {
+                    if (!$this.Parameter) {
+                        # For bare arguments, the order is Name, Value:
+                        if (!$this.Name) {
+                            $this.Name = $ast.Value
+                        } else {
+                            $this.Value = $ast.Value
+                        }
+                    }
+                }
+            }
+
+            $this.Parameter = $null
+
+            # If we have enough information, stop the visit
+            # For -Scope global or Remove-Alias, we don't want to export these
+            if ($this.Name -and $this.Command -eq "Remove-Alias") {
+                $this.Command = "Remove-Alias"
+                return [System.Management.Automation.Language.AstVisitAction]::StopVisit
+            } elseif ($this.Name -and $this.Scope -eq "Global") {
+                return [System.Management.Automation.Language.AstVisitAction]::StopVisit
+            }
+            return [System.Management.Automation.Language.AstVisitAction]::Continue
+        }
+    }
+
+    [AliasParameterVisitor] Clear() {
+        $this.Command = $null
+        $this.Parameter = $null
+        $this.Name = $null
+        $this.Value = $null
+        $this.Scope = $null
+        return $this
+    }
+}
+
+# This visits everything at the top level of the script
+class AliasVisitor : System.Management.Automation.Language.AstVisitor {
+    [System.Collections.Hashtable]$Aliases = @{}
+    [AliasParameterVisitor]$Parameters = @{}
+
+    # The [Alias(...)] attribute on functions matters, but we can't export aliases that are defined inside a function
+    [System.Management.Automation.Language.AstVisitAction] VisitFunctionDefinition([System.Management.Automation.Language.FunctionDefinitionAst]$ast) {
+        $this.Aliases[$ast.Name] = @($ast.Body.ParamBlock.Attributes.Where{ $_.TypeName.Name -eq "Alias" }.PositionalArguments.Value)
+        return [System.Management.Automation.Language.AstVisitAction]::SkipChildren
+    }
+
+    # Top-level commands matter, but only if they're alias commands
+    [System.Management.Automation.Language.AstVisitAction] VisitCommand([System.Management.Automation.Language.CommandAst]$ast) {
+        if ($ast.CommandElements[0].Value -imatch "(New|Set|Remove)-Alias") {
+            $ast.Visit($this.Parameters.Clear())
+            if ($this.Parameters.Command -ieq "Remove-Alias") {
+                Write-Warning -Message "Found an alias '$($this.Parameters.Name)' that is removed using $($this.Parameters.Command), assuming the alias should not be exported."
+
+                $this.Aliases.Remove($this.Parameters.Name)
+            } elseif ($this.Parameters.Scope -ine 'Global') {
+                if ($this.Parameters.Name -notin $this.Aliases.Keys)
+                {
+                    $this.Aliases[$this.Parameters.Name] = $this.Parameters.Name
+                }
+            }
+        }
+        return [System.Management.Automation.Language.AstVisitAction]::SkipChildren
+    }
+}
+
 function GetCommandAlias {
     <#
         .SYNOPSIS
             Parses one or more files for aliases and returns a list of alias names.
     #>
     [CmdletBinding()]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '', Justification='There are issues reported for this rule in PSScriptAnalyzer repository when setting variables in a ForEach-Object. This suppression should be removed once that issue in PSScriptAnalyzer is resolved.')]
+    [OutputType([System.Collections.Hashtable])]
     param(
-        # Path to the PSM1 file to amend
+        # The AST to find aliases in
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ValueFromPipeline)]
-        [System.Management.Automation.Language.Ast]$AST
+        [System.Management.Automation.Language.Ast]$Ast
     )
     begin {
-        $RemovedAliases = @()
-        $Result = [Ordered]@{}
+        $Visitor = [AliasVisitor]::new()
     }
     process {
-        foreach($function in $AST.FindAll(
-                { $Args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] },
-                $false )
-        ) {
-            $Result[$function.Name] = $function.Body.ParamBlock.Attributes.Where{
-                $_.TypeName.Name -eq "Alias" }.PositionalArguments.Value
-        }
-
-        <#
-            Search for New-Alias, Set-Alias, and Remove-Alias.
-
-            The parents for a script level command is:
-                - PipelineAst
-                - NamedBlockAst
-                - ScriptBlockAst
-                - $null
-
-            While a command in a function has more parents:
-                - PipelineAst
-                - NamedBlockAst
-                - ScriptBlockAst
-                - FunctionDefinitionAst
-                - ...
-        #>
-        $astFilter = {
-            $args[0] -is [System.Management.Automation.Language.CommandAst] `
-            -and $args[0].CommandElements.StringConstantType -eq 'BareWord' `
-            -and $args[0].CommandElements.Value -match '(New|Set|Remove)-Alias' `
-            -and $null -eq $args[0].Parent.Parent.Parent.Parent # Make sure it exist at script level
-        }
-
-        $commandAsts = $AST.FindAll($astFilter, $true)
-
-        foreach ($aliasCommandAst in $commandAsts) {
-            <#
-                Named parameter 'Name' has position parameter 0 in all three commands
-                (New-Alias, Set-Alias, and Remove-Alias). That means that the alias
-                name is in either item 1 if positional or in any other element in the
-                array if named.
-
-                Scope must always be a named parameter.
-            #>
-
-            $isGlobal = $false
-
-            # Evaluate if the command uses named parameter Scope set to Global. Always start at second element.
-            for ($i=1; $i -lt $aliasCommandAst.CommandElements.Count - 1; $i++) {
-                if ($aliasCommandAst.CommandElements[$i] -is [System.Management.Automation.Language.CommandParameterAst] `
-                    -and $aliasCommandAst.CommandElements[$i].ParameterName -eq 'Scope'
-                ) {
-                    # Value (the scope) is in the next item in the array.
-                    if ($aliasCommandAst.CommandElements[$i + 1].Value -ieq 'Global') {
-                        $isGlobal = $true
-                    }
-                }
-            }
-
-            if (-not $isGlobal) {
-                $aliasName = $null
-
-                # Evaluate if the command uses positional parameter 1.
-                if ($aliasCommandAst.CommandElements[1] -is [System.Management.Automation.Language.StringConstantExpressionAst]) {
-                    # Value is in second item in the array.
-                    $aliasName = $aliasCommandAst.CommandElements[1].Value
-                } else {
-                    # Evaluate if the command uses named parameter Name. Always start at second element.
-                    for ($i=1; $i -lt $aliasCommandAst.CommandElements.Count - 1; $i++) {
-                        if ($aliasCommandAst.CommandElements[$i] -is [System.Management.Automation.Language.CommandParameterAst] `
-                            -and $aliasCommandAst.CommandElements[$i].ParameterName -eq 'Name'
-                        ) {
-                            # Value (the alias name) is in the next item in the array.
-                            $aliasName = $aliasCommandAst.CommandElements[$i + 1].Value
-                        }
-                    }
-                }
-
-                if ($aliasCommandAst.CommandElements[0].Value -eq 'Remove-Alias') {
-                    Write-Warning -Message "Found an alias '$aliasName' that is removed using Remove-Alias, assuming the alias should not be exported."
-
-                    <#
-                        Save the alias name to the end so that it can be removed from
-                        the resulting list of aliases.
-                    #>
-                    $RemovedAliases += $aliasName
-                } else {
-                    $Result[$aliasName] = $aliasName
-                }
-            }
-        }
+        $Ast.Visit($Visitor)
     }
     end {
-        # Return the aliases after filtering out those that was removed by `Remove-Alias`.
-        $RemovedAliases | ForEach-Object -Process {
-            $Result.Remove($_)
-        }
-
-        $Result
+        $Visitor.Aliases
     }
 }
+

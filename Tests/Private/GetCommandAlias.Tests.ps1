@@ -49,7 +49,8 @@ Describe "GetCommandAlias" {
                 }.Ast
             }
 
-            $Result.Keys | Should -Be "Test-Alias", "TestAlias"
+            $Result.Keys | Should -Contain "Test-Alias"
+            $Result.Keys | Should -Contain "TestAlias"
             $Result["Test-Alias"] | Should -Be "TA","TAlias"
             $Result["TestAlias"] | Should -Be "T"
         }
@@ -196,6 +197,36 @@ Describe "GetCommandAlias" {
             $Result['Alias1'] | Should -Be 'Alias1'
 
             Assert-MockCalled -CommandName Write-Warning -Exactly -Times 1 -Scope It -ModuleName 'ModuleBuilder'
+        }
+    }
+
+    Context "Parsing Code For unusual aliases" {
+        BeforeAll {
+            # Must write a mock module script file and parse it to replicate real conditions
+            "
+            New-Alias -Value Remove-Alias rma
+
+            Set-Alias -Force rmal Remove-Alias
+
+            # Should not be returned since it is Global
+            Set-Alias -Scope Global rma Remove-Alias
+
+            # Duplicate with first Set-Alias above, should not be part of the result
+            New-Alias -Name rmal Remove-Alias
+            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
+        }
+
+        It "returns a hashtable with correct aliases" {
+            $Result = InModuleScope ModuleBuilder {
+                $ParseErrors, $Tokens = $null
+                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
+
+                GetCommandAlias -Ast $mockAST
+            }
+
+            $Result.Count | Should -Be 2
+            $Result['rma'] | Should -Be 'rma'
+            $Result['rmal'] | Should -Be 'rmal'
         }
     }
 }
