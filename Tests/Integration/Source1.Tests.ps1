@@ -66,7 +66,7 @@ Describe "Regression test for #55: I can pass SourceDirectories and PublicFilter
     }
 
     It "Should update AliasesToExport in the manifest" {
-        $Metadata.AliasesToExport | Should -Be @("GF", "GP")
+        $Metadata.AliasesToExport | Should -BeNullOrEmpty
     }
 
     It "Should de-dupe and move using statements to the top of the file" {
@@ -84,7 +84,7 @@ Describe "Regression test for #84: Multiple Aliases per command will Export" -Ta
     $Metadata = Import-Metadata $Output.Path
 
     It "Should update AliasesToExport in the manifest" {
-        $Metadata.AliasesToExport | Should -Be @("Get-MyAlias","GS","GSou", "SS", "SSou")
+        $Metadata.AliasesToExport | Should -Be @("GS","GSou", "Get-MyAlias", "SS", "SSou")
     }
 }
 
@@ -118,7 +118,7 @@ Describe "Supports building without a build.psd1" -Tag Integration {
     }
 
     It "Should update AliasesToExport in the manifest" {
-        $Build.Metadata.AliasesToExport | Should -Be @("Get-MyAlias","GS", "GSou", "SS", "SSou")
+        $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "Get-MyAlias", "SS", "SSou")
     }
 
     It "Should update FunctionsToExport in the manifest" {
@@ -168,7 +168,7 @@ Describe "Defaults to VersionedOutputDirectory" -Tag Integration {
     }
 
     It "Should update AliasesToExport in the manifest" {
-        $Build.Metadata.AliasesToExport | Should -Be @("Get-MyAlias","GS", "GSou", "SS", "SSou")
+        $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "Get-MyAlias", "SS", "SSou")
     }
 
     It "Should update FunctionsToExport in the manifest" {
@@ -205,7 +205,7 @@ Describe "Supports building discovering the module without a build.psd1" -Tag In
     }
 
     It "Should update AliasesToExport in the manifest" {
-        $Build.Metadata.AliasesToExport | Should -Be @("Get-MyAlias","GS", "GSou", "SS", "SSou")
+        $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "Get-MyAlias", "SS", "SSou")
     }
 
     It "Should update FunctionsToExport in the manifest" {

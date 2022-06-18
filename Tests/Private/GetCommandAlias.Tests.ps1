@@ -24,7 +24,9 @@ Describe "GetCommandAlias" {
                 }.Ast
             }
 
-            $Result["Test-Alias"] | Should -Be @("Foo", "Bar", "Alias")
+            $Result | Should -Contain "Foo"
+            $Result | Should -Contain "Bar"
+            $Result | Should -Contain "Alias"
         }
     }
 
@@ -49,10 +51,9 @@ Describe "GetCommandAlias" {
                 }.Ast
             }
 
-            $Result.Keys | Should -Contain "Test-Alias"
-            $Result.Keys | Should -Contain "TestAlias"
-            $Result["Test-Alias"] | Should -Be "TA","TAlias"
-            $Result["TestAlias"] | Should -Be "T"
+            $Result | Should -Contain "TA"
+            $Result | Should -Contain "TAlias"
+            $Result | Should -Contain "T"
         }
     }
 
@@ -75,9 +76,9 @@ Describe "GetCommandAlias" {
             }
 
             $Result.Count | Should -Be 3
-            $Result['Alias1'] | Should -Be 'Alias1'
-            $Result['Alias2'] | Should -Be 'Alias2'
-            $Result['Alias3'] | Should -Be 'Alias3'
+            $Result | Should -Contain 'Alias1'
+            $Result | Should -Contain 'Alias2'
+            $Result | Should -Contain 'Alias3'
         }
     }
 
@@ -100,9 +101,9 @@ Describe "GetCommandAlias" {
             }
 
             $Result.Count | Should -Be 3
-            $Result['Alias1'] | Should -Be 'Alias1'
-            $Result['Alias2'] | Should -Be 'Alias2'
-            $Result['Alias3'] | Should -Be 'Alias3'
+            $Result | Should -Contain 'Alias1'
+            $Result | Should -Contain 'Alias2'
+            $Result | Should -Contain 'Alias3'
         }
     }
 
@@ -129,9 +130,8 @@ Describe "GetCommandAlias" {
                 GetCommandAlias -Ast $mockAST
             }
 
-            $Result.Count | Should -Be 2
-            $Result['Get-Something'] | Should -BeNullOrEmpty # Does not return any alias for this function
-            $Result['Alias3'] | Should -Be 'Alias3'
+            $Result.Count | Should -Be 1
+            $Result | Should -Contain 'Alias3'
         }
     }
 
@@ -168,7 +168,7 @@ Describe "GetCommandAlias" {
             }
 
             $Result.Count | Should -Be 1
-            $Result['Alias15'] | Should -Be 'Alias15'
+            $Result | Should -Contain 'Alias15'
         }
     }
 
@@ -194,7 +194,7 @@ Describe "GetCommandAlias" {
             }
 
             $Result.Count | Should -Be 1
-            $Result['Alias1'] | Should -Be 'Alias1'
+            $Result | Should -Contain 'Alias1'
 
             Assert-MockCalled -CommandName Write-Warning -Exactly -Times 1 -Scope It -ModuleName 'ModuleBuilder'
         }
@@ -225,8 +225,8 @@ Describe "GetCommandAlias" {
             }
 
             $Result.Count | Should -Be 2
-            $Result['rma'] | Should -Be 'rma'
-            $Result['rmal'] | Should -Be 'rmal'
+            $Result | Should -Contain 'rma'
+            $Result | Should -Contain 'rmal'
         }
     }
 }

@@ -78,7 +78,6 @@ class AliasVisitor : System.Management.Automation.Language.AstVisitor {
 
     # The [Alias(...)] attribute on functions matters, but we can't export aliases that are defined inside a function
     [System.Management.Automation.Language.AstVisitAction] VisitFunctionDefinition([System.Management.Automation.Language.FunctionDefinitionAst]$ast) {
-        #$this.Aliases.Add(@($ast.Body.ParamBlock.Attributes.Where{ $_.TypeName.Name -eq "Alias" }.PositionalArguments.Value))
         @($ast.Body.ParamBlock.Attributes.Where{ $_.TypeName.Name -eq "Alias" }.PositionalArguments.Value).ForEach({ if ($_) { $this.Aliases.Add($_) } })
         return [System.Management.Automation.Language.AstVisitAction]::SkipChildren
     }
