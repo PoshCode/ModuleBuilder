@@ -1,4 +1,4 @@
-function Get-TestNotExportedAliases {
+function TestUnExportedAliases {
     [CmdletBinding()]
     param()
 
