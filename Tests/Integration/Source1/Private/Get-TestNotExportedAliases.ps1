@@ -10,4 +10,4 @@ New-Alias -Name 'New-NotExportedAlias3' -Value 'Write-Verbose' -Scope Global
 Set-Alias -Name 'New-NotExportedAlias4' -Value 'Write-Verbose' -Scope Global
 
 New-Alias -Name 'New-NotExportedAlias5' -Value 'Write-Verbose'
-Remove-Alias -Name 'New-NotExportedAlias5' -Value 'Write-Verbose'
+Remove-Alias -Name 'New-NotExportedAlias5'

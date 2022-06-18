@@ -61,12 +61,12 @@ function GetCommandAlias {
             $isGlobal = $false
 
             # Evaluate if the command uses named parameter Scope set to Global. Always start at second element.
-            1..($aliasCommandAst.CommandElements.Count - 1) | ForEach-Object -Process {
-                if ($aliasCommandAst.CommandElements[$_] -is [System.Management.Automation.Language.CommandParameterAst] `
-                    -and $aliasCommandAst.CommandElements[$_].ParameterName -eq 'Scope'
+            for ($i=1; $i -lt $aliasCommandAst.CommandElements.Count - 1; $i++) {
+                if ($aliasCommandAst.CommandElements[$i] -is [System.Management.Automation.Language.CommandParameterAst] `
+                    -and $aliasCommandAst.CommandElements[$i].ParameterName -eq 'Scope'
                 ) {
                     # Value (the scope) is in the next item in the array.
-                    if ($aliasCommandAst.CommandElements[$_ + 1].Value -imatch 'Global') {
+                    if ($aliasCommandAst.CommandElements[$i + 1].Value -ieq 'Global') {
                         $isGlobal = $true
                     }
                 }
@@ -81,12 +81,12 @@ function GetCommandAlias {
                     $aliasName = $aliasCommandAst.CommandElements[1].Value
                 } else {
                     # Evaluate if the command uses named parameter Name. Always start at second element.
-                    1..($aliasCommandAst.CommandElements.Count - 1) | ForEach-Object -Process {
-                        if ($aliasCommandAst.CommandElements[$_] -is [System.Management.Automation.Language.CommandParameterAst] `
-                            -and $aliasCommandAst.CommandElements[$_].ParameterName -eq 'Name'
+                    for ($i=1; $i -lt $aliasCommandAst.CommandElements.Count - 1; $i++) {
+                        if ($aliasCommandAst.CommandElements[$i] -is [System.Management.Automation.Language.CommandParameterAst] `
+                            -and $aliasCommandAst.CommandElements[$i].ParameterName -eq 'Name'
                         ) {
                             # Value (the alias name) is in the next item in the array.
-                            $aliasName = $aliasCommandAst.CommandElements[$_ + 1].Value
+                            $aliasName = $aliasCommandAst.CommandElements[$i + 1].Value
                         }
                     }
                 }
