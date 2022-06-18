@@ -213,20 +213,20 @@ function Build-Module {
             $ParseResult = ConvertToAst $RootModule
             $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
 
-            if (-not $ModuleInfo.IgnoreAlias) {
-                $AliasesToExport = $ParseResult | GetCommandAlias
-            }
-
             # If there is a PublicFilter, update ExportedFunctions
             if ($ModuleInfo.PublicFilter) {
                 # SilentlyContinue because there don't *HAVE* to be public functions
-                if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Where-Object BaseName -in $AllScripts.BaseName | Select-Object -ExpandProperty BaseName)) {
-                    Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value ($PublicFunctions | Where-Object {$_ -notin $AliasesToExport.Values})
+                if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue |
+                        Where-Object BaseName -in $AllScripts.BaseName |
+                        Select-Object -ExpandProperty BaseName)) {
+
+                    Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
                 }
             }
 
-            if ($PublicFunctions -and -not $ModuleInfo.IgnoreAlias) {
-                if (($AliasesToExport = $AliasesToExport[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
+            # In order to support aliases to files, such as required by Invoke-Build, always export aliases
+            if (-not $ModuleInfo.IgnoreAlias) {
+                if (($AliasesToExport = $ParseResult | GetCommandAlias)) {
                     Update-Metadata -Path $OutputManifest -PropertyName AliasesToExport -Value $AliasesToExport
                 }
             }
