@@ -108,8 +108,10 @@ function Build-Module {
         # A switch that allows you to disable the update of the AliasesToExport
         # By default, (if PublicFilter is not empty, and this is not set)
         # Build-Module updates the module manifest FunctionsToExport and AliasesToExport
-        # with the combination of all the values in [Alias()] attributes on public functions in the module
-        [switch]$IgnoreAliasAttribute,
+        # with the combination of all the values in [Alias()] attributes on public functions
+        # and aliases created with `New-ALias` or `Set-Alias` at script level in the module
+        [Alias("IgnoreAliasAttribute")]
+        [switch]$IgnoreAlias,
 
         # File encoding for output RootModule (defaults to UTF8)
         # Converted to System.Text.Encoding for PowerShell 6 (and something else for PowerShell 5)
@@ -208,19 +210,23 @@ function Build-Module {
             # We have to force the Encoding to string because PowerShell Core made up encodings
             SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
 
+            $ParseResult = ConvertToAst $RootModule
+            $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
+
+            if (-not $ModuleInfo.IgnoreAlias) {
+                $AliasesToExport = $ParseResult | GetCommandAlias
+            }
+
             # If there is a PublicFilter, update ExportedFunctions
             if ($ModuleInfo.PublicFilter) {
                 # SilentlyContinue because there don't *HAVE* to be public functions
                 if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Where-Object BaseName -in $AllScripts.BaseName | Select-Object -ExpandProperty BaseName)) {
-                    Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
+                    Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value ($PublicFunctions | Where-Object {$_ -notin $AliasesToExport.Values})
                 }
             }
 
-            $ParseResult = ConvertToAst $RootModule
-            $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
-
-            if ($PublicFunctions -and -not $ModuleInfo.IgnoreAliasAttribute) {
-                if (($AliasesToExport = ($ParseResult | GetCommandAlias)[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
+            if ($PublicFunctions -and -not $ModuleInfo.IgnoreAlias) {
+                if (($AliasesToExport = $AliasesToExport[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
                     Update-Metadata -Path $OutputManifest -PropertyName AliasesToExport -Value $AliasesToExport
                 }
             }

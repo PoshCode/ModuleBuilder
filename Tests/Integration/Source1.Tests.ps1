@@ -62,7 +62,7 @@ Describe "Regression test for #55: I can pass SourceDirectories and PublicFilter
     $Metadata = Import-Metadata $Output.Path
 
     It "Should not have any FunctionsToExport if SourceDirectories don't match the PublicFilter" {
-        $Metadata.FunctionsToExport | Should -Be @("GetFinale", "GetPreview")
+        $Metadata.FunctionsToExport | Should -Be @("Get-TestNotExportedAliases", "GetFinale", "GetPreview")
     }
 
     It "Should update AliasesToExport in the manifest" {
@@ -84,7 +84,7 @@ Describe "Regression test for #84: Multiple Aliases per command will Export" -Ta
     $Metadata = Import-Metadata $Output.Path
 
     It "Should update AliasesToExport in the manifest" {
-        $Metadata.AliasesToExport | Should -Be @("GS","GSou", "SS", "SSou")
+        $Metadata.AliasesToExport | Should -Be @("Get-MyAlias","GS","GSou", "SS", "SSou")
     }
 }
 
@@ -118,7 +118,7 @@ Describe "Supports building without a build.psd1" -Tag Integration {
     }
 
     It "Should update AliasesToExport in the manifest" {
-        $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "SS", "SSou")
+        $Build.Metadata.AliasesToExport | Should -Be @("Get-MyAlias","GS", "GSou", "SS", "SSou")
     }
 
     It "Should update FunctionsToExport in the manifest" {
@@ -168,7 +168,7 @@ Describe "Defaults to VersionedOutputDirectory" -Tag Integration {
     }
 
     It "Should update AliasesToExport in the manifest" {
-        $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "SS", "SSou")
+        $Build.Metadata.AliasesToExport | Should -Be @("Get-MyAlias","GS", "GSou", "SS", "SSou")
     }
 
     It "Should update FunctionsToExport in the manifest" {
@@ -205,7 +205,7 @@ Describe "Supports building discovering the module without a build.psd1" -Tag In
     }
 
     It "Should update AliasesToExport in the manifest" {
-        $Build.Metadata.AliasesToExport | Should -Be @("GS", "GSou", "SS", "SSou")
+        $Build.Metadata.AliasesToExport | Should -Be @("Get-MyAlias","GS", "GSou", "SS", "SSou")
     }
 
     It "Should update FunctionsToExport in the manifest" {
