@@ -73,12 +73,13 @@ class AliasParameterVisitor : System.Management.Automation.Language.AstVisitor {
 
 # This visits everything at the top level of the script
 class AliasVisitor : System.Management.Automation.Language.AstVisitor {
-    [System.Collections.Hashtable]$Aliases = @{}
+    [System.Collections.Generic.HashSet[String]]$Aliases = @()
     [AliasParameterVisitor]$Parameters = @{}
 
     # The [Alias(...)] attribute on functions matters, but we can't export aliases that are defined inside a function
     [System.Management.Automation.Language.AstVisitAction] VisitFunctionDefinition([System.Management.Automation.Language.FunctionDefinitionAst]$ast) {
-        $this.Aliases[$ast.Name] = @($ast.Body.ParamBlock.Attributes.Where{ $_.TypeName.Name -eq "Alias" }.PositionalArguments.Value)
+        #$this.Aliases.Add(@($ast.Body.ParamBlock.Attributes.Where{ $_.TypeName.Name -eq "Alias" }.PositionalArguments.Value))
+        @($ast.Body.ParamBlock.Attributes.Where{ $_.TypeName.Name -eq "Alias" }.PositionalArguments.Value).ForEach({ if ($_) { $this.Aliases.Add($_) } })
         return [System.Management.Automation.Language.AstVisitAction]::SkipChildren
     }
 
@@ -91,9 +92,9 @@ class AliasVisitor : System.Management.Automation.Language.AstVisitor {
 
                 $this.Aliases.Remove($this.Parameters.Name)
             } elseif ($this.Parameters.Scope -ine 'Global') {
-                if ($this.Parameters.Name -notin $this.Aliases.Keys)
+                if ($this.Parameters.Name -notin $this.Aliases)
                 {
-                    $this.Aliases[$this.Parameters.Name] = $this.Parameters.Name
+                    $this.Aliases.Add($this.Parameters.Name)
                 }
             }
         }

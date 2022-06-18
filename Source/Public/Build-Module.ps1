@@ -226,7 +226,7 @@ function Build-Module {
             }
 
             if ($PublicFunctions -and -not $ModuleInfo.IgnoreAlias) {
-                if (($AliasesToExport = $AliasesToExport[$PublicFunctions] | ForEach-Object { $_ } | Select-Object -Unique)) {
+                if ($AliasesToExport) {
                     Update-Metadata -Path $OutputManifest -PropertyName AliasesToExport -Value $AliasesToExport
                 }
             }
