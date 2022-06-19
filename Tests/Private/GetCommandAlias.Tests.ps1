@@ -63,7 +63,7 @@ Describe "GetCommandAlias" {
             $Result | Should -Be 'Alias1', 'Alias2', 'Alias3', 'Alias4', 'Alias5'
         }
 
-        It "Ingores aliases defined in nested function scope" {
+        It "Ignores aliases defined in nested function scope" {
             $Result = &$CommandInfo -Ast {
                 New-Alias -Name 'Alias1' -Value 'Write-Verbose'
                 New-Alias -Value 'Write-Verbose' -Name 'Alias2'
@@ -105,7 +105,7 @@ Describe "GetCommandAlias" {
             $Result | Should -Be 'Alias1', 'Alias2', 'Alias3', 'Alias4', 'Alias5'
         }
 
-        It "Ingores aliases defined in nested function scope" {
+        It "Ignores aliases defined in nested function scope" {
             $Result = &$CommandInfo -Ast {
                 Set-Alias -Name 'Alias1' -Value 'Write-Verbose'
                 Set-Alias -Value 'Write-Verbose' -Name 'Alias2'
@@ -151,7 +151,7 @@ Describe "GetCommandAlias" {
             $Result | Should -Be 'Alias3', 'Alias4'
         }
 
-        It "Ingores removals in function scopes" {
+        It "Ignores removals in function scopes" {
             $Result = &$CommandInfo -Ast {
                 Set-Alias -Name 'Alias1' -Value 'Write-Verbose'
                 New-Alias -Value 'Write-Verbose' -Name 'Alias2'
