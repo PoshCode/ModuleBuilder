@@ -19,7 +19,7 @@ Describe "Convert-CodeCoverage" {
                 MissedCommands = [PSCustomObject]@{
                     # these are pipeline bound
                     File = $ModulePath
-                    Line = 25 # [Alias("gs","gsou")]
+                    Line = 43 # [Alias("gs","gsou")]
                 }
             }
         }

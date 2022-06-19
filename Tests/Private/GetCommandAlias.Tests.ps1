@@ -1,9 +1,10 @@
 #requires -Module ModuleBuilder
 Describe "GetCommandAlias" {
+    BeforeAll {
+        $CommandInfo = InModuleScope ModuleBuilder { Get-Command GetCommandAlias }
+    }
 
     Context "Mandatory Parameter" {
-        $CommandInfo = InModuleScope ModuleBuilder { Get-Command GetCommandAlias }
-
         It 'has a mandatory AST parameter' {
             $AST = $CommandInfo.Parameters['AST']
             $AST | Should -Not -BeNullOrEmpty
@@ -13,220 +14,167 @@ Describe "GetCommandAlias" {
 
     }
 
-    Context "Parsing Code" {
-        It "returns a hashtable of command names to aliases" {
-            $Result = InModuleScope ModuleBuilder {
-                GetCommandAlias -Ast {
-                    function Test-Alias {
-                        [Alias("Foo","Bar","Alias")]
-                        param()
-                    }
-                }.Ast
-            }
+    Context "Parsing Alias Parameters" {
+        # It used to return a hashtable, but we no longer care what the alias points to
+        It "Returns a collection of aliases" {
+            $Result = &$CommandInfo -Ast {
+                function Test-Alias {
+                    [Alias("Foo","Bar","Alias")]
+                    param()
+                }
+            }.Ast
 
-            $Result["Test-Alias"] | Should -Be @("Foo", "Bar", "Alias")
+            $Result | Should -Be @("Foo", "Bar", "Alias")
         }
-    }
 
-    Context "Parsing Code" {
         It "Parses only top-level functions, and returns them in order" {
-            $Result = InModuleScope ModuleBuilder {
-                GetCommandAlias -Ast {
-                    function Test-Alias {
-                        [Alias("TA", "TAlias")]
+            $Result = &$CommandInfo -Ast {
+                function Test-Alias {
+                    [Alias("TA", "TAlias")]
+                    param()
+                }
+
+                function TestAlias {
+                    [Alias("T")]
+                    param()
+
+                    # This should not return
+                    function Test-Negative {
+                        [Alias("TN")]
                         param()
                     }
+                }
+            }.Ast
 
-                    function TestAlias {
-                        [Alias("T")]
-                        param()
-
-                        function Test-Negative {
-                            [Alias("TN")]
-                            param()
-                        }
-                    }
-                }.Ast
-            }
-
-            $Result.Keys | Should -Contain "Test-Alias"
-            $Result.Keys | Should -Contain "TestAlias"
-            $Result["Test-Alias"] | Should -Be "TA","TAlias"
-            $Result["TestAlias"] | Should -Be "T"
+            $Result | Should -Be "TA","TAlias", "T"
         }
     }
 
-    Context "Parsing Code For New-Alias" {
-        BeforeAll {
-            # Must write a mock module script file and parse it to replicate real conditions
-            "
-            New-Alias -Name 'Alias1' -Value 'Write-Verbose'
-            New-Alias -Value 'Write-Verbose' -Name 'Alias2'
-            New-Alias 'Alias3' 'Write-Verbose'
-            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
+    Context "Parsing New-Alias" {
+        It "Parses alias names regardless of parameter order" {
+            $Result = &$CommandInfo -Ast {
+                New-Alias -N 'Alias1' -Va 'Write-Verbose'
+                New-Alias -Value 'Write-Verbose' -Name 'Alias2'
+                New-Alias Alias3 Write-Verbose
+                New-Alias -Value 'Write-Verbose' 'Alias4'
+                New-Alias 'Alias5' -Value 'Write-Verbose'
+            }.Ast
+
+            $Result | Should -Be 'Alias1', 'Alias2', 'Alias3', 'Alias4', 'Alias5'
         }
 
-        It "returns a hashtable with correct aliases" {
-            $Result = InModuleScope ModuleBuilder {
-                $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
-
-                GetCommandAlias -Ast $mockAST
-            }
-
-            $Result.Count | Should -Be 3
-            $Result['Alias1'] | Should -Be 'Alias1'
-            $Result['Alias2'] | Should -Be 'Alias2'
-            $Result['Alias3'] | Should -Be 'Alias3'
-        }
-    }
-
-    Context "Parsing Code For Set-Alias" {
-        BeforeAll {
-            # Must write a mock module script file and parse it to replicate real conditions
-            "
-            Set-Alias -Name 'Alias1' -Value 'Write-Verbose'
-            Set-Alias -Value 'Write-Verbose' -Name 'Alias2'
-            Set-Alias 'Alias3' 'Write-Verbose'
-            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
-        }
-
-        It "returns a hashtable with correct aliases" {
-            $Result = InModuleScope ModuleBuilder {
-                $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
-
-                GetCommandAlias -Ast $mockAST
-            }
-
-            $Result.Count | Should -Be 3
-            $Result['Alias1'] | Should -Be 'Alias1'
-            $Result['Alias2'] | Should -Be 'Alias2'
-            $Result['Alias3'] | Should -Be 'Alias3'
-        }
-    }
-
-    Context "Parsing Code For New-Alias" {
-        BeforeAll {
-            # Must write a mock module script file and parse it to replicate real conditions
-            "
-            function Get-Something {
-                param()
-
+        It "Ignores aliases defined in nested function scope" {
+            $Result = &$CommandInfo -Ast {
                 New-Alias -Name 'Alias1' -Value 'Write-Verbose'
-                Set-Alias -Name 'Alias2' -Value 'Write-Verbose'
-            }
+                New-Alias -Value 'Write-Verbose' -Name 'Alias2'
+                New-Alias 'Alias3' 'Write-Verbose'
+                function Get-Something {
+                    param()
 
-            New-Alias -Name 'Alias3' -Value 'Write-Verbose'
-            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
+                    New-Alias -Name Alias4 -Value 'Write-Verbose'
+                    New-Alias -Name Alias5 -Va 'Write-Verbose'
+                }
+            }.Ast
+
+            $Result | Should -Be 'Alias1', 'Alias2', 'Alias3'
         }
 
-        It "returns a hashtable with just the aliases at script-level" {
-            $Result = InModuleScope ModuleBuilder {
-                $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
+        It "Ignores aliases that already have global scope" {
+            $Result = &$CommandInfo -Ast {
+                New-Alias -Name Alias1 -Scope Global -Value Write-Verbose
+                New-Alias -Scope Global -Value 'Write-Verbose' -Name 'Alias2'
+                New-Alias -Sc Global 'Alias3' 'Write-Verbose'
+                New-Alias -Va 'Write-Verbose' 'Alias4' -S Global
+                New-Alias Alias5 -Value 'Write-Verbose' -Scope Global
+            }.Ast
 
-                GetCommandAlias -Ast $mockAST
-            }
-
-            $Result.Count | Should -Be 2
-            $Result['Get-Something'] | Should -BeNullOrEmpty # Does not return any alias for this function
-            $Result['Alias3'] | Should -Be 'Alias3'
-        }
-    }
-
-    Context "Parsing Code For *-Alias Using Global Scope" {
-        BeforeAll {
-            # Must write a mock module script file and parse it to replicate real conditions
-            "
-            Set-Alias -Name 'Alias1' -Value 'Write-Verbose' -Scope Global
-            Set-Alias -Name 'Alias2' -Value 'Write-Verbose' -Scope 'Global'
-            Set-Alias -Value 'Write-Verbose' -Scope Global -Name 'Alias3'
-            Set-Alias -Scope Global -Value 'Write-Verbose' -Name 'Alias4'
-            Set-Alias 'Alias5' 'Write-Verbose' -Scope Global
-            Set-Alias 'Alias6' -Scope Global 'Write-Verbose'
-            Set-Alias -Scope Global 'Alias7' 'Write-Verbose'
-
-            New-Alias -Name 'Alias8' -Value 'Write-Verbose' -Scope Global
-            New-Alias -Name 'Alias9' -Value 'Write-Verbose' -Scope 'Global'
-            New-Alias -Value 'Write-Verbose' -Scope Global -Name 'Alias10'
-            New-Alias -Scope Global -Value 'Write-Verbose' -Name 'Alias11'
-            New-Alias 'Alias12' 'Write-Verbose' -Scope Global
-            New-Alias 'Alias13' -Scope Global 'Write-Verbose'
-            New-Alias -Scope Global 'Alias14' 'Write-Verbose'
-
-            New-Alias 'Alias15' 'Write-Verbose'
-            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
-        }
-
-        It "returns a hashtable with correct aliases" {
-            $Result = InModuleScope ModuleBuilder {
-                $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
-
-                GetCommandAlias -Ast $mockAST
-            }
-
-            $Result.Count | Should -Be 1
-            $Result['Alias15'] | Should -Be 'Alias15'
+            $Result | Should -BeNullOrEmpty
         }
     }
 
-    Context "Parsing Code For Remove-Alias" {
-        BeforeAll {
-            # Must write a mock module script file and parse it to replicate real conditions
-            "
-            New-Alias -Name 'Alias1' -Value 'Write-Verbose'
-            New-Alias -Name 'Alias2' -Value 'Write-Verbose'
-            Remove-Alias -Name 'Alias2'
-            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
+    Context "Parsing Set-Alias" {
+        It "Parses alias names regardless of parameter order" {
+            $Result = &$CommandInfo -Ast {
+                Set-Alias -Name Alias1 -Value Write-Verbose
+                Set-Alias -Va 'Write-Verbose' -N 'Alias2'
+                Set-Alias Alias3 Write-Verbose
+                Set-Alias -Va 'Write-Verbose' 'Alias4'
+                Set-Alias 'Alias5' -Value 'Write-Verbose'
+            }.Ast
 
-            Mock -CommandName Write-Warning -ModuleName 'ModuleBuilder'
-
+            $Result | Should -Be 'Alias1', 'Alias2', 'Alias3', 'Alias4', 'Alias5'
         }
 
-        It "returns a hashtable with correct aliases" {
-            $Result = InModuleScope ModuleBuilder {
-                $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
+        It "Ignores aliases defined in nested function scope" {
+            $Result = &$CommandInfo -Ast {
+                Set-Alias -Name 'Alias1' -Value 'Write-Verbose'
+                Set-Alias -Value 'Write-Verbose' -Name 'Alias2'
+                Set-Alias 'Alias3' 'Write-Verbose'
+                function Get-Something {
+                    param()
 
-                GetCommandAlias -Ast $mockAST
-            }
+                    Set-Alias -Name 'Alias4' -Value 'Write-Verbose'
+                    Set-Alias -Name 'Alias5' -Value 'Write-Verbose'
+                }
+            }.Ast
 
-            $Result.Count | Should -Be 1
-            $Result['Alias1'] | Should -Be 'Alias1'
+            $Result | Should -Be 'Alias1', 'Alias2', 'Alias3'
+        }
 
-            Assert-MockCalled -CommandName Write-Warning -Exactly -Times 1 -Scope It -ModuleName 'ModuleBuilder'
+        It "Ignores aliases that already have global scope" {
+            $Result = &$CommandInfo -Ast {
+                Set-Alias -N 'Alias1' -Scope Global -Value 'Write-Verbose'
+                Set-Alias -Scope Global -Value 'Write-Verbose' -Name 'Alias2'
+                Set-Alias -Sc Global Alias3 Write-Verbose
+                Set-Alias -Va 'Write-Verbose' 'Alias4' -Sc Global
+                Set-Alias 'Alias5' -Value 'Write-Verbose' -Scope Global
+            }.Ast
+
+            $Result | Should -BeNullOrEmpty
         }
     }
 
-    Context "Parsing Code For unusual aliases" {
-        BeforeAll {
-            # Must write a mock module script file and parse it to replicate real conditions
-            "
-            New-Alias -Value Remove-Alias rma
 
-            Set-Alias -Force rmal Remove-Alias
+    Context "Remove-Alias cancels Alias exports" {
+        It "Parses parameters regardless of name" {
+            $Result = &$CommandInfo -Ast {
+                New-Alias -Name Alias1 -Value Write-Verbose
+                Set-Alias -Value 'Write-Verbose' -Name 'Alias2'
+                New-Alias Alias3 Write-Verbose
+                Set-Alias -Value 'Write-Verbose' 'Alias4'
+                Set-Alias 'Alias5' -Value 'Write-Verbose'
+                Remove-Alias Alias1
+                Remove-Alias -Name Alias2
+                Remove-Alias -N Alias5
+            }.Ast
 
-            # Should not be returned since it is Global
-            Set-Alias -Scope Global rma Remove-Alias
-
-            # Duplicate with first Set-Alias above, should not be part of the result
-            New-Alias -Name rmal Remove-Alias
-            " | Out-File -FilePath "$TestDrive/MockBuiltModule.psm1" -Encoding ascii -Force
+            $Result | Should -Be 'Alias3', 'Alias4'
         }
 
-        It "returns a hashtable with correct aliases" {
-            $Result = InModuleScope ModuleBuilder {
-                $ParseErrors, $Tokens = $null
-                $mockAST = [System.Management.Automation.Language.Parser]::ParseFile("$TestDrive/MockBuiltModule.psm1", [ref]$Tokens, [ref]$ParseErrors)
+        It "Ignores removals in function scopes" {
+            $Result = &$CommandInfo -Ast {
+                Set-Alias -Name 'Alias1' -Value 'Write-Verbose'
+                New-Alias -Value 'Write-Verbose' -Name 'Alias2'
+                Set-Alias 'Alias3' 'Write-Verbose'
+                function Get-Something {
+                    param()
 
-                GetCommandAlias -Ast $mockAST
-            }
+                    Set-Alias -Name 'Alias4' -Value 'Write-Verbose'
+                    Set-Alias -Name 'Alias5' -Value 'Write-Verbose'
+                    Remove-Alias -Name Alias1
+                }
+            }.Ast
 
-            $Result.Count | Should -Be 2
-            $Result['rma'] | Should -Be 'rma'
-            $Result['rmal'] | Should -Be 'rmal'
+            $Result | Should -Be 'Alias1', 'Alias2', 'Alias3'
+        }
+
+        It "Does not fail when removing aliases that were ignored because of global scope" {
+            $Result = &$CommandInfo -Ast {
+                Set-Alias -Name Alias1 -Scope Global -Value Write-Verbose
+                Remove-Alias -Name Alias1
+            }.Ast
+
+            $Result | Should -BeNullOrEmpty
         }
     }
 }

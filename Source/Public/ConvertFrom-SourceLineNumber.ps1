@@ -29,7 +29,7 @@ function ConvertFrom-SourceLineNumber {
             $Command = [IO.Path]::GetFileNameWithoutExtension($SourceFile)
             $Module = (Get-Command $Command -ErrorAction SilentlyContinue).Source
             if (!$Module) {
-                Write-Warning "Please specify -Module for breakpoint ${SourceFile}: $SourceLineNumber"
+                Write-Warning "Please specify -Module for ${SourceFile}: $SourceLineNumber"
                 return
             }
         }

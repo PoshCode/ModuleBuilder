@@ -1,4 +1,4 @@
-#requires -Module PowerShellGet, Pester
+#requires -Module PowerShellGet, @{ ModuleName = "Pester"; ModuleVersion = "4.10.1"; MaximumVersion = "4.999" }
 using namespace Microsoft.PackageManagement.Provider.Utility
 using namespace System.Management.Automation
 param(
