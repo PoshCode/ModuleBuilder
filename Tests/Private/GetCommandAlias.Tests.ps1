@@ -168,13 +168,9 @@ Describe "GetCommandAlias" {
             $Result | Should -Be 'Alias1', 'Alias2', 'Alias3'
         }
 
-        It "Ignores aliases that already have global scope" {
+        It "Does not fail when removing aliases that were ignored because of global scope" {
             $Result = &$CommandInfo -Ast {
                 Set-Alias -Name Alias1 -Scope Global -Value Write-Verbose
-                Set-Alias -Scope Global -Value 'Write-Verbose' -Name 'Alias2'
-                Set-Alias -Scope Global 'Alias3' 'Write-Verbose'
-                Set-Alias -Value 'Write-Verbose' 'Alias4' -Scope Global
-                Set-Alias 'Alias5' -Value 'Write-Verbose' -Scope Global
                 Remove-Alias -Name Alias1
             }.Ast
 

@@ -2,6 +2,9 @@ using namespace System.Management.Automation.Language
 using namespace System.Collections.Generic
 
 # This is used only to parse the parameters to New|Set|Remove-Alias
+# NOTE: this is _part of_ the implementation of AliasVisitor, but ...
+#       PowerShell can't handle nested classes so I left it outside,
+#       but I kept it here in this file.
 class AliasParameterVisitor : AstVisitor {
     [string]$Parameter = $null
     [string]$Command = $null
