@@ -1,7 +1,7 @@
 Push-Location $PSScriptRoot
 try {
-    Install-Script Install-RequiredModule
-    Install-RequiredModule
+    $Script = Install-Script Install-RequiredModule -PassThru -Force
+    & (Join-Path $Script.InstalledLocation Install-RequiredModule.ps1)
 } finally {
     Pop-Location
 }
