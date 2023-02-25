@@ -105,6 +105,14 @@ function Build-Module {
         [AllowEmptyString()]
         [string[]]$PublicFilter = "Public\*.ps1",
 
+        # A Sort-Object property used to sort the script files found in $SourceDirectories before
+        # merging them into the psm1. This is particularly useful in non-ordered file
+        # systems (i.e. linux Ext4/MacOS) where the files or (sub) folders order might not be
+        # in alphabetical order as PowerShell does not sort by (sub) folders.
+        # Example: Build-Module -SourceSorter @{Expression={$_.FullName}; Ascending=$true}
+        [ValidateNotNullOrEmpty()]
+        [object[]]$SourceSorter,
+
         # A switch that allows you to disable the update of the AliasesToExport
         # By default, (if PublicFilter is not empty, and this is not set)
         # Build-Module updates the module manifest FunctionsToExport and AliasesToExport
@@ -204,8 +212,16 @@ function Build-Module {
 
             Write-Verbose "Combine scripts to $RootModule"
 
-            # SilentlyContinue because there don't *HAVE* to be functions at all
-            $AllScripts = Get-ChildItem -Path @($ModuleInfo.SourceDirectories).ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
+            if ($PSBoundParameters.ContainsKey('SourceSorter')) {
+                $AllScripts = @($ModuleInfo.SourceDirectories).ForEach{
+                    $scriptPath = Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $_
+                    Get-ChildItem -Path $scriptPath -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue | Sort-Object -Property $SourceSorter
+                }
+            }
+            else {
+                # SilentlyContinue because there don't *HAVE* to be functions at all
+                $AllScripts = Get-ChildItem -Path @($ModuleInfo.SourceDirectories).ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
+            }
 
             # We have to force the Encoding to string because PowerShell Core made up encodings
             SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
