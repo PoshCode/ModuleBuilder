@@ -205,7 +205,10 @@ function Build-Module {
             Write-Verbose "Combine scripts to $RootModule"
 
             # SilentlyContinue because there don't *HAVE* to be functions at all
-            $AllScripts = Get-ChildItem -Path @($ModuleInfo.SourceDirectories).ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
+            $AllScripts = @($ModuleInfo.SourceDirectories).ForEach{
+                Get-ChildItem -Path (Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $_) -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue |
+                Sort-Object -Property 'FullName'
+            }
 
             # We have to force the Encoding to string because PowerShell Core made up encodings
             SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
