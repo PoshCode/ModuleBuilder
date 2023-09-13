@@ -96,14 +96,14 @@ function Build-Module {
         # Folders which contain source .ps1 scripts to be concatenated into the module
         # Defaults to Enum, Classes, Private, Public
         [string[]]$SourceDirectories = @(
-            "Enum", "Classes", "Private", "Public"
+            "[Ee]num", "[Cc]lasses", "[Pp]rivate", "[Pp]ublic"
         ),
 
         # A Filter (relative to the module folder) for public functions
         # If non-empty, FunctionsToExport will be set with the file BaseNames of matching files
         # Defaults to Public\*.ps1
         [AllowEmptyString()]
-        [string[]]$PublicFilter = "Public\*.ps1",
+        [string[]]$PublicFilter = "[Pp]ublic/*.ps1",
 
         # A switch that allows you to disable the update of the AliasesToExport
         # By default, (if PublicFilter is not empty, and this is not set)
@@ -206,8 +206,11 @@ function Build-Module {
 
             # SilentlyContinue because there don't *HAVE* to be functions at all
             $AllScripts = @($ModuleInfo.SourceDirectories).ForEach{
-                Get-ChildItem -Path (Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $_) -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue |
-                Sort-Object -Property 'FullName'
+                # By explicitly converting, we support wildcards in the SourceDirectories parameter
+                if ($SourceDirectory = Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $_ | Convert-Path -ErrorAction SilentlyContinue) {
+                    Get-ChildItem -Path $SourceDirectory -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue |
+                        Sort-Object -Property 'FullName'
+                }
             }
 
             # We have to force the Encoding to string because PowerShell Core made up encodings

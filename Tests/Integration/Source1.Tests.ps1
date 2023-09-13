@@ -326,3 +326,16 @@ Describe "Copies additional items specified in CopyPaths" {
         'TestDrive:/output/MyModule/1.0.0/lib/subdir/imaginary2.dll' | Should -FileContentMatch '2'
     }
 }
+
+Describe "Regression test for #125: SourceDirectories supports wildcards" -Tag Integration, Regression {
+    BeforeAll {
+        # [Cc]lasses does not exist, but won't throw an error
+        $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -SourceDirectories "[Cc]lasses", "[Pp]rivate", "[Pp]ublic" -PublicFilter "[Pp]ublic/*.ps1" -Passthru -ErrorAction Stop
+        $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
+        $Metadata = Import-Metadata $Output.Path
+    }
+
+    It "Finds the public functions" {
+        $Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
+    }
+}

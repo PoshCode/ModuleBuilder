@@ -137,10 +137,10 @@ Describe "Build-Module" {
             }
         }
 
-
-
         Mock Push-Location {}
 
+        # So it doesn't have to exist
+        Mock Convert-Path { $Path }
         Mock Get-ChildItem {
             [IO.FileInfo]"$TestDrive/Output/MyModule/Public/Get-MyInfo.ps1"
         }

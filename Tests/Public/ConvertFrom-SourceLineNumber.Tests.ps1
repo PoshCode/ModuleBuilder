@@ -12,14 +12,13 @@ Describe "ConvertFrom-SourceLineNumber" {
 
         $global:TestCases = @(
             @{ outputLine = 36; sourceFile = ".${\}Private${\}TestUnExportedAliases.ps1"; sourceLine = 13; Module = $Convert_LineNumber_ModulePath }
-            @{ outputLine = 43; sourceFile = ".${\}Public${\}Get-Source.ps1"; sourceLine = 5; Module = $Convert_LineNumber_ModulePath }
-            @{ outputLine = 50; sourceFile = ".${\}Public${\}Set-Source.ps1"; sourceLine = 3; Module = $Convert_LineNumber_ModulePath }
+            @{ outputLine = 43; sourceFile = ".${\}public${\}Get-Source.ps1"; sourceLine = 5; Module = $Convert_LineNumber_ModulePath }
+            @{ outputLine = 50; sourceFile = ".${\}public${\}Set-Source.ps1"; sourceLine = 3; Module = $Convert_LineNumber_ModulePath }
         )
     }
     AfterAll {
         Pop-Location -StackName ConvertFrom-SourceLineNumber
     }
-
 
     It "Should map line <outputLine> in the Module to line <sourceLine> in the source of <sourceFile>" -TestCases $TestCases {
         param($outputLine, $sourceFile, $sourceLine, $module)

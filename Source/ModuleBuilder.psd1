@@ -11,7 +11,7 @@
 
             # Release Notes have to be here, so we can update them
             ReleaseNotes   = '
-            Now with Set/New-Alias support, and sorting of the source files.
+            Fix case sensitivity of defaults for SourceDirectories and PublicFilter
             '
 
             # Tags applied to this module. These help with module discovery in online galleries.
