@@ -111,6 +111,17 @@ function GetBuildInfo {
         }
     }
 
+    # Make sure Aspects is an array of objects (instead of hashtables)
+    if ($BuildInfo.Aspects) {
+        $BuildInfo.Aspects = $BuildInfo.Aspects | ForEach-Object {
+            if ($_ -is [hashtable]) {
+                [PSCustomObject]$_
+            } else {
+                $_
+            }
+        }
+    }
+
     $BuildInfo = $BuildInfo | Update-Object $ParameterValues
     Write-Debug "Using Module Manifest $($BuildInfo.SourcePath)"
 
