@@ -54,11 +54,11 @@ function Build-Module {
         [Alias("ModuleManifest", "Path")]
         [string]$SourcePath = $(Get-Location -PSProvider FileSystem),
 
-        # Where to build the module. Defaults to "..\Output" adjacent to the "SourcePath" folder.
+        # Where to build the module. Defaults to "../Output" adjacent to the "SourcePath" folder.
         # The ACTUAL output may be in a subfolder of this path ending with the module name and version
-        # The default value is ..\Output which results in the build going to ..\Output\ModuleName\1.2.3
+        # The default value is ../Output which results in the build going to ../Output/ModuleName/1.2.3
         [Alias("Destination")]
-        [string]$OutputDirectory = "..\Output",
+        [string]$OutputDirectory = "../Output",
 
         # DEPRECATED. Now defaults true, producing a OutputDirectory with a version number as the last folder
         [switch]$VersionedOutputDirectory = $true,
@@ -101,7 +101,7 @@ function Build-Module {
 
         # A Filter (relative to the module folder) for public functions
         # If non-empty, FunctionsToExport will be set with the file BaseNames of matching files
-        # Defaults to Public\*.ps1
+        # Defaults to Public/*.ps1
         [AllowEmptyString()]
         [string[]]$PublicFilter = "[Pp]ublic/*.ps1",
 
@@ -135,7 +135,7 @@ function Build-Module {
         #   - Build builds the module output
         #   - CleanBuild first deletes the build output folder and then builds the module back into it
         # Note that the folder to be deleted is the actual calculated output folder, with the version number
-        # So for the default OutputDirectory with version 1.2.3, the path to clean is: ..\Output\ModuleName\1.2.3
+        # So for the default OutputDirectory with version 1.2.3, the path to clean is: ../Output/ModuleName/1.2.3
         [ValidateSet("Clean", "Build", "CleanBuild")]
         [string]$Target = "CleanBuild",
 
@@ -205,9 +205,11 @@ function Build-Module {
             Write-Verbose "Combine scripts to $RootModule"
 
             # SilentlyContinue because there don't *HAVE* to be functions at all
+            Write-Debug "  SourceDirectories: $($ModuleInfo.ModuleBase) + $($ModuleInfo.SourceDirectories -join '|')"
             $AllScripts = @($ModuleInfo.SourceDirectories).ForEach{
                 # By explicitly converting, we support wildcards in the SourceDirectories parameter
                 if ($SourceDirectory = Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $_ | Convert-Path -ErrorAction SilentlyContinue) {
+                    Write-Debug "  SourceDirectory: $SourceDirectory"
                     Get-ChildItem -Path $SourceDirectory -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue |
                         Sort-Object -Property 'FullName'
                 }

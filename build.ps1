@@ -37,8 +37,8 @@ try {
 
     # Build new output
     $ParameterString = $PSBoundParameters.GetEnumerator().ForEach{ '-' + $_.Key + " '" + $_.Value + "'" } -join " "
-    Write-Verbose "Build-Module Source\build.psd1 $($ParameterString) -Target CleanBuild"
-    ModuleBuilderBootstrap\Build-Module -SourcePath Source\build.psd1 @PSBoundParameters -Target CleanBuild -Passthru -OutVariable BuildOutput | Split-Path
+    Write-Verbose "Build-Module Source/build.psd1 $($ParameterString) -Target CleanBuild"
+    ModuleBuilderBootstrap\Build-Module -SourcePath Source/build.psd1 @PSBoundParameters -Target CleanBuild -Passthru -OutVariable BuildOutput | Split-Path
     Write-Verbose "Module build output in $(Split-Path $BuildOutput.Path)"
 
     # Clean up environment

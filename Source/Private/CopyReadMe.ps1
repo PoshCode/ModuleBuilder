@@ -23,7 +23,7 @@ function CopyReadMe {
     )
     process {
         # Copy the readme file as an about_ help file
-        Write-Verbose "Test for ReadMe: $Pwd\$($ReadMe)"
+        Write-Verbose "Test for ReadMe: $Pwd/$($ReadMe)"
         if ($ReadMe -and (Test-Path $ReadMe -PathType Leaf)) {
             # Make sure there's a language path
             $LanguagePath = Join-Path $OutputDirectory $Culture

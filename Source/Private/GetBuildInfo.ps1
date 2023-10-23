@@ -83,7 +83,7 @@ function GetBuildInfo {
     }
 
     if ((-not $BuildInfo.SourcePath) -and $ParameterValues["SourcePath"] -notmatch '\.psd1') {
-        Write-Debug "  Searching: SourcePath ($BuildManifestParent\**\*.psd1)"
+        Write-Debug "  Searching: SourcePath ($BuildManifestParent/**/*.psd1)"
         # Find a module manifest (or maybe several)
         $ModuleInfo = Get-ChildItem $BuildManifestParent -Recurse -Filter *.psd1 -ErrorAction SilentlyContinue |
             ImportModuleManifest -ErrorAction SilentlyContinue
