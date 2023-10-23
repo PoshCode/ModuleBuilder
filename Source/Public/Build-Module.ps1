@@ -139,6 +139,19 @@ function Build-Module {
         [ValidateSet("Clean", "Build", "CleanBuild")]
         [string]$Target = "CleanBuild",
 
+        # A list of Aspects to apply to the module
+        # Each aspect contains a Function (pattern), Action and Source
+        # For example:
+        #  @{ Function = "*"; Action = "MergeBlocks"; Source = "TraceBlocks" }
+        # There are only two Actions built in:
+        # - AddParameter. Supports adding common parameters to functions
+        # - MergeBlocks.  Supports adding code Before/After/Around existing blocks for aspects like error handling or authentication.
+        [PSCustomObject[]]$Aspects,
+
+        # The folder (relative to the module folder) which contains the scripts to be used as Source for Aspects
+        # Defaults to "Aspects"
+        [string]$AspectDirectory = "[Aa]spects",
+
         # Output the ModuleInfo of the "built" module
         [switch]$Passthru
     )
@@ -281,6 +294,12 @@ function Build-Module {
                         Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.ReleaseNotes -Value $RelNote
                     }
                 }
+            }
+
+            if ($ModuleInfo.Aspects) {
+                $AspectDirectory = Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $ModuleInfo.AspectDirectory | Convert-Path -ErrorAction SilentlyContinue
+                Write-Verbose "Apply $($ModuleInfo.Aspects.Count) Aspects from $AspectDirectory"
+                $ModuleInfo.Aspects | MergeAspect $RootModule
             }
 
             # This is mostly for testing ...
