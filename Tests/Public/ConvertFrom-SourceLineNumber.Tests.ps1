@@ -11,9 +11,9 @@ Describe "ConvertFrom-SourceLineNumber" {
         ${global:\} = [io.path]::DirectorySeparatorChar
 
         $global:TestCases = @(
-            @{ outputLine = 36; sourceFile = ".${\}Private${\}TestUnExportedAliases.ps1"; sourceLine = 13; Module = $Convert_LineNumber_ModulePath }
-            @{ outputLine = 43; sourceFile = ".${\}public${\}Get-Source.ps1"; sourceLine = 5; Module = $Convert_LineNumber_ModulePath }
-            @{ outputLine = 50; sourceFile = ".${\}public${\}Set-Source.ps1"; sourceLine = 3; Module = $Convert_LineNumber_ModulePath }
+            @{ outputLine = 40; sourceFile = ".${\}Private${\}TestUnExportedAliases.ps1"; sourceLine = 13; Module = $Convert_LineNumber_ModulePath }
+            @{ outputLine = 48; sourceFile = ".${\}Public${\}Get-Source.ps1"; sourceLine = 5; Module = $Convert_LineNumber_ModulePath }
+            @{ outputLine = 56; sourceFile = ".${\}Public${\}Set-Source.ps1"; sourceLine = 3; Module = $Convert_LineNumber_ModulePath }
         )
     }
     AfterAll {

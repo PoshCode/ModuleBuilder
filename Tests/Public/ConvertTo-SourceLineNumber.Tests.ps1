@@ -11,9 +11,9 @@ Describe "ConvertTo-SourceLineNumber" {
         ${global:\} = [io.path]::DirectorySeparatorChar
 
         $global:TestCases = @(
-            @{ outputLine = 36; sourceFile = ".${\}Private${\}TestUnExportedAliases.ps1"; sourceLine = 13 }
-            @{ outputLine = 43; sourceFile = ".${\}Public${\}Get-Source.ps1"; sourceLine = 5 }
-            @{ outputLine = 50; sourceFile = ".${\}Public${\}Set-Source.ps1"; sourceLine = 3 }
+            @{ outputLine = 40; sourceFile = ".${\}Private${\}TestUnExportedAliases.ps1"; sourceLine = 13 }
+            @{ outputLine = 48; sourceFile = ".${\}Public${\}Get-Source.ps1"; sourceLine = 5 }
+            @{ outputLine = 56; sourceFile = ".${\}Public${\}Set-Source.ps1"; sourceLine = 3 }
         )
     }
     AfterAll {
@@ -70,7 +70,7 @@ Describe "ConvertTo-SourceLineNumber" {
             Function = 'Get-Source'
             # these are pipeline bound
             File = $Convert_LineNumber_ModulePath
-            Line = 43 # 1 offset with the Using Statement introduced in MoveUsingStatements
+            Line = 48 # 1 offset with the Using Statement introduced in MoveUsingStatements
         }
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru

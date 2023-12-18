@@ -46,7 +46,9 @@ function SetModuleContent {
         foreach($file in $SourceFile) {
             if($SourceName = Resolve-Path $file -Relative -ErrorAction SilentlyContinue) {
                 Write-Verbose "Adding $SourceName"
-                $SetContent.Process("#Region '$SourceName' 0")
+                # Setting offset to -1 because of the new line we're adding
+                # because this is needed for the code coverage.
+                $SetContent.Process("#Region '$SourceName' -1`n")
                 Get-Content $SourceName -OutVariable source | ForEach-Object { $SetContent.Process($_) }
                 $SetContent.Process("#EndRegion '$SourceName' $($Source.Count+1)")
             } else {

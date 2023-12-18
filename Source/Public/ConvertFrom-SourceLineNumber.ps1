@@ -40,12 +40,16 @@ function ConvertFrom-SourceLineNumber {
         try {
             if (!$filemap.ContainsKey($Module)) {
                 # Note: the new pattern is #Region but the old one was # BEGIN
-                $regions = Select-String '^(?:#Region|# BEGIN) (?<SourceFile>.*) (?<LineNumber>\d+)?$' -Path $Module
+                $regions = Select-String '^(?:#Region|# BEGIN) (?<SourceFile>.*) (?<LineNumber>-?\d+)?$' -Path $Module
                 $filemap[$Module] = @($regions.ForEach{
                     [PSCustomObject]@{
                         PSTypeName = "BuildSourceMapping"
                         SourceFile = $_.Matches[0].Groups["SourceFile"].Value.Trim("'")
                         StartLineNumber = $_.LineNumber
+                        # This offset is subtracted when calculating the line number
+                        # because of the new line we're adding prior to each script file
+                        # in the built module.
+                        Offset = $_.Matches[0].Groups["LineNumber"].Value
                     }
                 })
             }
@@ -56,13 +60,13 @@ function ConvertFrom-SourceLineNumber {
                 [PSCustomObject]@{
                     PSTypeName = "OutputLocation"
                     Script     = $Module
-                    Line       = $Source.StartLineNumber + $SourceLineNumber
+                    Line       = $Source.StartLineNumber + $SourceLineNumber - $Source.Offset
                 }
             } elseif($Source -eq $Module) {
                 [PSCustomObject]@{
                     PSTypeName = "OutputLocation"
                     Script     = $Module
-                    Line       = $SourceLineNumber
+                    Line       = $SourceLineNumber - $Source.Offset
                 }
             } else {
                 Write-Warning "'$SourceFile' not found in $Module"
