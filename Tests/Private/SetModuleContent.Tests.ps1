@@ -183,9 +183,9 @@ Describe "SetModuleContent" {
             # Replacing CRLF to LF to support cross-platform testing.
             $Content = (Get-Content TestDrive:\Output.psm1 -Raw) -replace '\r?\n', "`n"
 
-            $Content | Should -Match "\#Region\ '\.\\Private\\First\.ps1'\ -1\n{1,}"
-            $Content | Should -Match "\#Region\ '\.\\Private\\Second\.ps1'\ -1\n{1,}"
-            $Content | Should -Match "\#Region\ '\.\\Public\\Third\.ps1'\ -1\n{1,}"
+            $Content | Should -Match "\#Region\ '\.\\Private\\First\.ps1'\ -1\n{2,}"
+            $Content | Should -Match "\#Region\ '\.\\Private\\Second\.ps1'\ -1\n{2,}"
+            $Content | Should -Match "\#Region\ '\.\\Public\\Third\.ps1'\ -1\n{2,}"
         }
     }
 }
