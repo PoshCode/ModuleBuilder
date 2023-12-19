@@ -60,8 +60,8 @@ function ConvertTo-SourceLineNumber {
                             SourceFile = $_.Matches[0].Groups["SourceFile"].Value.Trim("'")
                             StartLineNumber = $_.LineNumber
                             # This offset is added when calculating the line number
-                            # because of the new line we're adding prior to each script file
-                            # in the built module.
+                            # because of the new line we're adding prior to the content
+                            # of each script file in the built module.
                             Offset = $_.Matches[0].Groups["LineNumber"].Value
                         }
                     })
