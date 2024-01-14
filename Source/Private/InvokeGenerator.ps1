@@ -1,11 +1,11 @@
-function MergeAspect {
+function InvokeGenerator {
     <#
         .SYNOPSIS
-            Merge features of a script into commands from a module, using a ModuleBuilderAspect
+            Generate code using a ModuleBuilderGenerator
         .DESCRIPTION
             This is an aspect-oriented programming approach for adding cross-cutting features to functions in a module.
 
-            The [ModuleBuilderAspect] implementations are [AstVisitors] that return [TextReplace] object representing modifications to be performed on the source.
+            The [ModuleBuilderGenerator] implementations are [AstVisitors] that return [TextReplace] object representing modifications to be performed on the source.
     #>
     [CmdletBinding()]
     param(
@@ -18,7 +18,7 @@ function MergeAspect {
         # - MergeBlocks. Supports Before/After/Around blocks for aspects like error handling or authentication.
         # - AddParameter. Supports adding common parameters to functions (usually in conjunction with MergeBlock that use those parameters)
         [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
-        [ValidateScript({ (($_ -As [Type]), ("${_}Aspect" -As [Type])).BaseType -eq [ModuleBuilderAspect] })]
+        [ValidateScript({ (($_ -As [Type]), ("${_}Aspect" -As [Type])).BaseType -eq [ModuleBuilderGenerator] })]
         [string]$Action,
 
         # The name(s) of functions in the module to run the generator against. Supports wildcards.
@@ -40,7 +40,7 @@ function MergeAspect {
         } elseif ("${Action}Aspect" -As [Type]) {
             "${Action}Aspect"
         } else {
-            throw "Can't find $Action ModuleBuilderAspect"
+            throw "Can't find $Action ModuleBuilderGenerator"
         }
 
         $Aspect = New-Object $Action -Property @{

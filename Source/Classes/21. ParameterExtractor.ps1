@@ -1,3 +1,12 @@
+using namespace System.Management.Automation.Language
+using namespace System.Collections.Generic
+
+class ParameterPosition {
+    [string]$Name
+    [int]$StartOffset
+    [string]$Text
+}
+
 class ParameterExtractor : AstVisitor {
     [ParameterPosition[]]$Parameters = @()
     [int]$InsertLineNumber = -1
