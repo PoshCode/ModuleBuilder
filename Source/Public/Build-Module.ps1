@@ -285,7 +285,7 @@ function Build-Module {
             if ($ModuleInfo.Aspects) {
                 $AspectDirectory = Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $ModuleInfo.AspectDirectory | Convert-Path -ErrorAction SilentlyContinue
                 Write-Verbose "Apply $($ModuleInfo.Aspects.Count) Aspects from $AspectDirectory"
-                $ModuleInfo.Aspects | MergeAspect $RootModule
+                $ModuleInfo.Aspects | InvokeGenerator $RootModule
             }
 
             # This is mostly for testing ...

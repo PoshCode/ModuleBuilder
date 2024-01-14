@@ -1,4 +1,7 @@
-class AddParameterAspect : ModuleBuilderAspect {
+using namespace System.Management.Automation.Language
+using namespace System.Collections.Generic
+
+class ParameterGenerator : ModuleBuilderGenerator {
     [System.Management.Automation.HiddenAttribute()]
     [ParameterExtractor]$AdditionalParameterCache
 

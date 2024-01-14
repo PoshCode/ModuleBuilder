@@ -11,7 +11,7 @@
 
             # Release Notes have to be here, so we can update them
             ReleaseNotes   = '
-            Fix case sensitivity of defaults for SourceDirectories and PublicFilter
+            Add support for Aspect Oriented Programming (AOP) with the new `Aspects` parameter.
             '
 
             # Tags applied to this module. These help with module discovery in online galleries.
