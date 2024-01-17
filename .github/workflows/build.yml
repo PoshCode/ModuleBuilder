@@ -32,28 +32,28 @@ jobs:
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
-        name: Modules
+        name: ModuleBuilder
         path: Modules/ModuleBuilder
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: TestResults
         path: Modules/ModuleBuilder-TestResults
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: Packages
         path: Modules/ModuleBuilder-Packages
 
     - name: Upload Tests
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: PesterTests
         path: ${{github.workspace}}/Tests
     - name: Upload RequiredModules.psd1
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: RequiredModules
         path: ${{github.workspace}}/RequiredModules.psd1
@@ -66,7 +66,20 @@ jobs:
         os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
     - name: Download Build Output
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
+      with:
+        name: ModuleBuilder
+        path: Modules/ModuleBuilder
+    - name: Download Pester Tests
+      uses: actions/download-artifact@v4
+      with:
+        name: PesterTests
+        path: PesterTests
+    - name: Download RequiredModules
+      uses: actions/download-artifact@v4
+      with:
+        name: RequiredModules
+
     - uses: PoshCode/Actions/install-requiredmodules@v1
     - uses: PoshCode/Actions/pester@v1
       with:
