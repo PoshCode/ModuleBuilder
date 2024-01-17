@@ -1,0 +1,5 @@
+# ignore Modules (because we output there now)
+/Modules/*
+# These aren't part of the module (yet)
+/PotentialContribution/*
+/Content/*

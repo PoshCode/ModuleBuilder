@@ -1,4 +1,4 @@
-#requires -Module PowerShellGet, @{ ModuleName = "Pester"; ModuleVersion = "4.10.1"; MaximumVersion = "4.999" }
+#requires -Module ModuleBuilder, PowerShellGet, @{ ModuleName = "Pester"; ModuleVersion = "4.10.1"; MaximumVersion = "4.999" }
 using namespace Microsoft.PackageManagement.Provider.Utility
 using namespace System.Management.Automation
 param(
@@ -14,15 +14,6 @@ $ModuleName = "ModuleBuilder"
 $PSDefaultParameterValues += @{}
 $PSDefaultParameterValues["Disabled"] = $true
 
-# Find a built module as a version-numbered folder:
-$FoundModule = Get-ChildItem [0-9]* -Directory | Sort-Object { $_.Name -as [SemanticVersion[]] } |
-    Select-Object -Last 1 -Ov Version |
-    Get-ChildItem -Filter "$($ModuleName).psd1"
-
-if (!$FoundModule) {
-    throw "Can't find $($ModuleName).psd1 in $($Version.FullName)"
-}
-
 $Show = if ($HideSuccess) {
     "Fails"
 } else {
@@ -30,6 +21,10 @@ $Show = if ($HideSuccess) {
 }
 
 Remove-Module $ModuleName -ErrorAction Ignore -Force
+
+$FoundModule = Get-ChildItem [0-9]*, Modules/ModuleBuilder/[0-9]* -Directory | Sort-Object { $_.Name -as [SemanticVersion[]] } |
+    Select-Object -Last 1 -Ov Version |
+    Get-ChildItem -Filter "$($ModuleName).psd1"
 $ModuleUnderTest = Import-Module $FoundModule.FullName -PassThru -Force -DisableNameChecking -Verbose:$false
 Write-Host "Invoke-Pester for Module $($ModuleUnderTest) version $($ModuleUnderTest.Version)"
 

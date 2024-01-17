@@ -1,6 +1,7 @@
-# Ignore version number folders and "output" where we build
+# All of these folders are (or were) build outputs
 [0-9]*/
-obj/
+Modules/
 Output/
+obj/
 Tools/
 coverage.xml
