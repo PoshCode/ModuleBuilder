@@ -53,12 +53,12 @@ function SetModuleContent {
                 $SetContent.Process("#EndRegion '$SourceName' $($Source.Count+1)")
             } else {
                 if(!$ContentStarted) {
-                    $SetContent.Process("#Region 'PREFIX' 0")
+                    $SetContent.Process("#Region 'PREFIX' -1`n")
                     $SetContent.Process($file)
                     $SetContent.Process("#EndRegion 'PREFIX'")
                     $ContentStarted = $true
                 } else {
-                    $SetContent.Process("#Region 'SUFFIX' 0")
+                    $SetContent.Process("#Region 'SUFFIX' -1`n")
                     $SetContent.Process($file)
                     $SetContent.Process("#EndRegion 'SUFFIX'")
                 }

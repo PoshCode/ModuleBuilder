@@ -123,13 +123,13 @@ Describe "SetModuleContent" {
 
         It "Includes the prefix" {
             $Content = Get-Content TestDrive:\Output.psm1 -Raw
-            $Content | Should -Match "#Region 'PREFIX' 0"
+            $Content | Should -Match "#Region 'PREFIX' -1"
             $Content | Should -Match "using module Configuration"
         }
 
         It "Includes the suffix" {
             $Content = Get-Content TestDrive:\Output.psm1 -Raw
-            $Content | Should -Match "#Region 'SUFFIX' 0"
+            $Content | Should -Match "#Region 'SUFFIX' -1"
             $Content | Should -Match "Export-ModuleMember Stuff"
         }
     }

@@ -25,7 +25,7 @@ function Convert-CodeCoverage {
     process {
         Push-Location $SourceRoot
         try {
-            $InputObject.CodeCoverage.MissedCommands | Convert-LineNumber -Passthru |
+            $InputObject.CodeCoverage.MissedCommands | ConvertTo-SourceLineNumber -Passthru |
                 Select-Object SourceFile, @{Name="Line"; Expr={$_.SourceLineNumber}}, Command
         } finally {
             Pop-Location

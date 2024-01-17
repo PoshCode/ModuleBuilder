@@ -3,9 +3,9 @@ function ConvertTo-SourceLineNumber {
         .SYNOPSIS
             Convert the line number in a built module to a file and line number in source
         .EXAMPLE
-            Convert-LineNumber -SourceFile ~\ErrorMaker.psm1 -SourceLineNumber 27
+            ConvertTo-SourceLineNumber -SourceFile ~\ErrorMaker.psm1 -SourceLineNumber 27
         .EXAMPLE
-            Convert-LineNumber -PositionMessage "At C:\Users\Joel\OneDrive\Documents\PowerShell\Modules\ErrorMaker\ErrorMaker.psm1:27 char:4"
+            ConvertTo-SourceLineNumber -PositionMessage "At C:\Users\Joel\OneDrive\Documents\PowerShell\Modules\ErrorMaker\ErrorMaker.psm1:27 char:4"
     #>
     [Alias("Convert-LineNumber")]
     [CmdletBinding(DefaultParameterSetName="FromString")]
