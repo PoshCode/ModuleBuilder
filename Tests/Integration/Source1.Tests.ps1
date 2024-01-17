@@ -275,8 +275,9 @@ Describe "Regression test for #40.2 not copying suffix if prefix" -Tag Integrati
         $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
         $Code = Get-Content $Module
         $Code[0] | Should -be "using module ModuleBuilder" # because we moved it, from GetFinale
-        $Code[1] | Should -be "#Region '$('./_GlobalScope.ps1' -replace '/', ([IO.Path]::DirectorySeparatorChar))' 0"
-        $Code[2] | Should -be '$Global:Module = "Testing"'
+        $Code[1] | Should -be "#Region '$('./_GlobalScope.ps1' -replace '/', ([IO.Path]::DirectorySeparatorChar))' -1"
+        $Code[2] | Should -be ''
+        $Code[3] | Should -be '$Global:Module = "Testing"'
 
         $Code[-3] | Should -be '$Global:Module = "Testing"'
         $Code[-2] | Should -be "#EndRegion '$('./_GlobalScope.ps1' -replace '/', ([IO.Path]::DirectorySeparatorChar))' 2"

@@ -3,9 +3,9 @@ function ConvertTo-SourceLineNumber {
         .SYNOPSIS
             Convert the line number in a built module to a file and line number in source
         .EXAMPLE
-            Convert-LineNumber -SourceFile ~\ErrorMaker.psm1 -SourceLineNumber 27
+            ConvertTo-SourceLineNumber -SourceFile ~\ErrorMaker.psm1 -SourceLineNumber 27
         .EXAMPLE
-            Convert-LineNumber -PositionMessage "At C:\Users\Joel\OneDrive\Documents\PowerShell\Modules\ErrorMaker\ErrorMaker.psm1:27 char:4"
+            ConvertTo-SourceLineNumber -PositionMessage "At C:\Users\Joel\OneDrive\Documents\PowerShell\Modules\ErrorMaker\ErrorMaker.psm1:27 char:4"
     #>
     [Alias("Convert-LineNumber")]
     [CmdletBinding(DefaultParameterSetName="FromString")]
@@ -49,7 +49,7 @@ function ConvertTo-SourceLineNumber {
         try {
             if (!$filemap.ContainsKey($SourceFile)) {
                 # Note: the new pattern is #Region but the old one was # BEGIN
-                $regions = Select-String '^(?:#Region|# BEGIN) (?<SourceFile>.*) (?<LineNumber>\d+)?$' -Path $SourceFile
+                $regions = Select-String '^(?:#Region|# BEGIN) (?<SourceFile>.*) (?<LineNumber>-?\d+)?$' -Path $SourceFile
                 if ($regions.Count -eq 0) {
                     Write-Warning "No SourceMap for $SourceFile"
                     return
@@ -59,6 +59,10 @@ function ConvertTo-SourceLineNumber {
                             PSTypeName = "BuildSourceMapping"
                             SourceFile = $_.Matches[0].Groups["SourceFile"].Value.Trim("'")
                             StartLineNumber = $_.LineNumber
+                            # This offset is added when calculating the line number
+                            # because of the new line we're adding prior to the content
+                            # of each script file in the built module.
+                            Offset = $_.Matches[0].Groups["LineNumber"].Value
                         }
                     })
             }
@@ -74,12 +78,12 @@ function ConvertTo-SourceLineNumber {
             if($Passthru) {
                 $InputObject |
                     Add-Member -MemberType NoteProperty -Name SourceFile -Value $Source.SourceFile -PassThru -Force |
-                    Add-Member -MemberType NoteProperty -Name SourceLineNumber -Value ($SourceLineNumber - $Source.StartLineNumber) -PassThru -Force
+                    Add-Member -MemberType NoteProperty -Name SourceLineNumber -Value ($SourceLineNumber - $Source.StartLineNumber + $Source.Offset) -PassThru -Force
             } else {
                 [PSCustomObject]@{
                     PSTypeName = "SourceLocation"
                     SourceFile = $Source.SourceFile
-                    SourceLineNumber = $SourceLineNumber - $Source.StartLineNumber
+                    SourceLineNumber = $SourceLineNumber - $Source.StartLineNumber + $Source.Offset
                 }
             }
         } finally {

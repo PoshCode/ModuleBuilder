@@ -11,7 +11,9 @@
     "powershell.codeFormatting.alignPropertyValuePairs": true,
     "powershell.codeFormatting.autoCorrectAliases": true,
     "powershell.codeFormatting.useCorrectCasing": true,
+    "powershell.scriptAnalysis.settingsPath": "ScriptAnalyzerSettings.psd1",
     "files.associations": {
-        "*.ps1xml": "xml"
+        "*.ps1xml": "xml",
+        ".earthlyignore": "ignore"
     }
 }

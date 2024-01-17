@@ -1,55 +1,62 @@
-name: Build on push
-on: [push]
+name: CI
+
+on:
+  push: {}
+  pull_request:
+    branches: [ main ]
+
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    env:
+      FORCE_COLOR: 1
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: GitVersion
-      id: gitversion
-      uses: PoshCode/Actions/gitversion@v1
-    - name: Install-RequiredModules
-      uses: PoshCode/Actions/install-requiredmodules@v1
-    - name: Build Module
-      id: build
-      uses: PoshCode/actions/build-module@v1
+    - uses: earthly/actions-setup@v1
       with:
-        path: ${{github.workspace}}/Source
-        version: ${{ steps.gitversion.outputs.LegacySemVerPadded }}
-        destination: ${{github.workspace}}/output
-    - name: Upload Build Output
-      uses: actions/upload-artifact@v2
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - uses: actions/checkout@v4
       with:
-        name: Modules
-        path: ${{github.workspace}}/output
+        submodules: true
+        fetch-depth: 0
+
+    - name: earthly +test
+      if: github.ref != 'refs/heads/main'
+      run: earthly --strict +test
+
+    - name: earthly +push
+      if: github.ref == 'refs/heads/main'
+      run: earthly --push --secret NUGET_API_KEY --secret PSGALLERY_API_KEY --strict +all
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ModuleBuilder
+        path: Modules/ModuleBuilder
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: TestResults
+        path: Modules/ModuleBuilder-TestResults
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Packages
+        path: Modules/ModuleBuilder-Packages
+
     - name: Upload Tests
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: PesterTests
         path: ${{github.workspace}}/Tests
     - name: Upload RequiredModules.psd1
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: RequiredModules
         path: ${{github.workspace}}/RequiredModules.psd1
-    - name: Upload PSScriptAnalyzerSettings.psd1
-      uses: actions/upload-artifact@v2
-      with:
-        name: ScriptAnalyzer
-        path: ${{github.workspace}}/PSScriptAnalyzerSettings.psd1
-  lint:
-    needs: build
-    name: Run PSScriptAnalyzer
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download Build Output
-      uses: actions/download-artifact@v2
-    - name: Invoke-ScriptAnalyzer
-      uses: devblackops/github-action-psscriptanalyzer@master
-      with:
-        rootPath: Modules/ModuleBuilder
-        repoToken: ${{ secrets.GITHUB_TOKEN }}
   test:
     needs: build
     runs-on: ${{ matrix.os }}
@@ -59,7 +66,20 @@ jobs:
         os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
     - name: Download Build Output
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
+      with:
+        name: ModuleBuilder
+        path: Modules/ModuleBuilder
+    - name: Download Pester Tests
+      uses: actions/download-artifact@v4
+      with:
+        name: PesterTests
+        path: PesterTests
+    - name: Download RequiredModules
+      uses: actions/download-artifact@v4
+      with:
+        name: RequiredModules
+
     - uses: PoshCode/Actions/install-requiredmodules@v1
     - uses: PoshCode/Actions/pester@v1
       with:

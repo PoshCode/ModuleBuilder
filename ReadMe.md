@@ -21,61 +21,42 @@ This module is the first concrete step in the project (although it currently con
 
 ### Building from source
 
-[![Build Status](https://poshcode.visualstudio.com/ModuleBuilder/_apis/build/status/ModuleBuilder)](https://poshcode.visualstudio.com/ModuleBuilder/_build/latest?definitionId=1)
+[![Build Status](https://github.com/PoshCode/ModuleBuilder/actions/workflows/build.yml/badge.svg)](https://github.com/PoshCode/ModuleBuilder/actions/workflows/build.yml)
 
-#### 1. Get the source, obviously
+The easiest, fastest build uses [earthly](https://docs.earthly.dev/). Earthly builds use containers to ensure tools are available, and to cache their output. On Windows, it requires WSL2, Docker Desktop, and of course, the earthly CLI. If you already have those installed, you can just check out this repository and run `earthly +test` to build and run the tests.
 
 ```powershell
 git clone https://github.com/PoshCode/ModuleBuilder.git
 cd Modulebuilder
+earthly +test
 ```
 
-#### 2. Install dependencies
+#### Building without earthly
 
-We have a few modules which are required for building. They're listed in `RequiredModules.psd1` -- the `Install-RequiredModule` script installs them (it defaults to CurrentUser scope, but has a `-Scope` parameter if you're running elevated and want to install them for the `AllUsers`). They only change rarely, so you shouldn't need to run this repeatedly, but it does _import_ the modules too, so if you need to use newer versions of these modules (like Pester 5), you can use this to import the ones we need:
+The full ModuleBuilder build has a lot of dependencies which are handled _for you_, in the Earthly build, like dotnet, gitversion, and several PowerShell modules. To build without it you will need to clone the PoshCode shared "Tasks" repository which contains shared Invoke-Build tasks into the same parent folder, so that the `Tasks` folder is a sibling of the `ModuleBuilder` folder:
 
 ```powershell
-./Install-RequiredModule.ps1
+git clone https://github.com/PoshCode/ModuleBuilder.git
+git clone https://github.com/PoshCode/Tasks.git
 ```
 
-#### 3. Run the `build.ps1` script.
-
-By default, the build script uses [gitversion](/gittols/gitversion) to calculate the version of the build automatically, and will put the build in a folder like "ModuleBuilder\2.0.0" where 2.0.0 is the current version number.
+As long as you have dotnet preinstalled, the `Build.build.ps1` script will use the shared [Tasks\_Bootstrap.ps1](https://github.com/PoshCode/Tasks/blob/main/_Bootstrap.ps1) to install the other dependencies (see [RequiredModules.psd1](https://github.com/PoshCode/ModuleBuilder/blob/main/RequiredModules.psd1)) and will then use [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [Pester](https://github.com/Pester/Pester) to build and test the module.
 
 ```powershell
-./build.ps1
+cd Modulebuilder
+./Build.build.ps1
 ```
 
-If you don't have `gitversion` handy, you can just specify a version for the `-Semver` parameter:
+This _should_ work on Windows, Linux, and MacOS, but I only test the process on Windows, and in the Linux containers via earthly.
+
+#### The old-fashioned way
+
+You _can_ build the module without any additional tools (and without running tests), by using the old `build.ps1` bootstrap script. You'll need to pass a version number in, and if you have [Pester](https://github.com/Pester/Pester) and [PSScriptAnalyzer](https://github.com/PowerShell/PSScriptAnalyzer), you can run the 'test.ps1' script to run the tests.
 
 ```powershell
-./build.ps1 -Semver 2.1.0-beta
-```
-
-#### 4. Run tests with Pester
-
-The `test.ps1` script runs Pester and ScriptAnalyzer. It finds the build output from our `build.ps1` script in the default build output location -- that is, right next to these scripts in the root of the repository. It actually removes the `ModuleBuilder` module and re-imports the highest version in that root:
-
-```powershell
+./build.ps1 -Semver 5.0.0-prerelease | Split-Path | Import-Module -Force
 ./test.ps1
 ```
-
-If you want to test against a different version, you can import it manually and `Invoke-Pester` yourself.
-
-##### You have a lot of other options here ...
-
-You could import the module explicitly from the output path:
-
-```powershell
-./build.ps1 | Split-Path | Import-Module -Force
-```
-
-You could build into your personal Modules directory, instead:
-
-```powershell
-./build -Output ($Profile | Split-Path | Join-Path -ChildPath Modules)
-```
-### What's in the module, so far:
 
 #### `Build-Module`
 
