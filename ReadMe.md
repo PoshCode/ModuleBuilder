@@ -17,17 +17,70 @@ In service of this goal, we intend to produce:
 
 ## The ModuleBuilder module
 
-This module is the first concrete step in the project (although it currently consists of only two commands). It represents the collaboration of several MVPs and module authors who had each written their own version of these tools for themselves, and have now decided to collaborate on creating a shared toolset. We are each using the patterns and tools that are represented here, and are committed to helping others to succeed at doing so.
+This module is the main output of the project, consisting of one primary command: `Build-Module` and a few helpers to translate input and output line numbers. It represents the collaboration of several module authors who had each written their own version of these tools for themselves, and have now decided to collaborate on creating a shared tool set. We are each using the patterns and tools that are represented here, and are committed to helping others to succeed at doing so.
+
+### What's in the module so far
+
+#### Build-Module
+
+Builds a script module from a source project containing one file per function in `Public` and `Private` folders.
+
+The `Build-Module` command is a build task for PowerShell script modules that supports [incremental builds](https://docs.microsoft.com/en-us/visualstudio/msbuild/incremental-builds).
+
+#### Convert-CodeCoverage
+
+Takes the output from `Invoke-Pester -Passthru` run against the build output, and converts the code coverage report to the source lines.
+
+#### ConvertFrom-SourceLineNumber
+
+Converts a line number from a source file to the corresponding line number in the built output.
+
+#### ConvertTo-SourceLineNumber
+
+Converts a line number from the built output to the corresponding file and line number in the source.
+
+#### Convert-Breakpoint
+
+Convert any breakpoints on source files to module files _and vice-versa_.
+
+## Organizing Your Module
+
+For best results, you need to organize your module project similarly to how this project is organized. It doesn't have to be exact, because nearly all of our conventions can be overriden, but the module _is_ opinionated, so if you follow the conventions, it should feel wonderfully automatic.
+
+1. Create a `source` folder with a `build.psd1` file and your module manifest in it
+2. In the `build.psd1` specify the relative **Path** to your module's manifest, e.g. `@{ Path = "ModuleBuilder.psd1" }`
+3. In your manifest, make sure a few values are not commented out. You can leave them empty, because they'll be overwritten:
+    - `FunctionsToExport` will be updated with the _file names_ that match the `PublicFilter`
+    - `AliasesToExport` will be updated with the values from `[Alias()]` attributes on commands
+    - `Prerelease` and `ReleaseNotes` in the `PSData` hash table in `PrivateData`
+
+Once you start working on the module, you'll create sub-folders in source, and put script files in them with only **one** function in each file. You should name the files with _the same name_ as the function that's in them -- especially in the public folder, where we use the file name (without the extension) to determine the exported functions.
+
+1. By convention, use folders named "Classes" (and/or "Enum"), "Private", and "Public"
+2. By convention, the functions in "Public" will be exported from the module (you can override the `PublicFilter`)
+3. To force classes to be in a certain order, you can prefix their file names with numbers, like `01-User.ps1`
+
+There are a _lot_ of conventions in `Build-Module`, expressed as default values for its parameters. These defaults are documented in the help for Build-Module. You can override any parameter defaults by adding keys to the `build.psd1` file with your preferences, or by passing the values to the `Build-Module` command directly.
+
+## A note on build tools
+
+There are several PowerShell build frameworks available. The build task in ModuleBuilder doesn't particularly endorse or interoperate with any of them, but it does accomplish a particular task that is needed by all of them.
+
+A good build framework needs to support [incremental builds](https://docs.microsoft.com/en-us/visualstudio/msbuild/incremental-builds) and have a way to define build targets which have dependencies on other targets, such that it can infer the [target build order](https://docs.microsoft.com/en-us/visualstudio/msbuild/msbuild-targets#target-build-order).
+
+A good build framework should also include pre-defined tasks for most common build targets, including restoring dependencies, cleaning old output, building and assembling a module from source, testing that module, and publishing the module for public consumption.  Our `Build-Module` command, for instance, is just one task of several which would be needed for a build target for a PowerShell script module.
+
+We are currently using the [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [earthly](https://docs.earthly.dev/) to build this module.
 
 ### Building from source
 
 [![Build Status](https://github.com/PoshCode/ModuleBuilder/actions/workflows/build.yml/badge.svg)](https://github.com/PoshCode/ModuleBuilder/actions/workflows/build.yml)
 
-The easiest, fastest build uses [earthly](https://docs.earthly.dev/). Earthly builds use containers to ensure tools are available, and to cache their output. On Windows, it requires WSL2, Docker Desktop, and of course, the earthly CLI. If you already have those installed, you can just check out this repository and run `earthly +test` to build and run the tests.
+The easiest, fastest build uses [earthly](https://docs.earthly.dev/). Earthly builds use containers to ensure tools are available, parallelize steps, and to cache their output. On Windows, it requires WSL2, Docker Desktop, and of course, the earthly CLI. If you already have those installed, you can just check out this repository and run `earthly +test` to build and run the tests.
 
 ```powershell
 git clone https://github.com/PoshCode/ModuleBuilder.git
-cd Modulebuilder
+cd ModuleBuilder
 earthly +test
 ```
 
@@ -40,14 +93,14 @@ git clone https://github.com/PoshCode/ModuleBuilder.git
 git clone https://github.com/PoshCode/Tasks.git
 ```
 
-As long as you have dotnet preinstalled, the `Build.build.ps1` script will use the shared [Tasks\_Bootstrap.ps1](https://github.com/PoshCode/Tasks/blob/main/_Bootstrap.ps1) to install the other dependencies (see [RequiredModules.psd1](https://github.com/PoshCode/ModuleBuilder/blob/main/RequiredModules.psd1)) and will then use [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [Pester](https://github.com/Pester/Pester) to build and test the module.
+Once you've cloned both, the `Build.build.ps1` script will use the shared [Tasks\_Bootstrap.ps1](https://github.com/PoshCode/Tasks/blob/main/_Bootstrap.ps1) to install the other dependencies (see [RequiredModules.psd1](https://github.com/PoshCode/ModuleBuilder/blob/main/RequiredModules.psd1)), including [dotnet](https://dot.net), and will use [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [Pester](https://github.com/Pester/Pester) to build and test the module.
 
 ```powershell
-cd Modulebuilder
+cd ModuleBuilder
 ./Build.build.ps1
 ```
 
-This _should_ work on Windows, Linux, and MacOS, but I only test the process on Windows, and in the Linux containers via earthly.
+This _should_ work on Windows, Linux, or MacOS. I test the build process on Windows, and in CI we run it in the Linux containers via earthly, and we run the full Pester test suit on all three platforms.
 
 #### The old-fashioned way
 
@@ -58,44 +111,6 @@ You _can_ build the module without any additional tools (and without running tes
 ./test.ps1
 ```
 
-#### `Build-Module`
-
-Builds a script module from a source project containing one file per function in `Public` and `Private` folders.
-
-The `Build-Module` command is a build task for PowerShell script modules that supports [incremental builds](https://docs.microsoft.com/en-us/visualstudio/msbuild/incremental-builds).
-
-#### `Convert-CodeCoverage`
-
-Takes the output from `Invoke-Pester -Passthru` run against the build output, and converts the code coverage report to the source lines.
-
-## A note on build tools
-
-There are several PowerShell build frameworks available. The build task in ModuleBuilder doesn't particularly endorse or interoperate with any of them, but it does accomplish a particular task that is needed by all of them.
-
-A good build framework needs to support [incremental builds](https://docs.microsoft.com/en-us/visualstudio/msbuild/incremental-builds) and have a way to define build targets which have dependencies on other targets, such that it can infer the [target build order](https://docs.microsoft.com/en-us/visualstudio/msbuild/msbuild-targets#target-build-order).
-
-A good build framework should also include pre-defined tasks for most common build targets, including restoring dependencies, cleaning old output, building and assembling a module from source, testing that module, and publishing the module for public consumption.  Our `Build-Module` command, for instance, is just one task of several which would be needed for a build target for a PowerShell script module.
-
-
-## Organizing Your Module
-
-For best results, you need to organize your module project similarly to how this project is organized. It doesn't have to be exact, because nearly all of our conventions can be overriden, but the module *is* opinionated, so if you follow the conventions, it should feel wonderfully automatic.
-
-1. Create a `source` folder with a `build.psd1` file and your module manifest in it
-2. In the `build.psd1` specify the relative **Path** to your module's manifest, e.g. `@{ Path = "ModuleBuilder.psd1" }`
-3. In your manifest, make sure a few values are not commented out. You can leave them empty, because they'll be overwritten:
-    - `FunctionsToExport` will be updated with the _file names_ that match the `PublicFilter`
-    - `AliasesToExport` will be updated with the values from `[Alias()]` attributes on commands
-    - `Prerelease` and `ReleaseNotes` in the `PSData` hashtable in `PrivateData`
-
-Once you start working on the module, you'll create sub-folders in source, and put script files in them with only **one** function in each file. You should name the files with _the same name_ as the function that's in them -- especially in the public folder, where we use the file name (without the extension) to determine the exported functions.
-
-1. By convention, use folders named "Classes" (and/or "Enum"), "Private", and "Public"
-2. By convention, the functions in "Public" will be exported from the module (you can override the `PublicFilter`)
-3. To force classes to be in a certain order, you can prefix their file names with numbers, like `01-User.ps1`
-
-There are a *lot* of conventions in `Build-Module`, expressed as default values for its parameters. These defaults are documented in the help for Build-Module. You can override any parameter to `Build-Module` by passing it, or by adding keys to the `build.psd1` file with your preferences.
-
 ## Changelog
 
 ### 3.0.0 - Now with better alias support
@@ -104,3 +119,6 @@ Starting with this release, ModuleBuilder will automatically export aliases from
 
 Additionally, the `Build-Module` command now _explicitly sorts_ the source files into alphabetical order, to ensure consistent behavior regardless of the native order of the underlying file system. This is technically also a breaking change, but it's unlikely to affect anyone except the people whose builds didn't work on non-Windows systems because of the previous behavior.
 
+### 3.1.0 - Now allows help outside the top of script commands
+
+Starting with this release, ModuleBuilder adds an empty line between the `#REGION filename` comment lines it injects, and the content of the files. This allows PowerShell to recognize help comments that are at the top of each file (outside the function block).
