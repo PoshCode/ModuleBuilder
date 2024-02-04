@@ -137,18 +137,23 @@ function Build-Module {
         [ValidateSet("Clean", "Build", "CleanBuild")]
         [string]$Target = "CleanBuild",
 
-        # A list of Aspects to apply to the module
-        # Each aspect contains a Function (pattern), Action and Source
-        # For example:
-        #  @{ Function = "*"; Action = "MergeBlocks"; Source = "TraceBlocks" }
-        # There are only two Actions built in:
-        # - AddParameter. Supports adding common parameters to functions
-        # - MergeBlocks.  Supports adding code Before/After/Around existing blocks for aspects like error handling or authentication.
-        [PSCustomObject[]]$Aspects,
+        # A list of Generators to apply to the module. Each Generator has:
+        # - Function: The name(s) of functions in the RootModule to run the generator against. Supports wildcards.
+        # - Generator: The Typename of the ModuleBuilder Generator to invoke.
+        # - Template: the base name of a file that serves as input to the generator
+        #   The template is technically optional, but the built-in generators both require a template.
+        #
+        # For example, if you wrote a template file "TraceBlocks.ps1", you could add it to the build like this:
+        #  @{ Function = "*"; Generator = "Block"; Template = "TraceBlocks" }
+        #
+        # There are two Generators built-in:
+        # - ParameterGenerator. Supports adding parameters to functions in the module. Parameters come from a template file, which must be a script with a param block.
+        # - BlockGenerator.  Supports adding code before, after, and around existing blocks for generators like error handling, authentication, and implementations for common parameters. The added blocks come from a template file, which must be a script with named begin/process/end blocks.
+        [PSCustomObject[]]$Generators,
 
-        # The folder (relative to the module folder) which contains the scripts to be used as Source for Aspects
-        # Defaults to "Aspects"
-        [string]$AspectDirectory = "[Aa]spects",
+        # The folder (relative to the module folder) which contains the scripts to be used as Source for Generators
+        # Defaults to "Generators"
+        [string]$GeneratorDirectory = "[Gg]enerators",
 
         # Output the ModuleInfo of the "built" module
         [switch]$Passthru
@@ -282,10 +287,10 @@ function Build-Module {
                 }
             }
 
-            if ($ModuleInfo.Aspects) {
-                $AspectDirectory = Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $ModuleInfo.AspectDirectory | Convert-Path -ErrorAction SilentlyContinue
-                Write-Verbose "Apply $($ModuleInfo.Aspects.Count) Aspects from $AspectDirectory"
-                $ModuleInfo.Aspects | InvokeGenerator $RootModule
+            if ($ModuleInfo.Generators) {
+                $GeneratorDirectory = Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $ModuleInfo.GeneratorDirectory | Convert-Path -ErrorAction SilentlyContinue
+                Write-Verbose "Apply $($ModuleInfo.Generators.Count) Generators from $GeneratorDirectory"
+                $ModuleInfo.Generators | InvokeGenerator $RootModule
             }
 
             # This is mostly for testing ...

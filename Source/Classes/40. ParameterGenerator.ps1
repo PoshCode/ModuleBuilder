@@ -5,21 +5,26 @@ class ParameterGenerator : ModuleBuilderGenerator {
     [System.Management.Automation.HiddenAttribute()]
     [ParameterExtractor]$AdditionalParameterCache
 
-    [ParameterExtractor]GetAdditional() {
+    ParameterGenerator($Path) : base($Path) {}
+
+    [System.Collections.Generic.Dictionary[string, TextReplacement]]GetAdditional() {
         if (!$this.AdditionalParameterCache) {
-            $this.AdditionalParameterCache = $this.Aspect
+            $this.AdditionalParameterCache = [ParameterExtractor]$this.Ast
         }
-        return $this.AdditionalParameterCache
+        return $this.AdditionalParameterCache.Parameters
     }
 
     [AstVisitAction] VisitFunctionDefinition([FunctionDefinitionAst]$ast) {
         if (!$ast.Where($this.Where)) {
             return [AstVisitAction]::SkipChildren
         }
+
         $Existing = [ParameterExtractor]$ast
-        $Additional = $this.GetAdditional().Parameters.Where{ $_.Name -notin $Existing.Parameters.Name }
-        if (($Text = $Additional.Text -join ",`n`n")) {
-            $Replacement = [TextReplace]@{
+
+        $AdditionalParameters = $this.GetAdditional()
+        $Additional = $AdditionalParameters.Keys.Where{ $_.Name -notin $Existing.Parameters.Name }
+        if (($Text = $AdditionalParameters.Values.Text -join ",`n`n")) {
+            $Replacement = [TextReplacement]@{
                 StartOffset = $Existing.InsertOffset
                 EndOffset   = $Existing.InsertOffset
                 Text        = if ($Existing.Parameters.Count -gt 0) {
@@ -29,7 +34,7 @@ class ParameterGenerator : ModuleBuilderGenerator {
                 }
             }
 
-            Write-Debug "Adding parameters to $($ast.name): $($Additional.Name -join ', ')"
+            Write-Debug "Adding parameters to $($ast.name): $($Additional.Keys -join ', ')"
             $this.Replacements.Add($Replacement)
         }
         return [AstVisitAction]::SkipChildren

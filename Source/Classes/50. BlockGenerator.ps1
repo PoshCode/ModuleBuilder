@@ -11,21 +11,23 @@ class BlockGenerator : ModuleBuilderGenerator {
     [System.Management.Automation.HiddenAttribute()]
     [NamedBlockAst]$EndBlockTemplate
 
-    [List[TextReplace]]Generate([Ast]$ast) {
-        if (!($this.BeginBlockTemplate = $this.Aspect.Find({ $args[0] -is [NamedBlockAst] -and $args[0].BlockKind -eq "Begin" }, $false))) {
-            Write-Debug "No Aspect for BeginBlock"
+    BlockGenerator($Path) : base($Path) {}
+
+    [List[TextReplacement]]Generate([Ast]$ast) {
+        if (!($this.BeginBlockTemplate = $this.Ast.Find({ $args[0] -is [NamedBlockAst] -and $args[0].BlockKind -eq "Begin" }, $false))) {
+            Write-Debug "No Generator for BeginBlock"
         } else {
-            Write-Debug "BeginBlock Aspect: $($this.BeginBlockTemplate)"
+            Write-Debug "BeginBlock Generator: $($this.BeginBlockTemplate)"
         }
-        if (!($this.ProcessBlockTemplate = $this.Aspect.Find({ $args[0] -is [NamedBlockAst] -and $args[0].BlockKind -eq "Process" }, $false))) {
-            Write-Debug "No Aspect for ProcessBlock"
+        if (!($this.ProcessBlockTemplate = $this.Ast.Find({ $args[0] -is [NamedBlockAst] -and $args[0].BlockKind -eq "Process" }, $false))) {
+            Write-Debug "No Generator for ProcessBlock"
         } else {
-            Write-Debug "ProcessBlock Aspect: $($this.ProcessBlockTemplate)"
+            Write-Debug "ProcessBlock Generator: $($this.ProcessBlockTemplate)"
         }
-        if (!($this.EndBlockTemplate = $this.Aspect.Find({ $args[0] -is [NamedBlockAst] -and $args[0].BlockKind -eq "End" }, $false))) {
-            Write-Debug "No Aspect for EndBlock"
+        if (!($this.EndBlockTemplate = $this.Ast.Find({ $args[0] -is [NamedBlockAst] -and $args[0].BlockKind -eq "End" }, $false))) {
+            Write-Debug "No Generator for EndBlock"
         } else {
-            Write-Debug "EndBlock Aspect: $($this.EndBlockTemplate)"
+            Write-Debug "EndBlock Generator: $($this.EndBlockTemplate)"
         }
 
         $ast.Visit($this)
@@ -44,7 +46,7 @@ class BlockGenerator : ModuleBuilderGenerator {
                 $BeginBlockText = ($BeginExtent.Text -replace "^begin[\s\r\n]*{|}[\s\r\n]*$", "`n").Trim("`r`n").TrimEnd("`r`n ")
 
 
-                $Replacement = [TextReplace]@{
+                $Replacement = [TextReplacement]@{
                     StartOffset = $BeginExtent.StartOffset
                     EndOffset   = $BeginExtent.EndOffset
                     Text        = $this.BeginBlockTemplate.Extent.Text.Replace("existingcode", $BeginBlockText)
@@ -73,7 +75,7 @@ class BlockGenerator : ModuleBuilderGenerator {
                     $StartOffset = $ProcessBlockExtent.StartOffset
                 }
 
-                $Replacement = [TextReplace]@{
+                $Replacement = [TextReplacement]@{
                     StartOffset = $StartOffset
                     EndOffset   = $ProcessBlockExtent.EndOffset
                     Text        = $this.ProcessBlockTemplate.Extent.Text.Replace("existingcode", $ProcessBlockText)
@@ -103,7 +105,7 @@ class BlockGenerator : ModuleBuilderGenerator {
                     $EndBlockText = ($EndBlockExtent.Text -replace "^end[\s\r\n]*{|}[\s\r\n]*$", "`n").Trim("`r`n").TrimEnd("`r`n ")
                 }
 
-                $Replacement = [TextReplace]@{
+                $Replacement = [TextReplacement]@{
                     StartOffset = $StartOffset
                     EndOffset   = $EndBlockExtent.EndOffset
                     Text        = $this.EndBlockTemplate.Extent.Text.Replace("existingcode", $EndBlockText)
