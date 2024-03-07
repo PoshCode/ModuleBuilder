@@ -32,8 +32,6 @@ function Build-Module {
             Build-Module -SemVer $gitVersion
 
             This example shows how to use a semantic version from gitversion to version your build.
-            Note, this is how we version ModuleBuilder, so if you want to see it in action, check out our azure-pipelines.yml
-            https://github.com/PoshCode/ModuleBuilder/blob/master/azure-pipelines.yml
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Build is approved now")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
