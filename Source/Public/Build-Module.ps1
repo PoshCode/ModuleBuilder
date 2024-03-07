@@ -150,18 +150,6 @@ function Build-Module {
     }
     process {
         try {
-            # BEFORE we InitializeBuild we need to "fix" the version
-            if($PSCmdlet.ParameterSetName -ne "SemanticVersion") {
-                Write-Verbose "Calculate the Semantic Version from the $Version - $Prerelease + $BuildMetadata"
-                $SemVer = "$Version"
-                if($Prerelease) {
-                    $SemVer = "$Version-$Prerelease"
-                }
-                if($BuildMetadata) {
-                    $SemVer = "$SemVer+$BuildMetadata"
-                }
-            }
-
             # Push into the module source (it may be a subfolder)
             $ModuleInfo = InitializeBuild $SourcePath
             Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
