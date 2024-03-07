@@ -257,18 +257,25 @@ Describe "Build-Module" {
         New-Item -ItemType Directory -Path TestDrive:/MyModule/ -Force
         New-Item -ItemType Directory -Path "TestDrive:/Output/MyModule/$ExpectedVersion" -Force
 
-        Mock InitializeBuild {
-            # These are actually all the values that we need
+        Mock ResolveBuildManifest { "TestDrive:/MyModule/build.psd1" }
+
+        Mock GetBuildInfo {
             [PSCustomObject]@{
                 OutputDirectory = "TestDrive:/Output"
-                Name            = "MyModule"
-                Version         = $Version
+                SourcePath      = "TestDrive:/MyModule/"
+                SemVer          = $SemVer
                 Target          = $Target
-                ModuleBase      = "TestDrive:/MyModule/"
                 CopyPaths = @()
                 Encoding        = "UTF8"
                 PublicFilter    = "Public/*.ps1"
                 VersionedOutputDirectory = $true
+            }
+        }
+
+        Mock ImportModuleManifest {
+            [PSCustomObject]@{
+                Name = "MyModule"
+                ModuleBase = "TestDrive:/MyModule/"
             }
         }
 
@@ -356,19 +363,28 @@ Describe "Build-Module" {
         $global:ExpectedVersion = "1.0.0"
         Push-Location TestDrive:/ -StackName BuildModuleTest
         New-Item -ItemType Directory -Path TestDrive:/MyModule/ -Force
-        New-Item -ItemType Directory -Path "TestDrive:/Output/MyModule/$ExpectedVersion" -Force
+        New-Item -ItemType Directory -Path "TestDrive:/Output/MyModule" -Force
 
-        Mock InitializeBuild {
-            # These are actually all the values that we need
+        Mock ResolveBuildManifest { "TestDrive:/MyModule/build.psd1" }
+
+        Mock GetBuildInfo {
             [PSCustomObject]@{
                 OutputDirectory = "TestDrive:/Output"
-                Name            = "MyModule"
-                Version         = $Version
-                Target          = $Target
-                ModuleBase      = "TestDrive:/MyModule/"
-                CopyPaths = @()
+                SourcePath      = "TestDrive:/MyModule/"
+                Version         = "1.0.0"
+                Prerelease      = "beta03"
+                BuildMetadata   = "Sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
+                Target          = "CleanBuild"
+                CopyPaths       = @()
                 Encoding        = "UTF8"
                 PublicFilter    = "Public/*.ps1"
+            }
+        }
+
+        Mock ImportModuleManifest {
+            [PSCustomObject]@{
+                Name       = "MyModule"
+                ModuleBase = "TestDrive:/MyModule/"
             }
         }
 
@@ -510,17 +526,25 @@ Describe "Build-Module" {
             New-Item -ItemType Directory -Path TestDrive:/MyModule/ -Force
             New-Item -ItemType Directory -Path "TestDrive:/$ExpectedVersion/" -Force
 
-            Mock InitializeBuild {
+            Mock GetBuildInfo {
                 # These are actually all the values that we need
                 [PSCustomObject]@{
                     OutputDirectory = "TestDrive:/$Version"
                     Name            = "MyModule"
                     Version         = $Version
+                    PreRelease      = $PreRelease
                     Target          = $Target
-                    ModuleBase      = "TestDrive:/MyModule/"
+                    SourcePath      = "TestDrive:/MyModule/"
                     CopyPaths = @()
                     Encoding        = "UTF8"
                     PublicFilter    = "Public/*.ps1"
+                }
+            }
+
+            Mock ImportModuleManifest {
+                [PSCustomObject]@{
+                    Name       = "MyModule"
+                    ModuleBase = "TestDrive:/MyModule/"
                 }
             }
 
