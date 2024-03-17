@@ -32,8 +32,6 @@ function Build-Module {
             Build-Module -SemVer $gitVersion
 
             This example shows how to use a semantic version from gitversion to version your build.
-            Note, this is how we version ModuleBuilder, so if you want to see it in action, check out our azure-pipelines.yml
-            https://github.com/PoshCode/ModuleBuilder/blob/master/azure-pipelines.yml
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Build is approved now")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
@@ -150,18 +148,6 @@ function Build-Module {
     }
     process {
         try {
-            # BEFORE we InitializeBuild we need to "fix" the version
-            if($PSCmdlet.ParameterSetName -ne "SemanticVersion") {
-                Write-Verbose "Calculate the Semantic Version from the $Version - $Prerelease + $BuildMetadata"
-                $SemVer = "$Version"
-                if($Prerelease) {
-                    $SemVer = "$Version-$Prerelease"
-                }
-                if($BuildMetadata) {
-                    $SemVer = "$SemVer+$BuildMetadata"
-                }
-            }
-
             # Push into the module source (it may be a subfolder)
             $ModuleInfo = InitializeBuild $SourcePath
             Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
@@ -169,7 +155,7 @@ function Build-Module {
 
             # Ensure the OutputDirectory (exists for build, or is cleaned otherwise)
             $OutputDirectory = $ModuleInfo | ResolveOutputFolder
-            if ($Target -notmatch "Build") {
+            if ($ModuleInfo.Target -notmatch "Build") {
                 return
             }
             $RootModule = Join-Path $OutputDirectory "$($ModuleInfo.Name).psm1"
@@ -177,7 +163,7 @@ function Build-Module {
             Write-Verbose  "Output to: $OutputDirectory"
 
             # Skip the build if it's up to date already
-            Write-Verbose "Target $Target"
+            Write-Verbose "Target $($ModuleInfo.Target)"
             $NewestBuild = (Get-Item $RootModule -ErrorAction SilentlyContinue).LastWriteTime
             $IsNew = Get-ChildItem $ModuleInfo.ModuleBase -Recurse |
                 Where-Object LastWriteTime -gt $NewestBuild |
@@ -185,7 +171,7 @@ function Build-Module {
 
             if ($null -eq $IsNew) {
                 # This is mostly for testing ...
-                if ($Passthru) {
+                if ($ModuleInfo.Passthru) {
                     Get-Module $OutputManifest -ListAvailable
                 }
                 return # Skip the build
@@ -240,31 +226,31 @@ function Build-Module {
             }
 
             try {
-                if ($Version) {
-                    Write-Verbose "Update Manifest at $OutputManifest with version: $Version"
-                    Update-Metadata -Path $OutputManifest -PropertyName ModuleVersion -Value $Version
+                if ($ModuleInfo.Version) {
+                    Write-Verbose "Update Manifest at $OutputManifest with version: $($ModuleInfo.Version)"
+                    Update-Metadata -Path $OutputManifest -PropertyName ModuleVersion -Value $ModuleInfo.Version
                 }
             } catch {
-                Write-Warning "Failed to update version to $Version. $_"
+                Write-Warning "Failed to update version to $($ModuleInfo.Version). $_"
             }
 
             if ($null -ne (Get-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -ErrorAction SilentlyContinue)) {
-                if ($Prerelease) {
-                    Write-Verbose "Update Manifest at $OutputManifest with Prerelease: $Prerelease"
-                    Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value $Prerelease
+                if ($ModuleInfo.Prerelease) {
+                    Write-Verbose "Update Manifest at $OutputManifest with Prerelease: $($ModuleInfo.Prerelease)"
+                    Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value $ModuleInfo.Prerelease
                 } elseif ($PSCmdlet.ParameterSetName -eq "SemanticVersion" -or $PSBoundParameters.ContainsKey("Prerelease")) {
                     Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.Prerelease -Value ""
                 }
-            } elseif($Prerelease) {
+            } elseif ($ModuleInfo.Prerelease) {
                 Write-Warning ("Cannot set Prerelease in module manifest. Add an empty Prerelease to your module manifest, like:`n" +
                                '         PrivateData = @{ PSData = @{ Prerelease = "" } }')
             }
 
-            if ($BuildMetadata) {
-                Write-Verbose "Update Manifest at $OutputManifest with metadata: $BuildMetadata from $SemVer"
+            if ($ModuleInfo.BuildMetadata) {
+                Write-Verbose "Update Manifest at $OutputManifest with metadata: $($ModuleInfo.BuildMetadata) from $($ModuleInfo.SemVer)"
                 $RelNote = Get-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.ReleaseNotes -ErrorAction SilentlyContinue
                 if ($null -ne $RelNote) {
-                    $Line = "$($ModuleInfo.Name) v$($SemVer)"
+                    $Line = "$($ModuleInfo.Name) v$($($ModuleInfo.SemVer))"
                     if ([string]::IsNullOrWhiteSpace($RelNote)) {
                         Write-Verbose "New ReleaseNotes:`n$Line"
                         Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.ReleaseNotes -Value $Line
@@ -284,7 +270,7 @@ function Build-Module {
             }
 
             # This is mostly for testing ...
-            if ($Passthru) {
+            if ($ModuleInfo.Passthru) {
                 Get-Module $OutputManifest -ListAvailable
             }
         } finally {

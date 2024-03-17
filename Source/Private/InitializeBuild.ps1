@@ -33,6 +33,28 @@ function InitializeBuild {
         ) -join ' ')"
     $BuildInfo = GetBuildInfo -BuildManifest $BuildManifest -BuildCommandInvocation $BuildCommandInvocation
 
+    # Normalize the version (if it was passed in via build.psd1)
+    if ($BuildInfo.SemVer) {
+        Write-Verbose "Update the Version, Prerelease, and BuildMetadata from the SemVer (in case it was passed in via build.psd1)"
+        $BuildInfo = $BuildInfo | Update-Object @{
+            Version       = if (($V = $BuildInfo.SemVer.Split("+")[0].Split("-", 2)[0])) {
+                                [version]$V
+                            }
+            Prerelease    = $BuildInfo.SemVer.Split("+")[0].Split("-", 2)[1]
+            BuildMetadata = $BuildInfo.SemVer.Split("+", 2)[1]
+        }
+    } elseif($BuildInfo.Version) {
+        Write-Verbose "Calculate the Semantic Version from the Version - Prerelease + BuildMetadata"
+        $SemVer = "$($BuildInfo.Version)"
+        if ($BuildInfo.Prerelease) {
+            $SemVer = "$SemVer-$($BuildInfo.Prerelease)"
+        }
+        if ($BuildInfo.BuildMetadata) {
+            $SemVer = "$SemVer+$($BuildInfo.BuildMetadata)"
+        }
+        $BuildInfo = $BuildInfo | Update-Object @{ SemVer = $SemVer }
+    }
+
     # Override VersionedOutputDirectory with UnversionedOutputDirectory
     if ($BuildInfo.UnversionedOutputDirectory -and $BuildInfo.VersionedOutputDirectory) {
         $BuildInfo.VersionedOutputDirectory = $false
