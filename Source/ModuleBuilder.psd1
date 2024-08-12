@@ -11,7 +11,8 @@
 
             # Release Notes have to be here, so we can update them
             ReleaseNotes   = '
-            Fix case sensitivity of defaults for SourceDirectories and PublicFilter
+            Add Script Generators and convert our Move-UsingStatment and Update-AliasesToExport to generators
+            Add Merge-ScriptBlock and Add-Parameter generators to support extracting more common boilerplate code
             '
 
             # Tags applied to this module. These help with module discovery in online galleries.
