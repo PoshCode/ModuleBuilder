@@ -1,4 +1,3 @@
-#requires -Module ModuleBuilder
 Describe "ResolveBuildManifest" {
     # use the integration test code
     BeforeAll {

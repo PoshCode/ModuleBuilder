@@ -1,29 +1,21 @@
-#requires -Module ModuleBuilder
-Describe "MoveUsingStatements" {
+Describe "Move-UsingStatement" {
     Context "Necessary Parameters" {
-        $CommandInfo = InModuleScope ModuleBuilder { Get-Command MoveUsingStatements }
+        $CommandInfo = InModuleScope ModuleBuilder { Get-Command MoveUsingStatement }
 
         It 'has a mandatory AST parameter' {
-            $AST = $CommandInfo.Parameters['AST']
+            $AST = $CommandInfo.Parameters['InputObject']
             $AST | Should -Not -BeNullOrEmpty
             $AST.ParameterType | Should -Be ([System.Management.Automation.Language.Ast])
             $AST.Attributes.Where{ $_ -is [Parameter] }.Mandatory | Should -Be $true
-        }
-
-        It "has an optional string Encoding parameter" {
-            $Encoding = $CommandInfo.Parameters['Encoding']
-            $Encoding | Should -Not -BeNullOrEmpty
-            $Encoding.ParameterType | Should -Be ([String])
-            $Encoding.Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $False
         }
     }
 
     Context "Moving Using Statements to the beginning of the file" {
 
-        $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
+        $MoveUsingStatementCmd = InModuleScope ModuleBuilder {
             $null = Mock Write-Warning { }
             {   param($RootModule)
-                ConvertToAst $RootModule | MoveUsingStatements
+                ConvertToAst $RootModule | MoveUsingStatement
             }
         }
 
@@ -107,7 +99,7 @@ Describe "MoveUsingStatements" {
             $ErrorFound.Count | Should -Be $ErrorBefore
 
             # After
-            &$MoveUsingStatementsCmd -RootModule $testModuleFile
+            &$MoveUsingStatementCmd -RootModule $testModuleFile
 
             $null = [System.Management.Automation.Language.Parser]::ParseFile(
                 $testModuleFile,
@@ -122,15 +114,15 @@ Describe "MoveUsingStatements" {
         }
     }
 
-    Context "When MoveUsingStatements should do nothing" {
+    Context "When MoveUsingStatement should do nothing" {
 
-        $MoveUsingStatementsCmd = InModuleScope ModuleBuilder {
+        $MoveUsingStatementCmd = InModuleScope ModuleBuilder {
             $null = Mock Write-Warning {}
             $null = Mock Set-Content {}
             $null = Mock Write-Debug {} -ParameterFilter { $Message -eq "No using statement errors found." }
 
             {   param($RootModule)
-                ConvertToAst $RootModule | MoveUsingStatements
+                ConvertToAst $RootModule | MoveUsingStatement
             }
         }
 
@@ -139,7 +131,7 @@ Describe "MoveUsingStatements" {
             $PSM1File = "using namespace System.IO; function x {}"
             Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
 
-            &$MoveUsingStatementsCmd -RootModule $testModuleFile -Debug
+            &$MoveUsingStatementCmd -RootModule $testModuleFile -Debug
 
             (Get-Content -Raw $testModuleFile).Trim() | Should -Be $PSM1File
 

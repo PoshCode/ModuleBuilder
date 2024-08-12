@@ -1,15 +1,16 @@
-#requires -Module ModuleBuilder
 . $PSScriptRoot\..\Convert-FolderSeparator.ps1
+$ProgressPreference = "SilentlyContinue"
 
 Describe "When we call Build-Module" -Tag Integration {
-    $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -Passthru
-    $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
+    BeforeAll {
+        $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -Passthru
+        $Metadata = Import-Metadata $Output.Path
+        $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
+    }
 
     It "Should not put the module's DefaultCommandPrefix into the psm1 as code. Duh!" {
         $Module | Should -Not -FileContentMatch '^Source$'
     }
-
-    $Metadata = Import-Metadata $Output.Path
 
     It "Should update FunctionsToExport in the manifest" {
         $Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
@@ -29,14 +30,15 @@ Describe "When we call Build-Module" -Tag Integration {
 }
 
 Describe "Regression test for #55: I can pass SourceDirectories" -Tag Integration, Regression {
-    $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -SourceDirectories "Private" -Passthru
-    $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
+    BeforeAll {
+        $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -SourceDirectories "Private" -Passthru
+        $Metadata = Import-Metadata $Output.Path
+        $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
+    }
 
     It "Should not put the module's DefaultCommandPrefix into the psm1 as code. Duh!" {
         $Module | Should -Not -FileContentMatch '^Source$'
     }
-
-    $Metadata = Import-Metadata $Output.Path
 
     It "Should not have any FunctionsToExport if SourceDirectories don't match the PublicFilter" {
         $Metadata.FunctionsToExport | Should -Be @()
@@ -54,8 +56,8 @@ Describe "Regression test for #55: I can pass SourceDirectories" -Tag Integratio
 Describe "Regression test for #55: I can pass SourceDirectories and PublicFilter" -Tag Integration, Regression {
     BeforeAll {
         $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -SourceDirectories "Private" -PublicFilter "Pub*\*" -Passthru
-        $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
         $Metadata = Import-Metadata $Output.Path
+        $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
     }
 
     It "Should not put the module's DefaultCommandPrefix into the psm1 as code. Duh!" {
@@ -80,9 +82,10 @@ Describe "Regression test for #55: I can pass SourceDirectories and PublicFilter
 }
 
 Describe "Regression test for #84: Multiple Aliases per command will Export" -Tag Integration, Regression {
-    $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -Passthru
-
-    $Metadata = Import-Metadata $Output.Path
+    BeforeAll {
+        $Output = Build-Module $PSScriptRoot\Source1\build.psd1 -Passthru
+        $Metadata = Import-Metadata $Output.Path
+    }
 
     It "Should update AliasesToExport in the manifest" {
         $Metadata.AliasesToExport | Should -Be @("Get-MyAlias","GS","GSou", "SS", "SSou")
@@ -90,17 +93,19 @@ Describe "Regression test for #84: Multiple Aliases per command will Export" -Ta
 }
 
 Describe "Supports building without a build.psd1" -Tag Integration {
-    Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
-    # This is the old build, with a build.psd1
-    $Output = Build-Module TestDrive:\Source1\build.psd1 -Passthru
-    $ManifestContent = Get-Content $Output.Path
-    $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
-    Remove-Item (Split-Path $Output.Path) -Recurse
+    BeforeAll {
+        Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
+        # This is the old build, with a build.psd1
+        $Output = Build-Module TestDrive:\Source1\build.psd1 -Passthru
+        $ManifestContent = Get-Content $Output.Path
+        $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
+        Remove-Item (Split-Path $Output.Path) -Recurse
 
-    # Then remove the build.psd1 and rebuild it
-    Remove-Item TestDrive:\Source1\build.psd1
+        # Then remove the build.psd1 and rebuild it
+        Remove-Item TestDrive:\Source1\build.psd1
 
-    $Build = @{ }
+        $Build = @{ }
+    }
 
     It "No longer fails if there's no build.psd1" {
         $BuildParameters = @{
@@ -158,17 +163,19 @@ Describe "Supports building without a build.psd1" -Tag Integration {
 }
 
 Describe "Defaults to VersionedOutputDirectory" -Tag Integration {
-    Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
-    # This is the old build, with a build.psd1
-    $Output = Build-Module TestDrive:\Source1\build.psd1 -Passthru
-    $ManifestContent = Get-Content $Output.Path
-    $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
-    Remove-Item (Split-Path $Output.Path) -Recurse
+    BeforeAll {
+        Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
+        # This is the old build, with a build.psd1
+        $Output = Build-Module TestDrive:\Source1\build.psd1 -Passthru
+        $ManifestContent = Get-Content $Output.Path
+        $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
+        Remove-Item (Split-Path $Output.Path) -Recurse
 
-    # Then remove the build.psd1 and rebuild it
-    Remove-Item TestDrive:\Source1\build.psd1
+        # Then remove the build.psd1 and rebuild it
+        Remove-Item TestDrive:\Source1\build.psd1
 
-    $Build = @{ }
+        $Build = @{ }
+    }
 
     It "Builds into a folder with version by default" {
         $BuildParameters = @{
@@ -207,20 +214,22 @@ Describe "Defaults to VersionedOutputDirectory" -Tag Integration {
 }
 
 Describe "Supports building discovering the module without a build.psd1" -Tag Integration {
-    Copy-Item $PSScriptRoot\Source1 TestDrive:\source -Recurse
+    BeforeAll {
+        Copy-Item $PSScriptRoot\Source1 TestDrive:\source -Recurse
 
-    # This is the old build, with a build.psd1
-    $Output = Build-Module TestDrive:\source\build.psd1 -Passthru
-    $ManifestContent = Get-Content $Output.Path
-    $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
-    Remove-Item (Split-Path $Output.Path) -Recurse
+        # This is the old build, with a build.psd1
+        $Output = Build-Module TestDrive:\source\build.psd1 -Passthru
+        $ManifestContent = Get-Content $Output.Path
+        $ModuleContent = Get-Content ([IO.Path]::ChangeExtension($Output.Path, ".psm1"))
+        Remove-Item (Split-Path $Output.Path) -Recurse
 
-    # Then remove the build.psd1 and rebuild it
-    Remove-Item TestDrive:\source\build.psd1
+        # Then remove the build.psd1 and rebuild it
+        Remove-Item TestDrive:\source\build.psd1
 
-    Push-Location -StackName 'IntegrationTest' -Path TestDrive:\
+        Push-Location -StackName 'IntegrationTest' -Path TestDrive:\
 
-    $Build = @{ }
+        $Build = @{ }
+    }
 
     It "No longer fails if there's no build.psd1" {
         $Build.Output = Build-Module -Passthru
@@ -239,16 +248,18 @@ Describe "Supports building discovering the module without a build.psd1" -Tag In
     It "Should update FunctionsToExport in the manifest" {
         $Build.Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
     }
-
-    Pop-Location -StackName 'IntegrationTest'
+    AfterAll {
+        Pop-Location -StackName 'IntegrationTest'
+    }
 }
 
 Describe "Regression test for #88 not copying prefix files" -Tag Integration, Regression {
-    $Output = Build-Module $PSScriptRoot\build.psd1 -Passthru
+    BeforeAll {
+        $Output = Build-Module $PSScriptRoot\build.psd1 -Passthru
+        $Metadata = Import-Metadata $Output.Path
+    }
 
-    $Metadata = Import-Metadata $Output.Path
-
-    It "Should update AliasesToExport in the manifest" {
+    It "Should update the top of the module with that prefix" {
         $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
         $ModuleInfo = Get-Content $Module
         $ModuleInfo[0] | Should -be "using module Configuration"
@@ -256,21 +267,22 @@ Describe "Regression test for #88 not copying prefix files" -Tag Integration, Re
 }
 
 Describe "Regression test for #40.2 not copying suffix if prefix" -Tag Integration, Regression {
-    Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
+    BeforeAll {
+        Copy-Item $PSScriptRoot\Source1 TestDrive:\Source1 -Recurse
 
-    New-Item TestDrive:\Source1\_GlobalScope.ps1 -Value '$Global:Module = "Testing"'
+        New-Item TestDrive:\Source1\_GlobalScope.ps1 -Value '$Global:Module = "Testing"'
 
-    $metadata = Import-Metadata TestDrive:\Source1\build.psd1
-    $metadata += @{
-        Prefix = "./_GlobalScope.ps1"
-        Suffix = "./_GlobalScope.ps1"
+        $metadata = Import-Metadata TestDrive:\Source1\build.psd1
+        $metadata += @{
+            Prefix = "./_GlobalScope.ps1"
+            Suffix = "./_GlobalScope.ps1"
+        }
+        $metadata | Export-Metadata TestDrive:\Source1\build.psd1
+
+        $Output = Build-Module TestDrive:\Source1 -Passthru
+
+        $Metadata = Import-Metadata $Output.Path
     }
-    $metadata | Export-Metadata TestDrive:\Source1\build.psd1
-
-    $Output = Build-Module TestDrive:\Source1 -Passthru
-
-    $Metadata = Import-Metadata $Output.Path
-
     It "Should inject the content of the _GlobalScope file at the TOP and BOTTOM" {
         $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
         $Code = Get-Content $Module
@@ -288,10 +300,12 @@ Describe "Regression test for #40.2 not copying suffix if prefix" -Tag Integrati
 # There's no such thing as a drive root on unix
 if ($PSVersionTable.Platform -eq "Win32NT") {
     Describe "Able to build from the drive root" {
-        $null = New-ModuleManifest "TestDrive:/MyModule.psd1" -ModuleVersion "1.0.0" -Author "Tester"
-        $null = New-Item "TestDrive:/Public/Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
+        BeforeAll {
+            $null = New-ModuleManifest "TestDrive:/MyModule.psd1" -ModuleVersion "1.0.0" -Author "Tester"
+            $null = New-Item "TestDrive:/Public/Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
 
-        $Result = Build-Module -SourcePath 'TestDrive:/MyModule.psd1' -Version "1.0.0" -OutputDirectory './output' -Encoding UTF8 -SourceDirectories @('Public') -Target Build -Passthru
+            $Result = Build-Module -SourcePath 'TestDrive:/MyModule.psd1' -Version "1.0.0" -OutputDirectory './output' -Encoding UTF8 -SourceDirectories @('Public') -Target Build -Passthru
+        }
 
         It "Builds the Module in the designated output folder" {
             $Result.ModuleBase | Convert-FolderSeparator | Should -Be (Convert-FolderSeparator "TestDrive:/Output/MyModule/1.0.0")
@@ -301,20 +315,21 @@ if ($PSVersionTable.Platform -eq "Win32NT") {
 }
 
 Describe "Copies additional items specified in CopyPaths" {
+    BeforeAll {
+        $null = New-Item "TestDrive:/build.psd1" -Type File -Force -Value "@{
+            SourcePath      = 'TestDrive:/MyModule.psd1'
+            SourceDirectories = @('Public')
+            OutputDirectory = './output'
+            CopyPaths       = './lib', './MyModule.format.ps1xml'
+        }"
+        $null = New-ModuleManifest "TestDrive:/MyModule.psd1" -ModuleVersion "1.0.0" -Author "Tester"
+        $null = New-Item "TestDrive:/Public/Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
+        $null = New-Item "TestDrive:/MyModule.format.ps1xml" -Type File -Value '<Configuration />' -Force
+        $null = New-Item "TestDrive:/lib/imaginary1.dll" -Type File -Value '1' -Force
+        $null = New-Item "TestDrive:/lib/subdir/imaginary2.dll" -Type File -Value '2' -Force
 
-    $null = New-Item "TestDrive:/build.psd1" -Type File -Force -Value "@{
-        SourcePath      = 'TestDrive:/MyModule.psd1'
-        SourceDirectories = @('Public')
-        OutputDirectory = './output'
-        CopyPaths       = './lib', './MyModule.format.ps1xml'
-    }"
-    $null = New-ModuleManifest "TestDrive:/MyModule.psd1" -ModuleVersion "1.0.0" -Author "Tester"
-    $null = New-Item "TestDrive:/Public/Test.ps1" -Type File -Value 'MATCHING TEST CONTENT' -Force
-    $null = New-Item "TestDrive:/MyModule.format.ps1xml" -Type File -Value '<Configuration />' -Force
-    $null = New-Item "TestDrive:/lib/imaginary1.dll" -Type File -Value '1' -Force
-    $null = New-Item "TestDrive:/lib/subdir/imaginary2.dll" -Type File -Value '2' -Force
-
-    $Result = Build-Module -SourcePath 'TestDrive:/build.psd1' -OutputDirectory './output' -Version '1.0.0' -Passthru -Target Build
+        $Result = Build-Module -SourcePath 'TestDrive:/build.psd1' -OutputDirectory './output' -Version '1.0.0' -Passthru -Target Build
+    }
 
     It "Copies single files that are in CopyPaths" {
         (Convert-FolderSeparator $Result.ModuleBase) | Should -Be (Convert-FolderSeparator "$TestDrive/output/MyModule/1.0.0")

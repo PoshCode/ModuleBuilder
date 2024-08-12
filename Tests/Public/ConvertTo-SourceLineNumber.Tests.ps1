@@ -1,20 +1,32 @@
-#requires -Module ModuleBuilder
 Describe "ConvertTo-SourceLineNumber" {
     # use the integration test code
-    BeforeAll {
+    BeforeDiscovery {
         Build-Module $PSScriptRoot/../Integration/Source1/build.psd1 -Passthru
         Push-Location $PSScriptRoot -StackName ConvertTo-SourceLineNumber
 
-        $global:Convert_LineNumber_ModulePath = Convert-Path "./../Integration/Result1/Source1/1.0.0/Source1.psm1"
-        $global:Convert_LineNumber_ModuleSource = Convert-Path "./../Integration/Source1"
-        $global:Convert_LineNumber_ModuleContent = Get-Content $global:Convert_LineNumber_ModulePath
         ${global:\} = [io.path]::DirectorySeparatorChar
 
-        $global:TestCases = @(
-            @{ outputLine = 40; sourceFile = ".${\}Private${\}TestUnExportedAliases.ps1"; sourceLine = 13 }
-            @{ outputLine = 48; sourceFile = ".${\}Public${\}Get-Source.ps1"; sourceLine = 5 }
-            @{ outputLine = 56; sourceFile = ".${\}Public${\}Set-Source.ps1"; sourceLine = 3 }
+        $TestCases = @(
+            @{
+                outputLine = 40
+                sourceFile = ".${\}Private${\}TestUnExportedAliases.ps1"
+                sourceLine = 13
+            }
+            @{
+                outputLine = 48
+                sourceFile = ".${\}Public${\}Get-Source.ps1"
+                sourceLine = 5
+            }
+            @{
+                outputLine = 56
+                sourceFile = ".${\}Public${\}Set-Source.ps1"
+                sourceLine = 3
+            }
         )
+    }
+    BeforeAll {
+        $Convert_LineNumber_ModulePath = Convert-Path "$PSScriptRoot/../Integration/Result1/Source1/1.0.0/Source1.psm1"
+        $Convert_LineNumber_ModuleContent = Get-Content "$PSScriptRoot/../Integration/Result1/Source1/1.0.0/Source1.psm1"
     }
     AfterAll {
         Pop-Location -StackName ConvertTo-SourceLineNumber
@@ -28,7 +40,7 @@ Describe "ConvertTo-SourceLineNumber" {
         $SourceLocation.SourceFile | Should -Be $SourceFile
         $SourceLocation.SourceLineNumber | Should -Be $SourceLine
 
-        $line = (Get-Content (Join-Path $Convert_LineNumber_ModuleSource $SourceLocation.SourceFile))[$SourceLocation.SourceLineNumber - 1]
+        $line = (Get-Content (Convert-Path (Join-Path "$PSScriptRoot/../Integration/Source1" $SourceLocation.SourceFile)))[$SourceLocation.SourceLineNumber - 1]
         try {
             $Convert_LineNumber_ModuleContent[$outputLine -1] | Should -Be $line
         } catch {
@@ -52,7 +64,7 @@ Describe "ConvertTo-SourceLineNumber" {
 
     It 'Should work with ScriptStackTrace messages' {
 
-        $SourceFile = Join-Path $Convert_LineNumber_ModuleSource Public/Set-Source.ps1 | Convert-Path
+        $SourceFile = Join-Path "$PSScriptRoot/../Integration/Source1" Public/Set-Source.ps1 | Convert-Path
 
         $outputLine = Select-String -Path $Convert_LineNumber_ModulePath "sto͞o′pĭd" | % LineNumber
         $sourceLine = Select-String -Path $SourceFile "sto͞o′pĭd" | % LineNumber
@@ -70,7 +82,7 @@ Describe "ConvertTo-SourceLineNumber" {
             Function = 'Get-Source'
             # these are pipeline bound
             File = $Convert_LineNumber_ModulePath
-            Line = 48 # 1 offset with the Using Statement introduced in MoveUsingStatements
+            Line = 48 # 1 offset with the Using Statement introduced in MoveUsingStatement
         }
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru

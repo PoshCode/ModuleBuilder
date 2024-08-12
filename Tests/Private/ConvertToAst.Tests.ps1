@@ -1,9 +1,16 @@
-#requires -Module ModuleBuilder
 Describe "ConvertToAst" {
+    BeforeAll {
+        $PSDefaultParameterValues = @{
+            "Mock:ModuleName"              = "ModuleBuilder"
+            "Assert-MockCalled:ModuleName" = "ModuleBuilder"
+        }
+    }
 
     Context "It returns a ParseResult for file paths" {
-        $ParseResult = InModuleScope ModuleBuilder {
-            ConvertToAst $PSCommandPath
+        BeforeAll {
+            $ParseResult = InModuleScope ModuleBuilder {
+                ConvertToAst -Code $PSCommandPath
+            }
         }
 
         It "Returns a ParseResult object" {
@@ -18,12 +25,13 @@ Describe "ConvertToAst" {
         It "Has a Tokens property" {
             $ParseResult.Tokens | Should -BeOfType [System.Management.Automation.Language.Token]
         }
-
     }
 
     Context "It parses piped in commands" {
-        $ParseResult = InModuleScope ModuleBuilder {
-            Get-Command ConvertToAst | ConvertToAst
+        BeforeAll {
+            $ParseResult = InModuleScope ModuleBuilder {
+                Get-Command ConvertToAst | ConvertToAst
+            }
         }
 
         It "Returns a ParseResult object with the AST" {
@@ -33,8 +41,10 @@ Describe "ConvertToAst" {
     }
 
     Context "It parses piped in modules" {
-        $ParseResult = InModuleScope ModuleBuilder {
-            Get-Module ModuleBuilder | ConvertToAst
+        BeforeAll {
+            $ParseResult = InModuleScope ModuleBuilder {
+                Get-Module ModuleBuilder | ConvertToAst
+            }
         }
 
         It "Returns a ParseResult object with the AST" {

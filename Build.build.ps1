@@ -19,6 +19,15 @@ param(
     # Collect code coverage when tests are run
     [switch]$CollectCoverage,
 
+    # The PesterFilter from New-PesterConfiguration.
+    # Supports specifying any of:
+    #   Tag: Tags of Describe, Context or It to be run.
+    #   ExcludeTag: Tags of Describe, Context or It to be excluded from the run.
+    #   Line: Filter by file and scriptblock start line, useful to run parsed tests programmatically to avoid problems with expanded names. Example: 'C:\tests\file1.Tests.ps1:37'
+    #   ExcludeLine: Exclude by file and scriptblock start line, takes precedence over Line.
+    #   FullName: Full name of test with -like wildcards, joined by dot. Example: '*.describe Get-Item.test1'
+    [hashtable]$PesterFilter,
+
     # Which projects to build
     [Alias("Projects")]
     $dotnetProjects = @(),
@@ -39,6 +48,7 @@ $ErrorView = 'DetailedView'
 
 # The name of the module to publish
 $script:PSModuleName = "TerminalBlocks"
+$script:RequiredCodeCoverage = 0.85
 # Use Env because Earthly can override it
 $Env:OUTPUT_ROOT ??= Join-Path $BuildRoot Modules
 
