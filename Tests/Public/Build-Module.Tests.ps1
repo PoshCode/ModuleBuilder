@@ -86,7 +86,7 @@ Describe "Build-Module" {
     Context "Testing" {
         BeforeAll {
             InModuleScope ModuleBuilder {
-                Mock MoveUsingStatements
+                Mock Move-UsingStatements
                 Mock SetModuleContent
             }
             Mock Update-Metadata
@@ -181,8 +181,8 @@ Describe "Build-Module" {
                 Assert-MockCalled ConvertToAst -Scope Context
             }
 
-            It "Should call MoveUsingStatements to move the using statements, just in case" {
-                Assert-MockCalled MoveUsingStatements -Parameter {
+            It "Should call Move-UsingStatement to move the using statements, just in case" {
+                Assert-MockCalled Move-UsingStatement -Parameter {
                     $AST.Extent.Text -eq "{ }"
                 } -Scope Context
             }
