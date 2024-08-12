@@ -33,11 +33,11 @@ function Build-Module {
 
             This example shows how to use a semantic version from gitversion to version your build.
     #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification="Build is approved now")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseApprovedVerbs", "", Justification = "Build is approved now")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "", Justification="Parameter handling is in InitializeBuild")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "", Justification = "Parameter handling is in InitializeBuild")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidDefaultValueSwitchParameter", "", Justification = "VersionedOutputDirectory is Deprecated")]
-    [CmdletBinding(DefaultParameterSetName="SemanticVersion")]
+    [CmdletBinding(DefaultParameterSetName = "SemanticVersion")]
     [Alias("build")]
     param(
         # The path to the module folder, manifest or build.psd1
@@ -66,24 +66,24 @@ function Build-Module {
 
         # Semantic version, like 1.0.3-beta01+sha.22c35ffff166f34addc49a3b80e622b543199cc5
         # If the SemVer has metadata (after a +), then the full Semver will be added to the ReleaseNotes
-        [Parameter(ParameterSetName="SemanticVersion")]
+        [Parameter(ParameterSetName = "SemanticVersion")]
         [string]$SemVer,
 
         # The module version (must be a valid System.Version such as PowerShell supports for modules)
         [Alias("ModuleVersion")]
-        [Parameter(ParameterSetName="ModuleVersion", Mandatory)]
-        [version]$Version = $(if(($V = $SemVer.Split("+")[0].Split("-",2)[0])){$V}),
+        [Parameter(ParameterSetName = "ModuleVersion", Mandatory)]
+        [version]$Version = $(if (($V = $SemVer.Split("+")[0].Split("-", 2)[0])) { $V }),
 
         # Setting pre-release forces the release to be a pre-release.
         # Must be valid pre-release tag like PowerShellGet supports
-        [Parameter(ParameterSetName="ModuleVersion")]
-        [string]$Prerelease = $($SemVer.Split("+")[0].Split("-",2)[1]),
+        [Parameter(ParameterSetName = "ModuleVersion")]
+        [string]$Prerelease = $($SemVer.Split("+")[0].Split("-", 2)[1]),
 
         # Build metadata (like the commit sha or the date).
         # If a value is provided here, then the full Semantic version will be inserted to the release notes:
         # Like: ModuleName v(Version(-Prerelease?)+BuildMetadata)
-        [Parameter(ParameterSetName="ModuleVersion")]
-        [string]$BuildMetadata = $($SemVer.Split("+",2)[1]),
+        [Parameter(ParameterSetName = "ModuleVersion")]
+        [string]$BuildMetadata = $($SemVer.Split("+", 2)[1]),
 
         # Folders which should be copied intact to the module output
         # Can be relative to the  module folder
@@ -114,7 +114,7 @@ function Build-Module {
         # File encoding for output RootModule (defaults to UTF8)
         # Converted to System.Text.Encoding for PowerShell 6 (and something else for PowerShell 5)
         [ValidateSet("UTF8", "UTF8Bom", "UTF8NoBom", "UTF7", "ASCII", "Unicode", "UTF32")]
-        [string]$Encoding = $(if($IsCoreCLR) { "UTF8Bom" } else { "UTF8" }),
+        [string]$Encoding = $(if ($IsCoreCLR) { "UTF8Bom" } else { "UTF8" }),
 
         # The prefix is either the path to a file (relative to the module folder) or text to put at the top of the file.
         # If the value of prefix resolves to a file, that file will be read in, otherwise, the value will be used.
@@ -124,7 +124,7 @@ function Build-Module {
         # The Suffix is either the path to a file (relative to the module folder) or text to put at the bottom of the file.
         # If the value of Suffix resolves to a file, that file will be read in, otherwise, the value will be used.
         # The default is nothing. See examples for more details.
-        [Alias("ExportModuleMember","Postfix")]
+        [Alias("ExportModuleMember", "Postfix")]
         [string]$Suffix,
 
         # Controls whether we delete the output folder and whether we build the output
@@ -136,6 +136,17 @@ function Build-Module {
         # So for the default OutputDirectory with version 1.2.3, the path to clean is: ../Output/ModuleName/1.2.3
         [ValidateSet("Clean", "Build", "CleanBuild")]
         [string]$Target = "CleanBuild",
+
+        # A list of Generators to apply to the module. You can specify an array of hashtables where each hashtable has the Generator name, and any additional parameters that the generator requires.
+        #
+        # There are two built-in Generators so far:
+        # - Add-Parameter. Adds parameters to functions in the module from a boilerplate file, which must be a script with a param block.
+        # - Merge-ScriptBlock. Merges boilerplate templates into functions in your module. The command "Use-OriginalBlock" in the boilerplate indicates where the code from the original function would fit into the template. The added blocks come from a boilerplate tempalte file, which must be a script, and can have named begin, process, and end blocks.
+        [PSCustomObject[]]$Generators = @(),
+
+        # The folder (relative to the module folder) which contains the scripts which serve as boilerplate templates for Script Generators
+        # Defaults to "Generators"
+        [string[]]$BoilerplateDirectory = @("Boilerplate", "Boilerplates", "Templates"),
 
         # Output the ModuleInfo of the "built" module
         [switch]$Passthru
@@ -202,7 +213,7 @@ function Build-Module {
             }
 
             # We have to force the Encoding to string because PowerShell Core made up encodings
-            SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
+            SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{ $_ } -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
 
             # Make sure Generators has (only one copy of) our built-in mandatory ones
             # Move-UsingStatement always comes first, in hopes there will not be any parse errors afterward
@@ -239,7 +250,7 @@ function Build-Module {
             if ($ModuleInfo.PublicFilter) {
                 # SilentlyContinue because there don't *HAVE* to be public functions
                 if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue |
-                        Where-Object BaseName -in $AllScripts.BaseName |
+                            Where-Object BaseName -In $AllScripts.BaseName |
                         Select-Object -ExpandProperty BaseName)) {
 
                     Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
@@ -278,12 +289,12 @@ function Build-Module {
                     } elseif ($RelNote -match "^\s*\n") {
                         # Leading whitespace includes newlines
                         Write-Verbose "Existing ReleaseNotes:$RelNote"
-                        $RelNote = $RelNote -replace "^(?s)(\s*)\S.*$|^$","`${1}$($Line)`$_"
+                        $RelNote = $RelNote -replace "^(?s)(\s*)\S.*$|^$", "`${1}$($Line)`$_"
                         Write-Verbose "New ReleaseNotes:$RelNote"
                         Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.ReleaseNotes -Value $RelNote
                     } else {
                         Write-Verbose "Existing ReleaseNotes:`n$RelNote"
-                        $RelNote = $RelNote -replace "^(?s)(\s*)\S.*$|^$","`${1}$($Line)`n`$_"
+                        $RelNote = $RelNote -replace "^(?s)(\s*)\S.*$|^$", "`${1}$($Line)`n`$_"
                         Write-Verbose "New ReleaseNotes:`n$RelNote"
                         Update-Metadata -Path $OutputManifest -PropertyName PrivateData.PSData.ReleaseNotes -Value $RelNote
                     }
