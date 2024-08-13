@@ -123,29 +123,31 @@ Describe "Build-Module" {
                 Push-Location TestDrive:/ -StackName BuildModuleTest
                 New-Item -ItemType Directory -Path TestDrive:/Output/MyModule/1.0.0/ -Force
 
-                Mock ConvertToAst {
-                    [PSCustomObject]@{
-                        PSTypeName  = "PoshCode.ModuleBuilder.ParseResults"
-                        ParseErrors = $null
-                        Tokens      = $null
-                        AST         = { }.AST
-                    }
-                }
-                Mock GetCommandAlias { @{'Get-MyInfo' = @('GMI') } }
-                Mock InitializeBuild {
-                    # These are actually all the values that we need
-                    [PSCustomObject]@{
-                        OutputDirectory = "TestDrive:/Output"
-                        Name            = "MyModule"
-                        Version         = [Version]"1.0.0"
-                        Target          = "CleanBuild"
-                        ModuleBase      = "TestDrive:/MyModule/"
-                        CopyDirectories = @()
-                        Encoding        = "UTF8"
-                        PublicFilter    = "Public/*.ps1"
-                    }
-                }
 
+                InModuleScope ModuleBuilder {
+                    Mock ConvertToAst {
+                        [PSCustomObject]@{
+                            PSTypeName  = "PoshCode.ModuleBuilder.ParseResults"
+                            ParseErrors = $null
+                            Tokens      = $null
+                            AST         = { }.AST
+                        }
+                    }
+                    Mock Update-AliasesToExport
+                    Mock InitializeBuild {
+                        # These are actually all the values that we need
+                        [PSCustomObject]@{
+                            OutputDirectory = "TestDrive:/Output"
+                            Name            = "MyModule"
+                            Version         = [Version]"1.0.0"
+                            Target          = "CleanBuild"
+                            ModuleBase      = "TestDrive:/MyModule/"
+                            CopyDirectories = @()
+                            Encoding        = "UTF8"
+                            PublicFilter    = "Public/*.ps1"
+                        }
+                    }
+                }
                 Mock Push-Location {}
 
                 # So it doesn't have to exist
@@ -181,7 +183,7 @@ Describe "Build-Module" {
                 Assert-MockCalled ConvertToAst -Scope Context
             }
 
-            It "Should call Move-UsingStatement to move the using statements, just in case" {
+            It "Should call Move-UsingStatement to move the using statements" {
                 Assert-MockCalled Move-UsingStatement -Parameter {
                     $AST.Extent.Text -eq "{ }"
                 } -Scope Context
@@ -197,10 +199,10 @@ Describe "Build-Module" {
                 } -Scope Context
             }
 
-            It "Should call Update-Metadata to set the AliasesToExport" {
-                Assert-MockCalled Update-Metadata -Parameter {
-                    $PropertyName -eq "AliasesToExport"
-                } -Scope Context
+            It "Should call Update-AliasesToExport to update aliases" {
+                Assert-MockCalled Update-AliasesToExport -Parameter {
+                    $AST.Extent.Text -eq "{ }"
+                }
             }
         }
 

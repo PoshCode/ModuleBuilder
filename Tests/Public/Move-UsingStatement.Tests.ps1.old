@@ -1,23 +1,16 @@
 #requires -Module ModuleBuilder
-Describe "MoveUsingStatements" {
+Describe "Move-UsingStatement" {
     BeforeAll {
-        $CommandInfo = InModuleScope ModuleBuilder { Get-Command MoveUsingStatements }
+        $CommandInfo = InModuleScope ModuleBuilder { Get-Command Move-UsingStatement }
     }
 
     Context "Necessary Parameters" {
 
-        It 'has a mandatory AST parameter' {
-            $AST = $CommandInfo.Parameters['AST']
+        It 'has a mandatory InputObject parameter' {
+            $AST = $CommandInfo.Parameters['InputObject']
             $AST | Should -Not -BeNullOrEmpty
             $AST.ParameterType | Should -Be ([System.Management.Automation.Language.Ast])
             $AST.Attributes.Where{ $_ -is [Parameter] }.Mandatory | Should -Be $true
-        }
-
-        It "has an optional string Encoding parameter" {
-            $Encoding = $CommandInfo.Parameters['Encoding']
-            $Encoding | Should -Not -BeNullOrEmpty
-            $Encoding.ParameterType | Should -Be ([String])
-            $Encoding.Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $False
         }
     }
 
@@ -111,7 +104,7 @@ Describe "MoveUsingStatements" {
             $ErrorFound.Count | Should -Be $ErrorBefore
 
             # After
-            &$MoveUsingStatementsCmd -RootModule $testModuleFile
+            &$MoveUsingStatementCmd -RootModule $testModuleFile
 
             $null = [System.Management.Automation.Language.Parser]::ParseFile(
                 $testModuleFile,
@@ -144,7 +137,7 @@ Describe "MoveUsingStatements" {
             $PSM1File = "using namespace System.IO; function x {}"
             Set-Content $testModuleFile -value $PSM1File -Encoding UTF8
 
-            &$MoveUsingStatementsCmd -RootModule $testModuleFile -Debug
+            &$MoveUsingStatementCmd -RootModule $testModuleFile -Debug
 
             (Get-Content -Raw $testModuleFile).Trim() | Should -Be $PSM1File
 

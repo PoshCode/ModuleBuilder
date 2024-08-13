@@ -69,7 +69,7 @@ Describe "ConvertTo-SourceLineNumber" {
             Function = 'Get-Source'
             # these are pipeline bound
             File = $Convert_LineNumber_ModulePath
-            Line = 48 # 1 offset with the Using Statement introduced in MoveUsingStatements
+            Line = 48 # 1 offset with the Using Statement introduced in MoveUsingStatement
         }
 
         $SourceLocation = $PesterMiss | Convert-LineNumber -Passthru
