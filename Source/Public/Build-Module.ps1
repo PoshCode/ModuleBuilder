@@ -144,9 +144,11 @@ function Build-Module {
         # - Merge-ScriptBlock. Merges boilerplate templates into functions in your module. The command "Use-OriginalBlock" in the boilerplate indicates where the code from the original function would fit into the template. The added blocks come from a boilerplate tempalte file, which must be a script, and can have named begin, process, and end blocks.
         [PSCustomObject[]]$Generators = @(),
 
-        # The folder (relative to the module folder) which contains the scripts which serve as boilerplate templates for Script Generators
-        # Defaults to "Generators"
-        [string[]]$BoilerplateDirectory = @("Boilerplate", "Boilerplates", "Templates"),
+        # The folder (relative to the module folder) which contains the scripts which serve as boilerplate, or templates, for Script Generators
+        # Folder paths which don't exist inside the module root are ignored.
+        # Defaults to a search of: "Boilerplate", "Template", "Generators", "Boilerplates", "Templates"
+        [Alias("TemplateDirectory")]
+        [string[]]$BoilerplateDirectory = @("Boilerplate", "Template", "Generators", "Boilerplates", "Templates"),
 
         # Output the ModuleInfo of the "built" module
         [switch]$Passthru
