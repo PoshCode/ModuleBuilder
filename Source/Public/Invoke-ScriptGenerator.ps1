@@ -80,8 +80,8 @@ function Invoke-ScriptGenerator {
         }
 
         # Find that generator...
-        $GeneratorCmd = Get-Command -Name ${Generator} -ParameterType Ast -ErrorAction Ignore
-        | Where-Object { $_.OutputType.Name -eq "TextReplacement" }
+        $GeneratorCmd = Get-Command -Name ${Generator} <# -CommandType Function #> -ParameterType Ast -ErrorAction Ignore
+        | Where-Object { $_.OutputType.Name -eq "TextReplacement" -or ($_.CommandType -eq "Alias" -and $_.Definition -like "PesterMock*" ) }
         | Select-Object -First 1
 
         if (-not $GeneratorCmd) {
