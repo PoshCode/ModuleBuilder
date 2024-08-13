@@ -74,13 +74,34 @@ function Invoke-ScriptGenerator {
             $null = $Parameters.Remove("Generator")
         }
 
+        # To make things more usable, resolve paths to "boilerplate" or "template" files based on our BoilerplateDirectory (alias TemplateDirectory)
+        try {
+            if ($Parameters.ContainsKey("Boilerplate")) {
+                # If there's a Boilerplate parameter and it does not point at a file, check in the BoilerplateDirectory, and update it, if we find it.
+                if ($Parameters.Boilerplate -and -not (Test-Path $Parameters.Boilerplate)) {
+                    if ($BoilerPlate = Join-Path $BoilerplateDirectory $Parameters.Boilerplate | Where-Object { Test-Path $_ }) {
+                        $Parameters.Boilerplate = $BoilerPlate
+                    }
+                }
+            } elseif ($Parameters.ContainsKey("Template")) {
+                # If there's a Template parameter and it does not point at a file, check in the BoilerplateDirectory, and update it, if we find it.
+                if ($Parameters.Template -and -not (Test-Path $Parameters.Template)) {
+                    if ($Template = Join-Path $BoilerplateDirectory $Parameters.Template | Where-Object { Test-Path $_ }) {
+                        $Parameters.Template = $Template
+                    }
+                }
+            }
+        } catch {
+            Write-Debug "Could not resolve the Boilerplate/Template"
+        }
+
         if (-not $Generator) {
             Write-Error "Generator missconfiguration. The Generator name is mandatory."
             continue
         }
 
         # Find that generator...
-        $GeneratorCmd = Get-Command -Name ${Generator} <# -CommandType Function #> -ParameterType Ast -ErrorAction Ignore
+        $GeneratorCmd = Get-Command -Name ${Generator} -ParameterType Ast -ErrorAction Ignore <# -CommandType Function #>
         | Where-Object { $_.OutputType.Name -eq "TextReplacement" -or ($_.CommandType -eq "Alias" -and $_.Definition -like "PesterMock*" ) }
         | Select-Object -First 1
 
