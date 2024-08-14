@@ -63,7 +63,6 @@ function Invoke-ScriptGenerator {
         [switch]$Overwrite
     )
     begin {
-        Write-Debug "Parsing $Source for $Generator with @{$($Parameters.Keys.ForEach{ $_ } -join ', ')}"
         $ParseResults = ConvertToAst $Source
         [StringBuilder]$Builder = $ParseResults.Ast.Extent.Text
         $File = $ParseResults.Ast.Extent.File
@@ -73,6 +72,7 @@ function Invoke-ScriptGenerator {
             $Generator = $Parameters["Generator"]
             $null = $Parameters.Remove("Generator")
         }
+        Write-Debug "Invoking $Generator generator for $Source with @{$($Parameters.Keys.ForEach{ $_ } -join ', ')}"
 
         # To make things more usable, resolve paths to "boilerplate" or "template" files based on our BoilerplateDirectory (alias TemplateDirectory)
         try {
@@ -83,6 +83,7 @@ function Invoke-ScriptGenerator {
                         $Parameters.Boilerplate = $BoilerPlate
                     }
                 }
+                Write-Debug "Boilerplate = $($Parameters.Boilerplate)"
             } elseif ($Parameters.ContainsKey("Template")) {
                 # If there's a Template parameter and it does not point at a file, check in the BoilerplateDirectory, and update it, if we find it.
                 if ($Parameters.Template -and -not (Test-Path $Parameters.Template)) {
@@ -90,6 +91,7 @@ function Invoke-ScriptGenerator {
                         $Parameters.Template = $Template
                     }
                 }
+                Write-Debug "Template = $($Parameters.Template)"
             }
         } catch {
             Write-Debug "Could not resolve the Boilerplate/Template"
@@ -110,7 +112,7 @@ function Invoke-ScriptGenerator {
             continue
         }
 
-        Write-Verbose "Generating $GeneratorCmd in $Source"
+        Write-Verbose "Generating $GeneratorCmd in $Source $(if($Parameters.Count){"`n                    with $($Parameters.GetEnumerator().ForEach{ $_.Key + ' = ' + ($_.Value -join ", ") } -join "`n                     and ")"})"
         #! Process replacements from the bottom up, so the line numbers work
         foreach ($Replacement in $ParseResults | & $GeneratorCmd @Parameters | Sort-Object StartOffset -Descending) {
             $Builder = $Builder.Remove($replacement.StartOffset, ($replacement.EndOffset - $replacement.StartOffset)).Insert($replacement.StartOffset, $replacement.Text)

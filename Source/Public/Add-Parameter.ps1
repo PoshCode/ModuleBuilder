@@ -56,6 +56,11 @@ function Add-Parameter {
             Get-Date -Format $Format
         }
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        <#RuleId#>'PSReviewUnusedParameter',
+        <#ParameterName#>'FunctionName',
+        Justification = 'This parameter IS used, the rule does not understand scopes'
+    )]
     [CmdletBinding()]
     [OutputType([TextReplacement])]
     param(
@@ -100,7 +105,7 @@ function Add-Parameter {
                                 Name        = $parameter.Name
                                 StartOffset = $parameter.StartOffset
                                 Text        = if (($parameter.StartLineNumber - $FirstLine) -ge $NextLine) {
-                                    Write-Debug "Extracted parameter $($Parameter.Name) with surrounding lines"
+                                    # Write-Debug "Extracted parameter $($Parameter.Name) with surrounding lines"
                                     # Take lines after the last parameter
                                     $Lines = @($Text[$NextLine..($parameter.EndLineNumber - $FirstLine)].Where{ ![string]::IsNullOrWhiteSpace($_) })
                                     # If the last line extends past the end of the parameter, trim that line
@@ -110,7 +115,7 @@ function Add-Parameter {
                                     # Don't return the commas, we'll add them back later
                                     ($Lines -join "`n").TrimEnd(",")
                                 } else {
-                                    Write-Debug "Extracted parameter $($Parameter.Name) text exactly"
+                                    # Write-Debug "Extracted parameter $($Parameter.Name) text exactly"
                                     $parameter.Text.TrimEnd(",")
                                 }
                             }
@@ -163,7 +168,7 @@ function Add-Parameter {
         }
     }
     process {
-        Write-Debug "Add-Parameter $InputObject $FunctionName $Boilerplate"
+        # Write-Debug "Add-Parameter $($InputObject.Extent.File ?? ( "L:" + $InputObject.Extent.StartLineNumber + ".." + $InputObject.Extent.EndLineNumber + " C:" + $InputObject.Extent.StartColumnNumber + ".." + $InputObject.Extent.EndColumnNumber)) $FunctionName $Boilerplate"
 
         $Generator = [ParameterGenerator]@{
             FunctionFilter  = { $Func = $_; $FunctionName.ForEach({ $Func.Name -like $_ }) -contains $true }.GetNewClosure()
