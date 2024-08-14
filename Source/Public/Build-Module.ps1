@@ -148,7 +148,7 @@ function Build-Module {
         # Folder paths which don't exist inside the module root are ignored.
         # Defaults to a search of: "Boilerplate", "Template", "Generators", "Boilerplates", "Templates"
         [Alias("TemplateDirectory")]
-        [string[]]$BoilerplateDirectory = @("Boilerplate", "Template", "Generators", "Boilerplates", "Templates"),
+        [string[]]$BoilerplateDirectory = @("[Bb]oilerplate", "[Tt]emplate", "[Gg]enerators", "[Bb]oilerplates", "[Tt]emplates"),
 
         # Output the ModuleInfo of the "built" module
         [switch]$Passthru

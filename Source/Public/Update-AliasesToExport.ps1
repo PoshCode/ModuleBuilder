@@ -141,7 +141,7 @@ function Update-AliasesToExport {
         }
     }
     process {
-        $Visitor = [AliasVisitor]::new()
+        $Visitor = [AliasExportGenerator]::new()
         $ScriptModule.Visit($Visitor)
         Update-Metadata -Path $ModuleManifest -PropertyName AliasesToExport -Value $Visitor.Aliases
     }

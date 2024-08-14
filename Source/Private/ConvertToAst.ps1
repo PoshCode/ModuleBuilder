@@ -10,7 +10,7 @@ function ConvertToAst {
         $Code
     )
     process {
-        Write-Debug "    ENTER: ConvertToAst $Code"
+        Write-Debug "    ENTER: ConvertToAst $(($Code -split "[\r\n]")[0])"
         $ParseErrors = $null
         $Tokens = $null
 
@@ -19,12 +19,13 @@ function ConvertToAst {
             $AST = [System.Management.Automation.Language.Parser]::ParseInput($Code.Definition, "function:$($Code.Name)", [ref]$Tokens, [ref]$ParseErrors)
         } else {
             $Provider = $null
-            try {
-                [string[]]$Files = $ExecutionContext.SessionState.Path.GetResolvedProviderPathFromPSPath($Code, [ref]$Provider)
-            } catch {
-                Write-Debug ("Exception resolving Code as Path " + $_.Exception.Message)
+            if (@($Code).Count -eq 1 -and $Code -notmatch "\n") {
+                try {
+                    [string[]]$Files = $ExecutionContext.SessionState.Path.GetResolvedProviderPathFromPSPath($Code, [ref]$Provider)
+                } catch {
+                    Write-Debug ("Exception resolving Code as Path " + $_.Exception.Message)
+                }
             }
-
             if ($Provider.Name -eq "FileSystem" -and $Files.Count -gt 0) {
                 Write-Debug "      Parse Code as File Path"
                 $AST = [System.Management.Automation.Language.Parser]::ParseFile(($Files[0] | Convert-Path), [ref]$Tokens, [ref]$ParseErrors)

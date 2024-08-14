@@ -90,51 +90,49 @@ filter Merge-ScriptBlock {
             hidden [NamedBlockAst]$EndBlockTemplate
 
             [string] GetExtentText([NamedBlockAst]$Ast) {
-                if ($ast.UnNamed -and $ast.Parent.ParamBlock.Extent.Text) {
+                if ($Ast.UnNamed -and $Ast.Parent.ParamBlock.Extent.Text) {
                     # Trim the paramBlock out of the what we're injecting into the boilerplate template
-                    return $ast.Extent.Text.Remove(
-                        $ast.Parent.ParamBlock.Extent.StartOffset - $ast.Extent.StartOffset,
-                        $ast.Parent.ParamBlock.Extent.EndOffset - $ast.Parent.ParamBlock.Extent.StartOffset).Trim("`r`n").TrimEnd("`r`n ")
+                    return $Ast.Extent.Text.Remove(
+                        $Ast.Parent.ParamBlock.Extent.StartOffset - $Ast.Extent.StartOffset,
+                        $Ast.Parent.ParamBlock.Extent.EndOffset - $Ast.Parent.ParamBlock.Extent.StartOffset).Trim("`r`n").TrimEnd("`r`n ")
                 } else {
                     # Trim the `end {` ... `}` off if they're there
-                    return ($ast.Extent.Text -replace "^$($ast.BlockKind)[\s\r\n]*{|}[\s\r\n]*$", "`n").Trim("`r`n").TrimEnd("`r`n ")
+                    return ($Ast.Extent.Text -replace "^$($Ast.BlockKind)[\s\r\n]*{|}[\s\r\n]*$", "`n").Trim("`r`n").TrimEnd("`r`n ")
                 }
             }
 
             Replace([NamedBlockAst]$Template, [NamedBlockAst]$Ast) {
-                if ($Template) {
-                    if ($ast) {
-                        # If there's a ParamBlock, we don't want to replace that
-                        $Extent = $ast.Extent
-                        if ($ast.UnNamed -and $ast.Parent.ParamBlock.Extent.Text) {
-                            # Make sure we don't replace the ParamBlock
-                            $StartOffset = $ast.Parent.ParamBlock.Extent.EndOffset
-                        } else {
-                            $StartOffset = $Extent.StartOffset
-                        }
-                        $this.Replacements.Add(@{
-                                StartOffset = $StartOffset
-                                EndOffset   = $Extent.EndOffset
-                                Text        = $this.GetExtentText($Template).Replace("Use-OriginalBlock", $this.GetExtentText($ast))
-                            })
+                if ($Template -and $Ast) {
+                    # If there's a ParamBlock, we don't want to replace that
+                    $Extent = $Ast.Extent
+                    if ($Ast.UnNamed -and $Ast.Parent.ParamBlock.Extent.Text) {
+                        # Make sure we don't replace the ParamBlock
+                        $StartOffset = $Ast.Parent.ParamBlock.Extent.EndOffset
                     } else {
-                        Write-Debug "$($ast.Name) Missing $($Template.BlockKind)"
+                        $StartOffset = $Extent.StartOffset
                     }
-                } else {
-                    Write-Debug "Boilerplate Missing $($Template.BlockKind)"
+                    Write-Debug "Adding Boilerplate for $($Ast.BlockKind)"
+                    $this.Replacements.Add(@{
+                        StartOffset = $StartOffset
+                        EndOffset   = $Extent.EndOffset
+                        # We end up having to normalize the template to be named blocks...
+                        # Just in case the InputObject has named blocks
+                        Text        = "$($Ast.BlockKind) {`n" +
+                                        $this.GetExtentText($Template).Replace("Use-OriginalBlock", $this.GetExtentText($Ast)) +
+                                        "`n}"
+                    })
                 }
             }
 
-
             # The [Alias(...)] attribute on functions matters, but we can't export aliases that are defined inside a function
-            [AstVisitAction] VisitFunctionDefinition([FunctionDefinitionAst]$ast) {
-                if (!$ast.Where($this.FunctionFilter)) {
+            [AstVisitAction] VisitFunctionDefinition([FunctionDefinitionAst]$Ast) {
+                if (!$Ast.Where($this.FunctionFilter)) {
                     return [AstVisitAction]::SkipChildren
                 }
-
-                $this.Replace($this.BeginBlockTemplate, $ast.Body.BeginBlock)
-                $this.Replace($this.ProcessBlockTemplate, $ast.Body.ProcessBlock)
-                $this.Replace($this.EndBlockTemplate, $ast.Body.EndBlock)
+                Write-Debug "Merging $($Ast.Name) with boilerplate"
+                $this.Replace($this.BeginBlockTemplate, $Ast.Body.BeginBlock)
+                $this.Replace($this.ProcessBlockTemplate, $Ast.Body.ProcessBlock)
+                $this.Replace($this.EndBlockTemplate, $Ast.Body.EndBlock)
 
                 return [AstVisitAction]::SkipChildren
             }
