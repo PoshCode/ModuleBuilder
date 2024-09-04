@@ -3,10 +3,10 @@ function ConvertToAst {
         .SYNOPSIS
             Parses the given code and returns an object with the AST, Tokens and ParseErrors
     #>
-    [CmdletBinding(DefaultParameterSetName="Path")]
+    [CmdletBinding(DefaultParameterSetName = "Path")]
     param(
         # The script content, or script or module file path to parse
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = "Code")]
+        [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = "Code")]
         [Alias("ScriptBlock")]
         $Code,
 
@@ -49,11 +49,26 @@ function ConvertToAst {
                 Write-Debug "      Parse Code as ScriptBlock"
                 if ($Code -is [System.Management.Automation.ScriptBlock]) {
                     $Code = $Code.GetNewClosure().Invoke().ToString()
+
+                    if (!$Path) {
+                        $Path = "scriptblock"
+                    }
+                    $AST = [System.Management.Automation.Language.Parser]::ParseInput($Code, $Path, [ref]$Tokens, [ref]$ParseErrors)
+                } else {
+                    $Provider = $null
+                    try {
+                        $Path = $ExecutionContext.SessionState.Path.GetResolvedProviderPathFromPSPath($Code, [ref]$Provider)[0]
+                    } catch {
+                        Write-Debug ("      Failed to resolve Code as Path " + $_.Exception.Message)
+                    }
+                    if ($Provider.Name -eq "FileSystem") {
+                        Write-Debug "      Parse File Path: $Path"
+                        $AST = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$Tokens, [ref]$ParseErrors)
+                    } else {
+                        Write-Debug "      Parse Code $(($Path -split "[\r\n]")[0])"
+                        $AST = [System.Management.Automation.Language.Parser]::ParseInput($Code, [ref]$Tokens, [ref]$ParseErrors)
+                    }
                 }
-                if (!$Path) {
-                    $Path = "scriptblock"
-                }
-                $AST = [System.Management.Automation.Language.Parser]::ParseInput($Code, $Path, [ref]$Tokens, [ref]$ParseErrors)
             }
         }
 
