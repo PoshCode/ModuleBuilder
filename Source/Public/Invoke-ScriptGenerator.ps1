@@ -27,25 +27,29 @@ function Invoke-ScriptGenerator {
             '@
 
             # Or use a file path instead
-            $Source = @'
-            function Show-Date {
-                param(
-                    # The text to display
-                    [string]$Format
-                )
-                Get-Date -Format $Format
+            $Code = {
+                function Show-Date {
+                    param(
+                        # The text to display
+                        [string]$Format
+                    )
+                    Get-Date -Format $Format
+                }
             }
-            '@
 
             @(  @{ Generator = "Add-Parameter";     FunctionName = "*"; Boilerplate = $Boilerplate }
                 @{ Generator = "Merge-ScriptBlock"; FunctionName = "*"; Boilerplate = $Boilerplate }
-            ) | Invoke-ScriptGenerator $Source
+            ) | Invoke-ScriptGenerator $Code
     #>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = "Code")]
     param(
         # The script content, script, function info, or file path to parse
-        [Parameter(Mandatory)]
-        $Source,
+        [Parameter(ParameterSetName = "Code", Position = 0)]
+        [ScriptBlock]$Code,
+
+        [Parameter(ParameterSetName = "Path", Position = 0)]
+        [Alias("PSPath", "File")]
+        [string]$Path,
 
         # The name of the Script Generator to invoke. Must be a command that takes an AST as a pipeline inputand outputs TextReplacement objects.
         # There are two built into ModuleBuilder:
@@ -63,16 +67,19 @@ function Invoke-ScriptGenerator {
         [switch]$Overwrite
     )
     begin {
-        $ParseResults = ConvertToAst $Source
+        $AstParam = @{} + $PSBoundParameters
+        $null = $AstParam.Remove("Overwrite")
+        $null = $AstParam.Remove("Generator")
+        $null = $AstParam.Remove("Parameters")
+        $ParseResults = ConvertToAst @AstParam
         [StringBuilder]$Builder = $ParseResults.Ast.Extent.Text
-        $File = $ParseResults.Ast.Extent.File
     }
     process {
         if (-not $PSBoundParameters.ContainsKey("Generator") -and $Parameters.ContainsKey("Generator")) {
             $Generator = $Parameters["Generator"]
             $null = $Parameters.Remove("Generator")
         }
-        Write-Debug "Invoking $Generator generator for $Source with @{$($Parameters.Keys.ForEach{ $_ } -join ', ')}"
+        Write-Debug "Invoking $Generator generator for $($ParseResults.Path) ($Path) with @{$($Parameters.Keys.ForEach{ $_ } -join ', ')}"
 
         # To make things more usable, resolve paths to "boilerplate" or "template" files based on our BoilerplateDirectory (alias TemplateDirectory)
         try {
@@ -112,7 +119,7 @@ function Invoke-ScriptGenerator {
             continue
         }
 
-        Write-Verbose "Generating $GeneratorCmd in $Source $(if($Parameters.Count){"`n                    with $($Parameters.GetEnumerator().ForEach{ $_.Key + ' = ' + ($_.Value -join ", ") } -join "`n                     and ")"})"
+        Write-Verbose "Generating $GeneratorCmd in $($ParseResults.Path) $(if($Parameters.Count){"`n                    with $($Parameters.GetEnumerator().ForEach{ $_.Key + ' = ' + ($_.Value -join ", ") } -join "`n                     and ")"})"
         #! Process replacements from the bottom up, so the line numbers work
         foreach ($Replacement in $ParseResults | & $GeneratorCmd @Parameters | Sort-Object StartOffset -Descending) {
             $Builder = $Builder.Remove($replacement.StartOffset, ($replacement.EndOffset - $replacement.StartOffset)).Insert($replacement.StartOffset, $replacement.Text)
@@ -120,13 +127,16 @@ function Invoke-ScriptGenerator {
 
         #! If we're looping through multiple generators, we have to parse the new version of the source
         if ($MyInvocation.ExpectingInput) {
-            $ParseResults = ConvertToAst $Builder
+            # Update the AST
+            $ParseResults = ConvertToAst -Code $Builder.ToString() -Path $ParseResults.Path
+            # In case a Generator tries to use the actual files, update the content
+            Set-Content $ParseResults.Path $Builder
         }
     }
     end {
-        Write-Debug "Overwrite: $Overwrite and it's a file: $([bool]$File) (Content is $($Builder.Length) long)"
-        if ($Overwrite -and $File) {
-            Set-Content $File $Builder
+        Write-Debug "Overwrite: $Overwrite and it's a file: $([bool]$ParseResults.Path) (Content is $($Builder.Length) long)"
+        if ($Overwrite -and $ParseResults.Path) {
+            Set-Content $ParseResults.Path $Builder
         } else {
             $Builder.ToString()
         }
