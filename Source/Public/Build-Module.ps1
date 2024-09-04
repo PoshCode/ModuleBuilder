@@ -243,7 +243,7 @@ function Build-Module {
                 Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $_ | Convert-Path -ErrorAction SilentlyContinue
             }
 
-            $ModuleInfo.Generators | Invoke-ScriptGenerator $RootModule -Overwrite
+            $ModuleInfo.Generators | Invoke-ScriptGenerator -Path $RootModule -Overwrite
 
             # $ParseResult = ConvertToAst $RootModule
             # $ParseResult | MoveUsingStatement -Encoding "$($ModuleInfo.Encoding)"
