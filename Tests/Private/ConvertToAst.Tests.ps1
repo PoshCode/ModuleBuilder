@@ -4,7 +4,7 @@ Describe "ConvertToAst" {
     Context "It returns a ParseResult for file paths" {
         BeforeAll {
             $ParseResult = InModuleScope ModuleBuilder {
-                ConvertToAst $PSCommandPath
+                ConvertToAst -Code $PSCommandPath
             }
         }
 
