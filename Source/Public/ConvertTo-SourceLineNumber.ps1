@@ -22,7 +22,7 @@ function ConvertTo-SourceLineNumber {
         # The SourceLineNumber (from an InvocationInfo) is the module line number
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, Position=1, ParameterSetName="FromInvocationInfo")]
         [Alias("LineNumber", "Line", "ScriptLineNumber")]
-        [int]$SourceLineNumber,
+        $SourceLineNumber,
 
         # The actual InvocationInfo
         [Parameter(ValueFromPipeline, DontShow, ParameterSetName="FromInvocationInfo")]
@@ -72,7 +72,8 @@ function ConvertTo-SourceLineNumber {
             # These are all negative, because BinarySearch returns the match *after* the line we're searching for
             # We need the match *before* the line we're searching for
             # And we need it as a zero-based index:
-            $index = -2 - [Array]::BinarySearch($hit.StartLineNumber, $SourceLineNumber)
+            # Cast $SourceLineNumber to the type of the first item in $hit.StartLineNumber
+            $index = -2 - [Array]::BinarySearch($hit.StartLineNumber, $($SourceLineNumber -as $hit.StartLineNumber[0].GetType()) )
             $Source = $hit[$index]
 
             if($Passthru) {
