@@ -72,7 +72,7 @@ function ConvertTo-SourceLineNumber {
             # These are all negative, because BinarySearch returns the match *after* the line we're searching for
             # We need the match *before* the line we're searching for
             # And we need it as a zero-based index:
-            $index = -2 - [Array]::BinarySearch($hit.StartLineNumber, $SourceLineNumber )
+            $index = -2 - [Array]::BinarySearch($hit.StartLineNumber, $SourceLineNumber)
             $Source = $hit[$index]
 
             if($Passthru) {
