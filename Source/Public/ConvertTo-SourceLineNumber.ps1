@@ -22,7 +22,7 @@ function ConvertTo-SourceLineNumber {
         # The SourceLineNumber (from an InvocationInfo) is the module line number
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, Position=1, ParameterSetName="FromInvocationInfo")]
         [Alias("LineNumber", "Line", "ScriptLineNumber")]
-        [Int]$SourceLineNumber,
+        [int]$SourceLineNumber,
 
         # The actual InvocationInfo
         [Parameter(ValueFromPipeline, DontShow, ParameterSetName="FromInvocationInfo")]
