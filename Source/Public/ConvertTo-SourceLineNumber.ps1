@@ -58,7 +58,7 @@ function ConvertTo-SourceLineNumber {
                         [PSCustomObject]@{
                             PSTypeName = "BuildSourceMapping"
                             SourceFile = $_.Matches[0].Groups["SourceFile"].Value.Trim("'")
-                            StartLineNumber = $_.LineNumber
+                            StartLineNumber = [System.Int32] $_.LineNumber
                             # This offset is added when calculating the line number
                             # because of the new line we're adding prior to the content
                             # of each script file in the built module.
@@ -73,7 +73,7 @@ function ConvertTo-SourceLineNumber {
             # We need the match *before* the line we're searching for
             # And we need it as a zero-based index:
             # Cast $SourceLineNumber to the type of the first item in $hit.StartLineNumber
-            $index = -2 - [Array]::BinarySearch($hit.StartLineNumber, $($SourceLineNumber -as $hit.StartLineNumber[0].GetType()) )
+            $index = -2 - [Array]::BinarySearch($hit.StartLineNumber, $SourceLineNumber )
             $Source = $hit[$index]
 
             if($Passthru) {
