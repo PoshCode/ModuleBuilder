@@ -20,7 +20,6 @@ Describe "ConvertTo-SourceLineNumber" {
         Pop-Location -StackName ConvertTo-SourceLineNumber
     }
 
-
     It "Should map line <outputLine> in the Module to line <sourceLine> in the source of <sourceFile>" -TestCases $TestCases {
         param($outputLine, $sourceFile, $sourceLine)
 
@@ -78,5 +77,15 @@ Describe "ConvertTo-SourceLineNumber" {
         $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Get-Source.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 5
         $SourceLocation.Function | Should -Be 'Get-Source'
+    }
+
+    It 'Should handle type differences correctly' {
+        $SourceLocation = ConvertTo-SourceLineNumber -SourceFile $Convert_LineNumber_ModulePath -SourceLineNumber ([System.UInt64]48)
+        $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Get-Source.ps1"
+        $SourceLocation.SourceLineNumber | Should -Be 5
+
+        $SourceLocation = ConvertTo-SourceLineNumber -SourceFile $Convert_LineNumber_ModulePath -SourceLineNumber ([System.Int32]48)
+        $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Get-Source.ps1"
+        $SourceLocation.SourceLineNumber | Should -Be 5
     }
 }

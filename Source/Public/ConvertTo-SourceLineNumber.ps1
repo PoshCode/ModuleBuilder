@@ -58,7 +58,7 @@ function ConvertTo-SourceLineNumber {
                         [PSCustomObject]@{
                             PSTypeName = "BuildSourceMapping"
                             SourceFile = $_.Matches[0].Groups["SourceFile"].Value.Trim("'")
-                            StartLineNumber = $_.LineNumber
+                            StartLineNumber = [System.Int32] $_.LineNumber
                             # This offset is added when calculating the line number
                             # because of the new line we're adding prior to the content
                             # of each script file in the built module.
