@@ -1,19 +1,46 @@
-mode: Mainline
-assembly-versioning-format: '{Major}.{Minor}.{Patch}.{env:BUILDCOUNT ?? 0}'
-assembly-informational-format: '{NuGetVersionV2}+Build.{env:BUILDCOUNT ?? 0}.Date.{CommitDate}.Branch.{env:SAFEBRANCHNAME ?? unknown}.Sha.{Sha}'
-major-version-bump-message: '\+?semver:\s?(breaking|major)'
-minor-version-bump-message: '\+?semver:\s?(feature|minor)'
-patch-version-bump-message: '\+?semver:\s?(fix|patch)'
-no-bump-message: '\+?semver:\s?(none|skip)'
+mode: mainline
+commit-date-format: "yyyyMMddTHHmmss"
+assembly-file-versioning-format: "{Major}.{Minor}.{Patch}.{env:GITHUB_RUN_NUMBER ?? 0}"
+
+# This repo needs to use NuGetVersionV2 for compatibility with PowerShellGallery
+assembly-informational-format: "{NuGetVersionV2}+Build.{env:GITHUB_RUN_NUMBER ?? local}.Branch.{EscapedBranchName}.Sha.{Sha}.Date.{CommitDate}"
+major-version-bump-message: 'semver:\s?(breaking|major)'
+minor-version-bump-message: 'semver:\s?(feature|minor)'
+patch-version-bump-message: 'semver:\s?(fix|patch)'
+no-bump-message: 'semver:\s?(none|skip)'
+commit-message-incrementing: Enabled
+
 branches:
-  master:
+  main:
+    tag: "" # explicitly no tag for main builds
+    regex: ^main$
     increment: Patch
-  pull-request:
+    is-mainline: true
+    tracks-release-branches: true
+  hotfix:
     tag: rc
+    regex: hotfix(es)?/\d+\.\d+\.\d+
+    increment: None
+    is-release-branch: true
+    prevent-increment-of-merged-branch-version: true
+    source-branches: [ "main" ]
+  release:
+    tag: rc
+    regex: releases?/\d+\.\d+\.\d+
+    increment: None
+    is-release-branch: true
+    prevent-increment-of-merged-branch-version: true
+    source-branches: [ "main" ]
+  pull-request:
+    regex: pull/
+    tag: pr
+    tag-number-pattern: '[/-](?<number>\d+)'
     increment: Patch
+    source-branches: [ "main", "feature", "release", "hotfix" ]
   feature:
+    regex: .*/
+    tag: useBranchName
+    source-branches: [ "main", "feature" ]
+    track-merge-target: true
+    tracks-release-branches: true
     increment: Patch
-    regex: .*?/
-    source-branches:
-    - master
-    - feature
