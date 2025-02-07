@@ -1,6 +1,8 @@
 #requires -Module ModuleBuilder
 Describe "Copy ReadMe" {
-    . $PSScriptRoot\..\Convert-FolderSeparator.ps1
+    BeforeAll {
+        . $PSScriptRoot\..\Convert-FolderSeparator.ps1
+    }
 
     Context "There's no ReadMe" {
         # It should not even call Test-Path
@@ -30,32 +32,36 @@ Describe "Copy ReadMe" {
     }
 
     Context "There is a ReadMe" {
-        # Nothing is actually created when this test runs
-        Mock New-Item -ModuleName ModuleBuilder
-        Mock Copy-Item -ModuleName ModuleBuilder
+        BeforeAll {
+            # Nothing is actually created when this test runs
+            Mock New-Item -ModuleName ModuleBuilder
+            Mock Copy-Item -ModuleName ModuleBuilder
 
-        # Test-Path returns true only for the source document
-        ${global:Test Script Path} = Join-Path $PSScriptRoot CopyReadMe.Tests.ps1
-        Mock Test-Path { $Path -eq ${global:Test Script Path} } -ModuleName ModuleBuilder
+            # Test-Path returns true only for the source document
+            ${global:Test Script Path} = Join-Path $PSScriptRoot CopyReadMe.Tests.ps1
+            Mock Test-Path { $Path -eq ${global:Test Script Path} } -ModuleName ModuleBuilder
 
-        Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
 
-        InModuleScope ModuleBuilder {
-            CopyReadMe -ReadMe ${global:Test Script Path} -Module ModuleBuilder -OutputDirectory TestDrive:\ -Culture "En"
+            InModuleScope ModuleBuilder {
+                CopyReadMe -ReadMe ${global:Test Script Path} -Module ModuleBuilder -OutputDirectory TestDrive:\ -Culture "En"
+            }
         }
 
         It "Creates a language path in the output" {
             Assert-MockCalled New-Item -ModuleName ModuleBuilder -ParameterFilter {
                 (Convert-FolderSeparator "$Path") -eq (Convert-FolderSeparator "TestDrive:\En")
-            }
+            } -Scope Context
         }
 
         It "Copies the readme as about_module.help.txt" {
             Assert-MockCalled Copy-Item -ModuleName ModuleBuilder -ParameterFilter {
                 (Convert-FolderSeparator $Destination) -eq (Convert-FolderSeparator "TestDrive:\En\about_ModuleBuilder.help.txt")
-            }
+            } -Scope Context
         }
 
-        Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
+        AfterAll {
+            Remove-Item TestDrive:\En -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }

@@ -1,7 +1,9 @@
 Describe "SetModuleContent" {
 
     Context "Necessary Parameters" {
-        $CommandInfo = InModuleScope ModuleBuilder { Get-Command SetModuleContent }
+        BeforeAll {
+            $CommandInfo = InModuleScope ModuleBuilder { Get-Command SetModuleContent }
+        }
 
         It "has a mandatory string OutputPath parameter" {
             $OutputPath = $CommandInfo.Parameters['OutputPath']
@@ -30,37 +32,40 @@ Describe "SetModuleContent" {
             $Encoding.ParameterType | Should -Be ([String])
             $Encoding.Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $False
         }
-
-        $CommandInfo.Parameters['OutputPath']
+        AfterAll {
+            $CommandInfo.Parameters['OutputPath']
+        }
     }
 
 
     Context "Joining files into one" {
-        ${global:mock get content index} = 1
+        BeforeAll {
+            ${global:mock get content index} = 1
 
-        Mock Get-Content -ModuleName ModuleBuilder {
-            "Script Content"
-            "File $((${global:mock get content index}++))"
-            "From $Path"
-        }
+            Mock Get-Content -ModuleName ModuleBuilder {
+                "Script Content"
+                "File $((${global:mock get content index}++))"
+                "From $Path"
+            }
 
-        Mock Resolve-Path -ModuleName ModuleBuilder {
-            $path -replace "TestDrive:\\", ".\"
-        } -ParameterFilter { $Relative }
+            Mock Resolve-Path -ModuleName ModuleBuilder {
+                $path -replace "TestDrive:\\", ".\"
+            } -ParameterFilter { $Relative }
 
 
 
-        InModuleScope ModuleBuilder {
-            $Files = "TestDrive:\Private\First.ps1",
-                     "TestDrive:\Private\Second.ps1",
-                     "TestDrive:\Public\Third.ps1"
-            SetModuleContent -Source $Files -Output TestDrive:\Output.psm1
+            InModuleScope ModuleBuilder {
+                $Files = "TestDrive:\Private\First.ps1",
+                        "TestDrive:\Private\Second.ps1",
+                        "TestDrive:\Public\Third.ps1"
+                SetModuleContent -Source $Files -Output TestDrive:\Output.psm1
+            }
         }
 
         It "Calls get-content on every source file" {
-            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\First.ps1" }
-            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\Second.ps1" }
-            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Public\Third.ps1" }
+            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\First.ps1" } -Scope Context
+            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\Second.ps1" } -Scope Context
+            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Public\Third.ps1" } -Scope Context
         }
 
         It "Copies all three files into the Output" {
@@ -77,36 +82,36 @@ Describe "SetModuleContent" {
     }
 
     Context "Supports adding Prefix and Suffix content" {
-        ${global:mock get content index} = 1
+        BeforeAll {
+            ${global:mock get content index} = 1
 
-        Mock Get-Content -ModuleName ModuleBuilder {
-            "Script Content"
-            "File $((${global:mock get content index}++))"
-            "From $Path"
-        }
-
-        Mock Resolve-Path -ModuleName ModuleBuilder {
-            if ($path -match "TestDrive:") {
-                $path -replace "TestDrive:\\", ".\"
-            } else {
-                write-error "$path not found"
+            Mock Get-Content -ModuleName ModuleBuilder {
+                "Script Content"
+                "File $((${global:mock get content index}++))"
+                "From $Path"
             }
-        } -ParameterFilter { $Relative }
 
+            Mock Resolve-Path -ModuleName ModuleBuilder {
+                if ($path -match "TestDrive:") {
+                    $path -replace "TestDrive:\\", ".\"
+                }
+            } -ParameterFilter { $Relative }
 
-        InModuleScope ModuleBuilder {
-            $Files = "using module Configuration",
-                     "TestDrive:\Private\First.ps1",
-                     "TestDrive:\Private\Second.ps1",
-                     "TestDrive:\Public\Third.ps1",
-                     "Export-ModuleMember Stuff"
-            SetModuleContent -Source $Files -Output TestDrive:\Output.psm1
+            InModuleScope ModuleBuilder {
+                $MostlyFiles = "using module Configuration",
+                "TestDrive:\Private\First.ps1",
+                "TestDrive:\Private\Second.ps1",
+                "TestDrive:\Public\Third.ps1",
+                "Export-ModuleMember Stuff"
+
+                SetModuleContent -Source $MostlyFiles -Output TestDrive:\Output.psm1
+            }
         }
 
         It "Calls get-content on every source file" {
-            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\First.ps1" }
-            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\Second.ps1" }
-            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Public\Third.ps1" }
+            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\First.ps1" } -Scope Context
+            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\Second.ps1" } -Scope Context
+            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Public\Third.ps1" } -Scope Context
         }
 
         It "Copies all three files into the Output" {
@@ -135,36 +140,36 @@ Describe "SetModuleContent" {
     }
 
     Context "Adds a newline before the content of each script file" {
-        ${global:mock get content index} = 1
+        BeforeAll {
+            ${global:mock get content index} = 1
 
-        Mock Get-Content -ModuleName ModuleBuilder {
-            "Script Content"
-            "File $((${global:mock get content index}++))"
-            "From $Path"
-        }
-
-        Mock Resolve-Path -ModuleName ModuleBuilder {
-            if ($path -match "TestDrive:") {
-                $path -replace "TestDrive:\\", ".\"
-            } else {
-                write-error "$path not found"
+            Mock Get-Content -ModuleName ModuleBuilder {
+                "Script Content"
+                "File $((${global:mock get content index}++))"
+                "From $Path"
             }
-        } -ParameterFilter { $Relative }
+
+            Mock Resolve-Path -ModuleName ModuleBuilder {
+                if ($path -match "TestDrive:") {
+                    $path -replace "TestDrive:\\", ".\"
+                }
+            } -ParameterFilter { $Relative }
 
 
-        InModuleScope ModuleBuilder {
-            $Files = "using module Configuration",
-                     "TestDrive:\Private\First.ps1",
-                     "TestDrive:\Private\Second.ps1",
-                     "TestDrive:\Public\Third.ps1",
-                     "Export-ModuleMember Stuff"
-            SetModuleContent -Source $Files -Output TestDrive:\Output.psm1
+            InModuleScope ModuleBuilder {
+                $Files = "using module Configuration",
+                        "TestDrive:\Private\First.ps1",
+                        "TestDrive:\Private\Second.ps1",
+                        "TestDrive:\Public\Third.ps1",
+                        "Export-ModuleMember Stuff"
+                SetModuleContent -Source $Files -Output TestDrive:\Output.psm1
+            }
         }
 
         It "Calls get-content on every source file" {
-            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\First.ps1" }
-            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\Second.ps1" }
-            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Public\Third.ps1" }
+            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\First.ps1" } -Scope Context
+            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Private\Second.ps1" } -Scope Context
+            Assert-MockCalled Get-Content -ModuleName ModuleBuilder -ParameterFilter { $Path -eq ".\Public\Third.ps1" } -Scope Context
         }
 
         It "Copies all three files into the Output" {
