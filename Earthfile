@@ -1,6 +1,6 @@
 VERSION 0.7
 IMPORT github.com/poshcode/tasks
-FROM mcr.microsoft.com/dotnet/sdk:7.0
+FROM mcr.microsoft.com/dotnet/sdk:9.0
 WORKDIR /work
 
 ARG --global EARTHLY_GIT_ORIGIN_URL
