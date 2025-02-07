@@ -86,7 +86,7 @@ git clone https://github.com/PoshCode/ModuleBuilder.git
 git clone https://github.com/PoshCode/Tasks.git
 ```
 
-Once you've cloned both, the `Build.build.ps1` script will use the shared [Tasks\_Bootstrap.ps1](https://github.com/PoshCode/Tasks/blob/main/_Bootstrap.ps1) to install the other dependencies (see [RequiredModules.psd1](https://github.com/PoshCode/ModuleBuilder/blob/main/RequiredModules.psd1)), including [dotnet](https://dot.net), and will use [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [Pester](https://github.com/Pester/Pester) to build and test the module.
+Once you've cloned both, the `Build.build.ps1` script will use the shared [Tasks\_Bootstrap.ps1](https://github.com/PoshCode/Tasks/blob/main/_Bootstrap.ps1) to install the other dependencies (see [build.requires.psd1](https://github.com/PoshCode/ModuleBuilder/blob/main/build.requires.psd1)), including [dotnet](https://dot.net), and will use [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [Pester](https://github.com/Pester/Pester) to build and test the module.
 
 ```powershell
 cd ModuleBuilder
