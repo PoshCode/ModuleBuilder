@@ -42,16 +42,13 @@ jobs:
         name: TestResults
         path: Modules/ModuleBuilder-TestResults
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: Packages
-        path: Modules/ModuleBuilder-Packages
-
+    # These ones are just for the test matrix
     - name: Upload Tests
       uses: actions/upload-artifact@v4
       with:
         name: PesterTests
         path: ${{github.workspace}}/Tests
+
     - name: Upload build.requires.psd1
       uses: actions/upload-artifact@v4
       with:
