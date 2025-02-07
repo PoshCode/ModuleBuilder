@@ -281,7 +281,8 @@ Describe "Build-Module" {
                     [PSCustomObject]@{
                         OutputDirectory = "TestDrive:/Output"
                         SourcePath      = "TestDrive:/MyModule/"
-                        SemVer          = $SemVer ?? "1.0.0-beta03+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
+                        Version         = [Version]"1.0.0"
+                        Prerelease      = "beta03"
                         Target          = "CleanBuild"
                         CopyPaths       = @()
                         Encoding        = "UTF8"
