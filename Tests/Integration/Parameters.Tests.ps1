@@ -1,9 +1,14 @@
 #requires -Module ModuleBuilder
 
-Describe "Parameters.Set in build manifest" -Tag Integration {
+Describe "Parameters" -Tag Integration {
     BeforeAll {
         . $PSScriptRoot/../Convert-FolderSeparator.ps1
-        New-Item $PSScriptRoot/Result3/Parameters/ReadMe.md -ItemType File -Force
+        # Make sure the Result3 folder is really clean ;)
+        if (Test-Path $PSScriptRoot/Result3) {
+            Remove-Item $PSScriptRoot/Result3 -Recurse -Force
+        }
+        # Throw in an extra file that would get cleaned up normally ...
+        New-Item $PSScriptRoot/Result3/Parameters/3.0.0/DeleteMe.md -ItemType File -Force
     }
 
     It "Passthru is read from the build manifest" {
@@ -12,7 +17,8 @@ Describe "Parameters.Set in build manifest" -Tag Integration {
         $Output.Path | Convert-FolderSeparator | Should -Be (Convert-FolderSeparator "$PSScriptRoot/Result3/Parameters/3.0.0/Parameters.psd1")
     }
 
-    It "The Target is Build" {
+    It "The target is 'Build' (not CleanBuild) so pre-created extra files get left behind" {
+        Convert-FolderSeparator "$PSScriptRoot/Result3/Parameters/3.0.0/DeleteMe.md" | Should -Exist
         Convert-FolderSeparator "$PSScriptRoot/Result3/Parameters/3.0.0/Parameters.psm1" | Should -Exist
     }
 
