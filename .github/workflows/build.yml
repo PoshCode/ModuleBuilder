@@ -80,7 +80,7 @@ jobs:
       with:
         name: build.requires.psd1
     - name: ⚡ Install PowerShell Modules
-      uses: JustinGrote/ModuleFast-action
+      uses: JustinGrote/ModuleFast-action@v0.0.1
     - name: Invoke Pester Tests
       id: pester
       uses: zyborg/pester-tests-report@v1
