@@ -1,14 +1,16 @@
 #requires -Module ModuleBuilder
-. $PSScriptRoot\..\Convert-FolderSeparator.ps1
 
 Describe "Parameters.Set in build manifest" -Tag Integration {
     BeforeAll {
-        New-Item $PSScriptRoot\Result3\Parameters\ReadMe.md -ItemType File -Force
-        $Output = Build-Module $PSScriptRoot\Parameters\build.psd1
+        . $PSScriptRoot/../Convert-FolderSeparator.ps1
+        New-Item $PSScriptRoot/Result3/Parameters/ReadMe.md -ItemType File -Force
+
+        $Output = Build-Module $PSScriptRoot/Parameters/build.psd1
         if ($Output) {
             $Module = [IO.Path]::ChangeExtension($Output.Path, "psm1")
             $Metadata = Import-Metadata $Output.Path
         }
+
     }
 
     It "Passthru works" {
@@ -16,7 +18,7 @@ Describe "Parameters.Set in build manifest" -Tag Integration {
     }
 
     It "The Target is Build" {
-        "$PSScriptRoot\Result3\Parameters\ReadMe.md" | Should -Exist
+        "$PSScriptRoot/Result3/Parameters/ReadMe.md" | Should -Exist
     }
 
     It "The version is set" {
