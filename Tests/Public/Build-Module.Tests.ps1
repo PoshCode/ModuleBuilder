@@ -303,12 +303,10 @@ Describe "Build-Module" {
                     [IO.FileInfo]"$TestDrive/MyModule/Public/Get-MyInfo.ps1"
                 }
 
-                try {
-                    Build-Module -SemVer $SemVer
-                } catch {
-                    Pop-Location -StackName BuildModuleTest
-                    throw
-                }
+                Build-Module -SemVer $SemVer
+            }
+            AfterAll {
+                Pop-Location -StackName BuildModuleTest
             }
 
             It "Should build to an output folder with the simple version." {
@@ -336,12 +334,7 @@ Describe "Build-Module" {
                 # If there's no release notes, but it was left uncommented
                 Mock Get-Metadata { "" }
 
-                try {
-                    Build-Module -SemVer $SemVer
-                } catch {
-                    Pop-Location -StackName BuildModuleTest
-                    throw
-                }
+                Build-Module -SemVer $SemVer
 
                 Assert-MockCalled Update-Metadata -ParameterFilter {
                     $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "MyModule v$SemVer"
@@ -354,12 +347,7 @@ Describe "Build-Module" {
                         Multi-line Release Notes
                         With a prefix carriage return" }
 
-                try {
-                    Build-Module -SemVer $SemVer
-                }  catch {
-                    Pop-Location -StackName BuildModuleTest
-                    throw
-                }
+                Build-Module -SemVer $SemVer
 
                 Assert-MockCalled Update-Metadata -ParameterFilter {
                     $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "
@@ -367,9 +355,6 @@ Describe "Build-Module" {
                         Multi-line Release Notes
                         With a prefix carriage return"
                 }
-            }
-            AfterAll {
-                Pop-Location -StackName BuildModuleTest
             }
         }
 
@@ -414,12 +399,11 @@ Describe "Build-Module" {
                     [IO.FileInfo]"$TestDrive/MyModule/Public/Get-MyInfo.ps1"
                 }
 
-                try {
-                    Build-Module @SemVer
-                } catch {
-                    Pop-Location -StackName BuildModuleTest
-                    throw
-                }
+                Build-Module @SemVer
+            }
+
+            AfterAll {
+                Pop-Location -StackName BuildModuleTest
             }
 
             It "Should build to an output folder with the simple version." {
@@ -448,12 +432,7 @@ Describe "Build-Module" {
                 # If there's no release notes, but it was left uncommented
                 Mock Get-Metadata { "" }
 
-                try {
-                    Build-Module @SemVer
-                } catch {
-                    Pop-Location -StackName BuildModuleTest
-                    throw
-                }
+                Build-Module @SemVer
 
                 Assert-MockCalled Update-Metadata -ParameterFilter {
                     $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and
@@ -467,12 +446,7 @@ Describe "Build-Module" {
                         Multi-line Release Notes
                         With a prefix carriage return" }
 
-                try {
-                    Build-Module @SemVer
-                }  catch {
-                    Pop-Location -StackName BuildModuleTest
-                    throw
-                }
+                Build-Module @SemVer
 
                 Assert-MockCalled Update-Metadata -ParameterFilter {
                     $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "
@@ -480,9 +454,6 @@ Describe "Build-Module" {
                         Multi-line Release Notes
                         With a prefix carriage return"
                 }
-            }
-            AfterAll {
-                Pop-Location -StackName BuildModuleTest
             }
         }
 
@@ -518,12 +489,10 @@ Describe "Build-Module" {
                     [IO.FileInfo]"$TestDrive/MyModule/Public/Get-MyInfo.ps1"
                 }
 
-                try {
-                    Build-Module @SemVer
-                } catch {
-                    Pop-Location -StackName BuildModuleTest
-                    throw
-                }
+                Build-Module @SemVer
+            }
+            AfterAll {
+                Pop-Location -StackName BuildModuleTest
             }
 
             It "Should build to an output folder with the simple version." {
@@ -540,9 +509,6 @@ Describe "Build-Module" {
                 Assert-MockCalled Update-Metadata -Times 0 -ParameterFilter {
                     $PropertyName -eq "PrivateData.PSData.Prerelease"
                 } -Scope Context
-            }
-            AfterAll {
-                Pop-Location -StackName BuildModuleTest
             }
         }
 
