@@ -109,14 +109,18 @@ jobs:
         # include_paths: tests
         # exclude_paths: tests/powershell1,tests/powershell2
         # exclude_tags: skip_ci
-        report_name: module_tests
+        report_name: ${{ matrix.os }}_validation
         report_title: My Module Tests
         github_token: ${{ secrets.GITHUB_TOKEN }}
         tests_fail_step: true
-    - name: dump test results
+        skip_check_run: true # Our test results are too large
+    - name: Summarize test results
       shell: pwsh
       run: | # PowerShell
-        Write-Host 'Total Tests Executed...:  ${{ steps.pester.outputs.total_count }}'
-        Write-Host 'Total Tests PASSED.....:  ${{ steps.pester.outputs.passed_count }}'
-        Write-Host 'Total Tests FAILED.....:  ${{ steps.pester.outputs.failed_count }}'
-
+        Write-ActionInfo 'Total Tests Executed...:  ${{ steps.pester.outputs.total_count }}'
+        Write-ActionInfo 'Total Tests Passed.....:  ${{ steps.pester.outputs.passed_count }}'
+        if (${{ steps.pester.outputs.failed_count }} -gt 0) {
+          Set-ActionFailed 'Total Tests Failed.....:  ${{ steps.pester.outputs.failed_count }}'
+        } else {
+          Write-ActionInfo 'Total Tests Failed.....:  ${{ steps.pester.outputs.failed_count }}'
+        }
