@@ -82,6 +82,7 @@ jobs:
     - name: Install Output Modules
       shell: pwsh
       run: | # PowerShell
+        # https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-powershell#powershell-module-locations
         $ModuleDestination = if ($IsWindows) {
             Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell/Modules'
         } else {
@@ -111,6 +112,7 @@ jobs:
         report_name: module_tests
         report_title: My Module Tests
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        tests_fail_step: true
     - name: dump test results
       shell: pwsh
       run: | # PowerShell
