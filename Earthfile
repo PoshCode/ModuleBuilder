@@ -1,6 +1,6 @@
 VERSION 0.7
 IMPORT github.com/poshcode/tasks
-FROM mcr.microsoft.com/dotnet/sdk:7.0
+FROM mcr.microsoft.com/dotnet/sdk:9.0
 WORKDIR /work
 
 ARG --global EARTHLY_GIT_ORIGIN_URL
@@ -25,9 +25,9 @@ worker:
     COPY tasks+tasks/* /Tasks
     # Dealing with dependencies first allows docker to cache packages for us
     # So the dependency cach only re-builds when you add a new dependency
-    COPY RequiredModules.psd1 .
+    COPY build.requires.psd1 .
     # COPY *.csproj .
-    RUN ["pwsh", "-File", "/Tasks/_Bootstrap.ps1", "-RequiredModulesPath", "RequiredModules.psd1"]
+    RUN ["pwsh", "-File", "/Tasks/_Bootstrap.ps1", "-RequiresPath", "build.requires.psd1"]
 
 build:
     FROM +worker

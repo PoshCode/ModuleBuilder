@@ -42,21 +42,18 @@ jobs:
         name: TestResults
         path: Modules/ModuleBuilder-TestResults
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: Packages
-        path: Modules/ModuleBuilder-Packages
-
+    # These ones are just for the test matrix
     - name: Upload Tests
       uses: actions/upload-artifact@v4
       with:
         name: PesterTests
         path: ${{github.workspace}}/Tests
-    - name: Upload RequiredModules.psd1
+
+    - name: Upload build.requires.psd1
       uses: actions/upload-artifact@v4
       with:
-        name: RequiredModules
-        path: ${{github.workspace}}/RequiredModules.psd1
+        name: build.requires.psd1
+        path: ${{github.workspace}}/build.requires.psd1
   test:
     needs: build
     runs-on: ${{ matrix.os }}
@@ -69,29 +66,43 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: ModuleBuilder
-        path: Modules/ModuleBuilder
+        path: Modules/ModuleBuilder  # /home/runner/work/ModuleBuilder/ModuleBuilder/Modules/ModuleBuilder
     - name: Download Pester Tests
       uses: actions/download-artifact@v4
       with:
         name: PesterTests
         path: PesterTests
-    - name: Download RequiredModules
+    - name: Download build.requires.psd1
       uses: actions/download-artifact@v4
       with:
-        name: RequiredModules
+        name: build.requires.psd1
+    - name: ⚡ Install PowerShell Modules
+      uses: JustinGrote/ModuleFast-action@v0.0.1
+    - name: Put Build output in PATH
+      shell: pwsh
+      run: | # PowerShell
+        Convert-Path Modules -OutVariable BuiltModules
+        Add-Content -Path $env:GITHUB_PATH -Value $BuiltModules -Encoding utf8
+        # Uninstall the "installed" copy of ModuleBuilder
+        Get-Module -Name ModuleBuilder -List | Where ModuleBase -notmatch ([regex]::escape($pwd)) | Split-Path | Remove-Item -Recurse -Force
+    - name: Put Build output in PATH
+      shell: pwsh
+      run: | # PowerShell
+        $Env:PATH -split ([IO.Path]::PathSeparator) | Out-Host
+    - name: Invoke Pester Tests
+      id: pester
+      uses: zyborg/pester-tests-report@v1
+      with:
+        # include_paths: tests
+        # exclude_paths: tests/powershell1,tests/powershell2
+        # exclude_tags: skip_ci
+        report_name: module_tests
+        report_title: My Module Tests
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: dump test results
+      shell: pwsh
+      run: | # PowerShell
+        Write-Host 'Total Tests Executed...:  ${{ steps.pester.outputs.total_count }}'
+        Write-Host 'Total Tests PASSED.....:  ${{ steps.pester.outputs.passed_count }}'
+        Write-Host 'Total Tests FAILED.....:  ${{ steps.pester.outputs.failed_count }}'
 
-    - uses: PoshCode/Actions/install-requiredmodules@v1
-    - uses: PoshCode/Actions/pester@v1
-      with:
-        codeCoveragePath: Modules/ModuleBuilder
-        moduleUnderTest: ModuleBuilder
-        additionalModulePaths: ${{github.workspace}}/Modules
-    - name: Publish Test Results
-      uses: zyborg/dotnet-tests-report@v1
-      with:
-        test_results_path: results.xml
-    - name: Upload Results
-      uses: actions/upload-artifact@v2
-      with:
-        name: Pester Results
-        path: ${{github.workspace}}/*.xml

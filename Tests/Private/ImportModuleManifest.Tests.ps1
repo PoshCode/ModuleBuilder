@@ -2,7 +2,9 @@
 Describe "ImportModuleManifest" {
 
     Context "Mandatory Parameter" {
-        $CommandInfo = InModuleScope ModuleBuilder { Get-Command ImportModuleManifest }
+        BeforeAll {
+            $CommandInfo = InModuleScope ModuleBuilder { Get-Command ImportModuleManifest }
+        }
 
         It 'has a mandatory Path parameter for the PSPath by pipeline' {
             $Path = $CommandInfo.Parameters['Path']

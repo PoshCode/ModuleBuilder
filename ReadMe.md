@@ -1,66 +1,59 @@
-# The Module Builder Project
+# Module Builder - Simplifying Authoring PowerShell (Script) Modules
 
-This project is an attempt by a group of PowerShell MVPs and module authors to:
+This module makes it easier to break up your module source into several files for organization, even though you need to ship it as one big psm1 file.
 
-1. Build a common set of [tools for module authoring](#whats-in-the-module-so-far)
-2. Encourage a common pattern for [organizing PowerShell module projects](#organizing-your-module)
-3. Promote best practices for authoring functions and modules
+There are still some issues in Visual Studio Code and PSScriptAnalyzer when authoring modules as multiple files, but if you want to break up your module into multiple files for organization and maintainability, and still need to ship it as one big file for performance and compatibility reasons, this module is for you.
 
-In short, we want to make it easier for people to write great code and produce great modules.
+## You should ship your module as one big file!
 
-In service of this goal, we intend to produce:
+PowerShell expects script modules to be all in one file. A module in a single `.psm1` script file results in the best performance, natural "script" scope, and full support for classes and "using" statements.
 
-1. Guidance on using the best of the existing tools: dotnet, Pester, PSDepends, etc.
-2. Module templates demonstrating best practices for organization
-3. Function templates demonstrating best practices for common parameters and error handling
-4. ModuleBuilder module - a set of tools for building modules following these best practices
+The single file option is particularly important for performance if you are signing your module (or your end users want to be able to code-sign it), because each file's signature must be checked, and each certificate must be checked against CRLs. It's also critical if you are using PowerShell classes (the `using` statement only supports classes defined in the root psm1 file). It's basically required if you want to use module-scope variables to share state between functions in your module.
 
-## The ModuleBuilder module
+## What's in the ModuleBuilder module so far?
 
-This module is the main output of the project, consisting of one primary command: `Build-Module` and a few helpers to translate input and output line numbers. It represents the collaboration of several module authors who had each written their own version of these tools for themselves, and have now decided to collaborate on creating a shared tool set. We are each using the patterns and tools that are represented here, and are committed to helping others to succeed at doing so.
+This module is the main output of the project, consisting of one primary command: `Build-Module` and a few helpers to translate input and output line numbers so you can trouble-shoot error messages from your module against the source files.
 
-### What's in the module so far
-
-#### Build-Module
+### Build-Module
 
 Builds a script module from a source project containing one file per function in `Public` and `Private` folders.
 
 The `Build-Module` command is a build task for PowerShell script modules that supports [incremental builds](https://docs.microsoft.com/en-us/visualstudio/msbuild/incremental-builds).
 
-#### Convert-CodeCoverage
+### Convert-CodeCoverage
 
 Takes the output from `Invoke-Pester -Passthru` run against the build output, and converts the code coverage report to the source lines.
 
-#### ConvertFrom-SourceLineNumber
+### ConvertFrom-SourceLineNumber
 
 Converts a line number from a source file to the corresponding line number in the built output.
 
-#### ConvertTo-SourceLineNumber
+### ConvertTo-SourceLineNumber
 
 Converts a line number from the built output to the corresponding file and line number in the source.
 
-#### Convert-Breakpoint
+### Convert-Breakpoint
 
 Convert any breakpoints on source files to module files _and vice-versa_.
 
 ## Organizing Your Module
 
-For best results, you need to organize your module project similarly to how this project is organized. It doesn't have to be exact, because nearly all of our conventions can be overriden, but the module _is_ opinionated, so if you follow the conventions, it should feel wonderfully automatic.
+For best results, you need to organize your module project similarly to how this project is organized. It doesn't have to be exact, because you can override nearly all of our conventions, but the module _is_ opinionated, so if you follow the conventions, it should feel wonderfully automatic.
 
-1. Create a `source` folder with a `build.psd1` file and your module manifest in it
+1. Create a `source` (or `src`) folder with a `build.psd1` file and your module manifest in it
 2. In the `build.psd1` specify the relative **Path** to your module's manifest, e.g. `@{ Path = "ModuleBuilder.psd1" }`
 3. In your manifest, make sure a few values are not commented out. You can leave them empty, because they'll be overwritten:
     - `FunctionsToExport` will be updated with the _file names_ that match the `PublicFilter`
     - `AliasesToExport` will be updated with the values from `[Alias()]` attributes on commands
     - `Prerelease` and `ReleaseNotes` in the `PSData` hash table in `PrivateData`
 
-Once you start working on the module, you'll create sub-folders in source, and put script files in them with only **one** function in each file. You should name the files with _the same name_ as the function that's in them -- especially in the public folder, where we use the file name (without the extension) to determine the exported functions.
+Once you start working on the module, you'll create sub-folders in source, and put script files in them with only **one** function in each file. You should name the files with _the same name_ as the function that's in them -- especially in the `source\public` folder, where we use the file names to determine the exported functions.
 
-1. By convention, use folders named "Classes" (and/or "Enum"), "Private", and "Public"
-2. By convention, the functions in "Public" will be exported from the module (you can override the `PublicFilter`)
+1. By convention, use SourceDirectories named "Classes" (and/or "Enum"), "Private", and "Public"
+2. By convention, the PublicFilter is all of the functions in the "Public" directory.
 3. To force classes to be in a certain order, you can prefix their file names with numbers, like `01-User.ps1`
 
-There are a _lot_ of conventions in `Build-Module`, expressed as default values for its parameters. These defaults are documented in the help for Build-Module. You can override any parameter defaults by adding keys to the `build.psd1` file with your preferences, or by passing the values to the `Build-Module` command directly.
+There are a _lot_ of conventions in `Build-Module`, expressed as default values for its parameters. These defaults are documented in the help for Build-Module, and you can override any parameter defaults by adding keys to the `build.psd1` file with your preferences, or by passing the values to the `Build-Module` command directly. So in other words, you can override the default `SourceDirectories` and `PublicFilters` (and any others) by adding them to the `build.psd1` file.
 
 ## A note on build tools
 
@@ -93,7 +86,7 @@ git clone https://github.com/PoshCode/ModuleBuilder.git
 git clone https://github.com/PoshCode/Tasks.git
 ```
 
-Once you've cloned both, the `Build.build.ps1` script will use the shared [Tasks\_Bootstrap.ps1](https://github.com/PoshCode/Tasks/blob/main/_Bootstrap.ps1) to install the other dependencies (see [RequiredModules.psd1](https://github.com/PoshCode/ModuleBuilder/blob/main/RequiredModules.psd1)), including [dotnet](https://dot.net), and will use [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [Pester](https://github.com/Pester/Pester) to build and test the module.
+Once you've cloned both, the `Build.build.ps1` script will use the shared [Tasks\_Bootstrap.ps1](https://github.com/PoshCode/Tasks/blob/main/_Bootstrap.ps1) to install the other dependencies (see [build.requires.psd1](https://github.com/PoshCode/ModuleBuilder/blob/main/build.requires.psd1)), including [dotnet](https://dot.net), and will use [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [Pester](https://github.com/Pester/Pester) to build and test the module.
 
 ```powershell
 cd ModuleBuilder
@@ -102,23 +95,18 @@ cd ModuleBuilder
 
 This _should_ work on Windows, Linux, or MacOS. I test the build process on Windows, and in CI we run it in the Linux containers via earthly, and we run the full Pester test suit on all three platforms.
 
-#### The old-fashioned way
+## Most recent releases
 
-You _can_ build the module without any additional tools (and without running tests), by using the old `build.ps1` bootstrap script. You'll need to pass a version number in, and if you have [Pester](https://github.com/Pester/Pester) and [PSScriptAnalyzer](https://github.com/PowerShell/PSScriptAnalyzer), you can run the 'test.ps1' script to run the tests.
+### 3.2.0 - Script Generators
 
-```powershell
-./build.ps1 -Semver 5.0.0-prerelease | Split-Path | Import-Module -Force
-./test.ps1
-```
+Script Generators let developers modify their module's source code as it is being built. A generator can create new script functions on the fly, such that whole functions are added to the built module. A generator can also inject boilerplate code like error handling, logging, tracing and timing at build-time, so this code can be maintained once, and be automatically added (and updated) in all the places where it's needed when the module is built. The generators run during the build and can inspect existing functions, data files, or even data from an API, and produce code that is output into the module (and clearly marked as generated).
 
-## Changelog
+### 3.1.0 - Supports help outside the top of script commands
 
-### 3.0.0 - Now with better alias support
+Starting with this release, ModuleBuilder adds an empty line between the `#REGION filename` comment lines it injects, and the content of the files. This allows PowerShell to recognize help comments that are at the top of each file (outside the function block).
+
+### 3.0.0 - Better alias support
 
 Starting with this release, ModuleBuilder will automatically export aliases from `New-Alias` and `Set-Alias` as well as the `[Alias()]` attributes on commands. This is (probably not) a breaking change, but because it can change the aliases exported by existing modules that use ModuleBuilder, I've bumped the major version number as a precaution (if you're reading this, mission accomplished).
 
 Additionally, the `Build-Module` command now _explicitly sorts_ the source files into alphabetical order, to ensure consistent behavior regardless of the native order of the underlying file system. This is technically also a breaking change, but it's unlikely to affect anyone except the people whose builds didn't work on non-Windows systems because of the previous behavior.
-
-### 3.1.0 - Now allows help outside the top of script commands
-
-Starting with this release, ModuleBuilder adds an empty line between the `#REGION filename` comment lines it injects, and the content of the files. This allows PowerShell to recognize help comments that are at the top of each file (outside the function block).

@@ -45,7 +45,7 @@ Describe "ParseLineNumber" {
         $Source.SourceLineNumber | Should -Be 14
     }
 
-    It 'Should get <ScriptBlock> and <No file> and line number from errors at the console' {
+    It 'Should get [ScriptBlock] and [No file] and line number from errors at the console' {
         $Source = InModuleScope ModuleBuilder { ParseLineNumber "at <ScriptBlock>, <No file>: line 1" }
 
         $Source.SourceFile | Should -Be "<No file>"

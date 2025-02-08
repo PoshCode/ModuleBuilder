@@ -1,59 +1,61 @@
 #requires -Module ModuleBuilder
 Describe "ResolveOutputFolder" {
-    . $PSScriptRoot\..\Convert-FolderSeparator.ps1
-    $CommandInTest = InModuleScope ModuleBuilder { Get-Command ResolveOutputFolder }
-    filter ToTestDrive { "$_".Replace($TestDrive, "TestDrive:") }
+    BeforeAll {
+        . $PSScriptRoot\..\Convert-FolderSeparator.ps1
+        $CommandInTest = InModuleScope ModuleBuilder { Get-Command ResolveOutputFolder }
+        filter ToTestDrive { "$_".Replace($TestDrive, "TestDrive:") }
 
-    $TestCases = [Hashtable[]]@(
-        @{  # Be like Jaykul
-            Source = "ModuleName/Source"
-            Output = "ModuleName"
-            Result = "ModuleName/1.2.3"
-            Forced = "ModuleName/1.2.3"
-        }
-        @{  # Be like azure
-            Source = "1/s"
-            Output = "1/b"
-            Result = "1/b/ModuleName"
-            Forced = "1/b/ModuleName/1.2.3"
-        }
-        @{  # The default option would be Module/Source build to Module/Output
-            Source = "ModuleName/Source"
-            Output = "ModuleName/Output"
-            Result = "ModuleName/Output/ModuleName"
-            Forced = "ModuleName/Output/ModuleName/1.2.3"
-        }
-        @{  # Which is the same even without the common named parent
-            Source = "Source"
-            Output = "Output"
-            Result = "Output/ModuleName"
-            Forced = "Output/ModuleName/1.2.3"
-        }
-        @{  # An edge case, build straight to a modules folder
-            Source = "ModuleName/Source"
-            Output = "Modules"
-            Result = "Modules/ModuleName"
-            Forced = "Modules/ModuleName/1.2.3"
-        }
-        @{  # What if they pass in the correct path ahead of time?
-            Source = "1/s"
-            Output = "1/b/ModuleName"
-            Result = "1/b/ModuleName"
-            Forced = "1/b/ModuleName/1.2.3"
-        }
-        @{  # What if they pass in the correct path ahead of time?
-            Source = "1/s"
-            Output = "1/b/ModuleName/1.2.3"
-            Result = "1/b/ModuleName/1.2.3"
-            Forced = "1/b/ModuleName/1.2.3"
-        }
-        @{  # Super edge case: what if they pass in an incorrectly versioned output path?
-            Source = "1/s"
-            Output = "1/b/ModuleName/4.5.6"
-            Result = "1/b/ModuleName/4.5.6/ModuleName"
-            Forced = "1/b/ModuleName/4.5.6/ModuleName/1.2.3"
-        }
-    )
+        $TestCases = [Hashtable[]]@(
+            @{  # Be like Jaykul
+                Source = "ModuleName/Source"
+                Output = "ModuleName"
+                Result = "ModuleName/1.2.3"
+                Forced = "ModuleName/1.2.3"
+            }
+            @{  # Be like azure
+                Source = "1/s"
+                Output = "1/b"
+                Result = "1/b/ModuleName"
+                Forced = "1/b/ModuleName/1.2.3"
+            }
+            @{  # The default option would be Module/Source build to Module/Output
+                Source = "ModuleName/Source"
+                Output = "ModuleName/Output"
+                Result = "ModuleName/Output/ModuleName"
+                Forced = "ModuleName/Output/ModuleName/1.2.3"
+            }
+            @{  # Which is the same even without the common named parent
+                Source = "Source"
+                Output = "Output"
+                Result = "Output/ModuleName"
+                Forced = "Output/ModuleName/1.2.3"
+            }
+            @{  # An edge case, build straight to a modules folder
+                Source = "ModuleName/Source"
+                Output = "Modules"
+                Result = "Modules/ModuleName"
+                Forced = "Modules/ModuleName/1.2.3"
+            }
+            @{  # What if they pass in the correct path ahead of time?
+                Source = "1/s"
+                Output = "1/b/ModuleName"
+                Result = "1/b/ModuleName"
+                Forced = "1/b/ModuleName/1.2.3"
+            }
+            @{  # What if they pass in the correct path ahead of time?
+                Source = "1/s"
+                Output = "1/b/ModuleName/1.2.3"
+                Result = "1/b/ModuleName/1.2.3"
+                Forced = "1/b/ModuleName/1.2.3"
+            }
+            @{  # Super edge case: what if they pass in an incorrectly versioned output path?
+                Source = "1/s"
+                Output = "1/b/ModuleName/4.5.6"
+                Result = "1/b/ModuleName/4.5.6/ModuleName"
+                Forced = "1/b/ModuleName/4.5.6/ModuleName/1.2.3"
+            }
+        )
+    }
     Context "Build ModuleName" {
         It "From '<Source>' to '<Output>' creates '<Result>'" -TestCases $TestCases {
             param($Source, $Output, $Result)
@@ -125,7 +127,7 @@ Describe "ResolveOutputFolder" {
                 Output = Convert-FolderSeparator "TestDrive:/ModuleName/"
             }
 
-            { &$CommandInTest @Parameters -Name ModuleName -Target Build -Version 1.2.3 -Force } | Should -throw "There is a file in the way"
+            { &$CommandInTest @Parameters -Name ModuleName -Target Build -Version 1.2.3 -Force } | Should -throw "*There is a file in the way*"
         }
     }
 }

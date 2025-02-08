@@ -2,8 +2,10 @@
 Describe "ConvertToAst" {
 
     Context "It returns a ParseResult for file paths" {
-        $ParseResult = InModuleScope ModuleBuilder {
-            ConvertToAst $PSCommandPath
+        BeforeAll {
+            $ParseResult = InModuleScope ModuleBuilder {
+                ConvertToAst $PSCommandPath
+            }
         }
 
         It "Returns a ParseResult object" {
@@ -22,8 +24,10 @@ Describe "ConvertToAst" {
     }
 
     Context "It parses piped in commands" {
-        $ParseResult = InModuleScope ModuleBuilder {
-            Get-Command ConvertToAst | ConvertToAst
+        BeforeAll {
+            $ParseResult = InModuleScope ModuleBuilder {
+                Get-Command ConvertToAst | ConvertToAst
+            }
         }
 
         It "Returns a ParseResult object with the AST" {
@@ -33,8 +37,10 @@ Describe "ConvertToAst" {
     }
 
     Context "It parses piped in modules" {
-        $ParseResult = InModuleScope ModuleBuilder {
-            Get-Module ModuleBuilder | ConvertToAst
+        BeforeAll {
+            $ParseResult = InModuleScope ModuleBuilder {
+                Get-Module ModuleBuilder | ConvertToAst
+            }
         }
 
         It "Returns a ParseResult object with the AST" {
