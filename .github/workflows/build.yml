@@ -32,10 +32,13 @@ jobs:
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
 
-    - uses: actions/upload-artifact@v4
+    - name: Upload Built Modules
+      uses: actions/upload-artifact@v4
       with:
-        name: ModuleBuilder
-        path: Modules/ModuleBuilder
+        name: Modules
+        path: |
+          Modules/*
+          !Modules/*-TestResults
 
     - uses: actions/upload-artifact@v4
       with:
@@ -62,33 +65,42 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
-    - name: Download Build Output
+    - name: Download build.requires.psd1
       uses: actions/download-artifact@v4
       with:
-        name: ModuleBuilder
-        path: Modules/ModuleBuilder  # /home/runner/work/ModuleBuilder/ModuleBuilder/Modules/ModuleBuilder
+        name: build.requires.psd1
     - name: Download Pester Tests
       uses: actions/download-artifact@v4
       with:
         name: PesterTests
         path: PesterTests
-    - name: Download build.requires.psd1
+    - name: Download Build Output
       uses: actions/download-artifact@v4
       with:
-        name: build.requires.psd1
-    - name: ⚡ Install PowerShell Modules
+        name: Modules
+        path: Modules # /home/runner/work/ModuleBuilder/ModuleBuilder/Modules
+    - name: Install Output Modules
+      shell: pwsh
+      run: | # PowerShell
+        $ModuleDestination = if ($IsWindows) {
+            Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell/Modules'
+        } else {
+            Join-Path $HOME '.local/share/powershell/Modules'
+        }
+
+        Get-ChildItem -Directory Modules -OutVariable Modules
+        | Move-Item -Destination { Join-Path $ModuleDestination $_.Name } -Force
+
+        Write-Host "Installing $($Modules -join ', ') to $ModuleDestination"
+        Get-ChildItem -Directory $ModuleDestination
+        Write-Host "PSModulePath:"
+        $Env:PSModulePath -split ([IO.Path]::PathSeparator) | Out-Host
+
+        @(Get-Content build.requires.psd1)
+        | Where { $_ -notmatch "ModuleBuilder"}
+        | Set-Content build.requires.psd1
+    - name: ⚡ Install Required Modules
       uses: JustinGrote/ModuleFast-action@v0.0.1
-    - name: Put Build output in PATH
-      shell: pwsh
-      run: | # PowerShell
-        Convert-Path Modules -OutVariable BuiltModules
-        Add-Content -Path $env:GITHUB_PATH -Value $BuiltModules -Encoding utf8
-        # Uninstall the "installed" copy of ModuleBuilder
-        Get-Module -Name ModuleBuilder -List | Where ModuleBase -notmatch ([regex]::escape($pwd)) | Split-Path | Remove-Item -Recurse -Force
-    - name: Put Build output in PATH
-      shell: pwsh
-      run: | # PowerShell
-        $Env:PATH -split ([IO.Path]::PathSeparator) | Out-Host
     - name: Invoke Pester Tests
       id: pester
       uses: zyborg/pester-tests-report@v1
