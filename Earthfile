@@ -1,4 +1,4 @@
-VERSION 0.7
+VERSION 0.8
 IMPORT github.com/poshcode/tasks
 FROM mcr.microsoft.com/dotnet/sdk:9.0
 WORKDIR /work
@@ -15,7 +15,7 @@ ARG --global MODULE_NAME=ModuleBuilder
 ARG --global CONFIGURATION=Release
 
 
-worker:
+bootstrap:
     # Dotnet tools and scripts installed by PSGet
     ENV PATH=$HOME/.dotnet/tools:$HOME/.local/share/powershell/Scripts:$PATH
     RUN mkdir /Tasks \
@@ -30,7 +30,7 @@ worker:
     RUN ["pwsh", "-File", "/Tasks/_Bootstrap.ps1", "-RequiresPath", "build.requires.psd1"]
 
 build:
-    FROM +worker
+    FROM +bootstrap
     RUN mkdir $OUTPUT_ROOT $TEST_ROOT $TEMP_ROOT
     COPY . .
     # make sure you have bin and obj in .earthlyignore, as their content from context might cause problems
@@ -41,26 +41,17 @@ build:
 
 test:
     # If we run a target as a reference in FROM or COPY, it's outputs will not be produced
-    BUILD +build
     FROM +build
     # make sure you have bin and obj in .earthlyignore, as their content from context might cause problems
     RUN ["pwsh", "-Command", "Invoke-Build", "-Task", "Test", "-File", "Build.build.ps1"]
 
-    # SAVE ARTIFACT [--keep-ts] [--keep-own] [--if-exists] [--force] <src> [<artifact-dest-path>] [AS LOCAL <local-path>]
+    # re-output the build output so we can rely on running just +test locally
+    SAVE ARTIFACT $OUTPUT_ROOT/$MODULE_NAME AS LOCAL ./Modules/$MODULE_NAME
     SAVE ARTIFACT $TEST_ROOT AS LOCAL ./Modules/$MODULE_NAME-TestResults
 
-# pack:
-#     BUILD +test # So that we get the module artifact from build too
-#     FROM +test
-#     RUN ["pwsh", "-Command", "Invoke-Build", "-Task", "Pack", "-File", "Build.build.ps1", "-Verbose"]
-#     SAVE ARTIFACT $OUTPUT_ROOT/publish/*.nupkg AS LOCAL ./Modules/$MODULE_NAME-Packages/
-
-push:
+all:
+    BUILD +build
+    BUILD +test
     FROM +build
     RUN --push --secret NUGET_API_KEY --secret PSGALLERY_API_KEY -- \
         pwsh -Command Invoke-Build -Task Push -File Build.build.ps1 -Verbose
-
-all:
-    # BUILD +build
-    BUILD +test
-    BUILD +push
