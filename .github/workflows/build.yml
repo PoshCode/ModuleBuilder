@@ -32,10 +32,13 @@ jobs:
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
 
-    - uses: actions/upload-artifact@v4
+    - name: Upload Built Modules
+      uses: actions/upload-artifact@v4
       with:
-        name: ModuleBuilder
-        path: Modules/ModuleBuilder
+        name: Modules
+        path: |
+          Modules/*
+          !Modules/*-TestResults
 
     - uses: actions/upload-artifact@v4
       with:
@@ -62,33 +65,43 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
-    - name: Download Build Output
+    - name: Download build.requires.psd1
       uses: actions/download-artifact@v4
       with:
-        name: ModuleBuilder
-        path: Modules/ModuleBuilder  # /home/runner/work/ModuleBuilder/ModuleBuilder/Modules/ModuleBuilder
+        name: build.requires.psd1
     - name: Download Pester Tests
       uses: actions/download-artifact@v4
       with:
         name: PesterTests
         path: PesterTests
-    - name: Download build.requires.psd1
+    - name: Download Build Output
       uses: actions/download-artifact@v4
       with:
-        name: build.requires.psd1
-    - name: ⚡ Install PowerShell Modules
+        name: Modules
+        path: Modules # /home/runner/work/ModuleBuilder/ModuleBuilder/Modules
+    - name: Install Output Modules
+      shell: pwsh
+      run: | # PowerShell
+        # https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-powershell#powershell-module-locations
+        $ModuleDestination = if ($IsWindows) {
+            Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell/Modules'
+        } else {
+            Join-Path $HOME '.local/share/powershell/Modules'
+        }
+
+        Get-ChildItem -Directory Modules -OutVariable Modules
+        | Move-Item -Destination { Join-Path $ModuleDestination $_.Name } -Force
+
+        Write-Host "Installing $($Modules -join ', ') to $ModuleDestination"
+        Get-ChildItem -Directory $ModuleDestination
+        Write-Host "PSModulePath:"
+        $Env:PSModulePath -split ([IO.Path]::PathSeparator) | Out-Host
+
+        @(Get-Content build.requires.psd1)
+        | Where { $_ -notmatch "ModuleBuilder"}
+        | Set-Content build.requires.psd1
+    - name: ⚡ Install Required Modules
       uses: JustinGrote/ModuleFast-action@v0.0.1
-    - name: Put Build output in PATH
-      shell: pwsh
-      run: | # PowerShell
-        Convert-Path Modules -OutVariable BuiltModules
-        Add-Content -Path $env:GITHUB_PATH -Value $BuiltModules -Encoding utf8
-        # Uninstall the "installed" copy of ModuleBuilder
-        Get-Module -Name ModuleBuilder -List | Where ModuleBase -notmatch ([regex]::escape($pwd)) | Split-Path | Remove-Item -Recurse -Force
-    - name: Put Build output in PATH
-      shell: pwsh
-      run: | # PowerShell
-        $Env:PATH -split ([IO.Path]::PathSeparator) | Out-Host
     - name: Invoke Pester Tests
       id: pester
       uses: zyborg/pester-tests-report@v1
@@ -96,13 +109,18 @@ jobs:
         # include_paths: tests
         # exclude_paths: tests/powershell1,tests/powershell2
         # exclude_tags: skip_ci
-        report_name: module_tests
+        report_name: ${{ matrix.os }}_validation
         report_title: My Module Tests
         github_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: dump test results
+        tests_fail_step: true
+        skip_check_run: true # Our test results are too large
+    - name: Summarize test results
       shell: pwsh
       run: | # PowerShell
-        Write-Host 'Total Tests Executed...:  ${{ steps.pester.outputs.total_count }}'
-        Write-Host 'Total Tests PASSED.....:  ${{ steps.pester.outputs.passed_count }}'
-        Write-Host 'Total Tests FAILED.....:  ${{ steps.pester.outputs.failed_count }}'
-
+        Write-ActionInfo 'Total Tests Executed...:  ${{ steps.pester.outputs.total_count }}'
+        Write-ActionInfo 'Total Tests Passed.....:  ${{ steps.pester.outputs.passed_count }}'
+        if (${{ steps.pester.outputs.failed_count }} -gt 0) {
+          Set-ActionFailed 'Total Tests Failed.....:  ${{ steps.pester.outputs.failed_count }}'
+        } else {
+          Write-ActionInfo 'Total Tests Failed.....:  ${{ steps.pester.outputs.failed_count }}'
+        }
