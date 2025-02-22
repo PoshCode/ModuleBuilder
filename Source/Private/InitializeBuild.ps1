@@ -37,11 +37,11 @@ function InitializeBuild {
     if ($BuildInfo.SemVer) {
         Write-Verbose "Update the Version, Prerelease, and BuildMetadata from the SemVer (in case it was passed in via build.psd1)"
         $BuildInfo = $BuildInfo | Update-Object @{
-            Version       = if (($V = $BuildInfo.SemVer.Split("+")[0].Split("-", 2)[0])) {
-                                [version]$V
-                            }
             Prerelease    = $BuildInfo.SemVer.Split("+")[0].Split("-", 2)[1]
             BuildMetadata = $BuildInfo.SemVer.Split("+", 2)[1]
+            Version       = if (($V = $BuildInfo.SemVer.Split("+")[0].Split("-", 2)[0])) {
+                [version]$V
+            }
         }
     } elseif($BuildInfo.Version) {
         Write-Verbose "Calculate the Semantic Version from the Version - Prerelease + BuildMetadata"
