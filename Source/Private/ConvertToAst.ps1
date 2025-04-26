@@ -6,14 +6,16 @@ function ConvertToAst {
     [CmdletBinding(DefaultParameterSetName = "Path")]
     param(
         # The script content, or script or module file path to parse
-        [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = "Code")]
+        [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = "Code", Position = 0)]
         [Alias("ScriptBlock")]
         $Code,
 
         [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = "Command", Position = 0)]
         [System.Management.Automation.FunctionInfo]$Command,
 
-        [Parameter(ValueFromPipelineByPropertyName, Position = 1)]
+        [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = "Path", Position = 0)]
+        [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = "Command", Position = 1)]
+        [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = "Code", Position = 1)]
         [Alias("PSPath", "File", "Definition")]
         [string]$Path
     )
