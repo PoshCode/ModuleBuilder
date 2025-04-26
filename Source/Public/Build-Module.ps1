@@ -141,7 +141,7 @@ function Build-Module {
         #
         # There are two built-in Generators so far:
         # - Add-Parameter. Adds parameters to functions in the module from a boilerplate file, which must be a script with a param block.
-        # - Merge-ScriptBlock. Merges boilerplate templates into functions in your module. The command "Use-OriginalBlock" in the boilerplate indicates where the code from the original function would fit into the template. The added blocks come from a boilerplate tempalte file, which must be a script, and can have named begin, process, and end blocks.
+        # - Merge-ScriptBlock. Merges boilerplate templates into functions in your module. The command "Use-OriginalBlock" in the boilerplate indicates where the code from the original function would fit into the template. The added blocks come from a boilerplate template file, which must be a script, and can have named begin, process, and end blocks.
         [PSCustomObject[]]$Generators = @(),
 
         # The folder (relative to the module folder) which contains the scripts which serve as boilerplate, or templates, for Script Generators
