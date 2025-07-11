@@ -85,7 +85,7 @@ function ConvertTo-Script {
             @"
 <#PSScriptInfo
 .VERSION 0.0.0
-.GUID $([guid]::newguid())
+.GUID $Guid
 .AUTHOR anonymous
 .COMPANYNAME
 .COPYRIGHT

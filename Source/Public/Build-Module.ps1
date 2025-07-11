@@ -217,37 +217,7 @@ function Build-Module {
             # We have to force the Encoding to string because PowerShell Core made up encodings
             SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{ $_ } -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
 
-            # Make sure Generators has (only one copy of) our built-in mandatory ones
-            # Move-UsingStatement always comes first, in hopes there will not be any parse errors afterward
-            $MoveUsing = @{ Generator = "Move-UsingStatement" }
-            # Update-AliasesToExport always comes last, in case the other generators add aliases
-            $UpdateAlias = @{ Generator = "Update-AliasesToExport"; ModuleManifest = $OutputManifest }
-            if (!$ModuleInfo.Generators) {
-                $ModuleInfo = $ModuleInfo | Update-Object @{ Generators = $MoveUsing, $UpdateAlias }
-            } else {
-
-                if ($Custom = $ModuleInfo.Generators.Where{ $_.Generator -eq "Move-UsingStatement" }) {
-                    $MoveUsing = $Custom
-                    $ModuleInfo.Generators = $ModuleInfo.Generators.Where{ $_.Generator -ne "Move-UsingStatement" }
-                }
-
-                if ($Custom = $ModuleInfo.Generators.Where{ $_.Generator -eq "Update-AliasesToExport" }) {
-                    $UpdateAlias = $Custom
-                    $ModuleInfo.Generators = $ModuleInfo.Generators.Where{ $_.Generator -ne "Update-AliasesToExportUpdate-AliasesToExport" }
-                }
-                $ModuleInfo.Generators = @($MoveUsing) + @($ModuleInfo.Generators) + @($UpdateAlias)
-            }
-
-            # By explicitly converting, we support wildcards in the BoilerplateDirectory parameter
-            $BoilerplateDirectory = @($ModuleInfo.BoilerplateDirectory).ForEach{
-                Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $_ | Convert-Path -ErrorAction SilentlyContinue
-            }
-
-            $ModuleInfo.Generators | Invoke-ScriptGenerator -Path $RootModule -Overwrite
-
-            # $ParseResult = ConvertToAst $RootModule
-            # $ParseResult | MoveUsingStatement -Encoding "$($ModuleInfo.Encoding)"
-
+            # Update the module manifest (before generators)
             # If there is a PublicFilter, update ExportedFunctions
             if ($ModuleInfo.PublicFilter) {
                 # SilentlyContinue because there don't *HAVE* to be public functions
@@ -302,6 +272,35 @@ function Build-Module {
                     }
                 }
             }
+
+            # Make sure Generators has (only one copy of) our built-in mandatory ones
+            # Move-UsingStatement always comes first, in hopes there will not be any parse errors afterward
+            $MoveUsing = @{ Generator = "Move-UsingStatement" }
+            # Update-AliasesToExport always comes last, in case the other generators add aliases
+            $UpdateAlias = @{ Generator = "Update-AliasesToExport"; ModuleManifest = $OutputManifest }
+            if (!$ModuleInfo.Generators) {
+                $ModuleInfo = $ModuleInfo | Update-Object @{ Generators = $MoveUsing, $UpdateAlias }
+            } else {
+
+                if ($Custom = $ModuleInfo.Generators.Where{ $_.Generator -eq "Move-UsingStatement" }) {
+                    $MoveUsing = $Custom
+                    $ModuleInfo.Generators = $ModuleInfo.Generators.Where{ $_.Generator -ne "Move-UsingStatement" }
+                }
+
+                if ($Custom = $ModuleInfo.Generators.Where{ $_.Generator -eq "Update-AliasesToExport" }) {
+                    $UpdateAlias = $Custom
+                    $ModuleInfo.Generators = $ModuleInfo.Generators.Where{ $_.Generator -ne "Update-AliasesToExportUpdate-AliasesToExport" }
+                }
+                $ModuleInfo.Generators = @($MoveUsing) + @($ModuleInfo.Generators) + @($UpdateAlias)
+            }
+
+            # By explicitly converting, we support wildcards in the BoilerplateDirectory parameter
+            $BoilerplateDirectory = @($ModuleInfo.BoilerplateDirectory).ForEach{
+                Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $_ | Convert-Path -ErrorAction SilentlyContinue
+            }
+
+            $ModuleInfo.Generators | Invoke-ScriptGenerator -Path $RootModule -Overwrite
+
 
             # This is mostly for testing ...
             if ($ModuleInfo.Passthru) {
