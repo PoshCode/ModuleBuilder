@@ -27,6 +27,10 @@ function ConvertTo-Script {
         [Parameter(Mandatory)]
         [string]$FunctionName,
 
+        # The GUID to use as the script GUID
+        # If not provided a new GUID will be generated
+        [guid]$Guid = [guid]::NewGuid(),
+
         # The path to the script module to convert
         # This is used to find the module manifest,
         # But the the script will be saved in the same location
