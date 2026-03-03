@@ -55,6 +55,17 @@ function InitializeBuild {
         $BuildInfo = $BuildInfo | Update-Object @{ SemVer = $SemVer }
     }
 
+    if ($BuildInfo.ZeroPadLegacy -ne 0 -and $BuildInfo.Prerelease) {
+        Write-Verbose "ZeroPadLegacy is enabled"
+        $BuildInfo.Prerelease = @($BuildInfo.Prerelease -split "\.").ForEach({
+                if ($_ -match '^\d+$') {
+                    $_.PadLeft($BuildInfo.ZeroPadLegacy, '0')
+                } else {
+                    $_
+                }
+            }) -join '_'
+    }
+
     # Override VersionedOutputDirectory with UnversionedOutputDirectory
     if ($BuildInfo.UnversionedOutputDirectory -and $BuildInfo.VersionedOutputDirectory) {
         $BuildInfo.VersionedOutputDirectory = $false

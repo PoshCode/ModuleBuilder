@@ -121,6 +121,10 @@ function Build-Module {
         # The default is nothing. See examples for more details.
         [string]$Prefix,
 
+        # ZeroPadLegacy controls the conversion of versions to SemVer 1.0 syntax
+        # If this is set to a non-zero integer, the numeric identifiers in the prerelease will be zero-padded to that many digits, and dots will be replaced with underscores, to allow compaitibility with the PowerShell gallery.
+        [int]$ZeroPadLegacy = 0,
+
         # The Suffix is either the path to a file (relative to the module folder) or text to put at the bottom of the file.
         # If the value of Suffix resolves to a file, that file will be read in, otherwise, the value will be used.
         # The default is nothing. See examples for more details.
