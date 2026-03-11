@@ -51,10 +51,14 @@ function Invoke-ScriptGenerator {
         [Alias("PSPath", "File")]
         [string]$Path,
 
-        # The name of the Script Generator to invoke. Must be a command that takes an AST as a pipeline inputand outputs TextReplacement objects.
-        # There are two built into ModuleBuilder:
-        # - MergeBlocks. Supports Before/After/Around blocks for aspects like error handling or authentication.
+        # The name of the Script Generator to invoke. Must be a command that takes an AST as a pipeline input and outputs TextReplacement objects.
+        # There are several built into ModuleBuilder.
+        # Two that you can use to create your own code generators:
+        # - Merge-ScriptBlock. Supports Before/After/Around blocks for aspects like error handling or authentication.
         # - Add-Parameter. Supports adding parameters to functions (usually in conjunction with MergeBlock that use those parameters)
+        # And another two that are always executed:
+        # - Move-UsingStatement. Moves all using statements to the top of the source code, so they work.
+        # - Update-AliasesToExport. Finds all aliases in the script module (side-effect: updates AliasesToExport in the module manifest)
         [Parameter(ValueFromPipelineByPropertyName)]
         [string]$Generator,
 

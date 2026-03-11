@@ -165,6 +165,8 @@ function Build-Module {
     }
     process {
         try {
+            # Push-Location up front to create the Stack because we Pop-Location in finally
+            Push-Location -StackName Build-Module
             # Push into the module source (it may be a subfolder)
             $ModuleInfo = InitializeBuild $SourcePath
             Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
@@ -183,7 +185,7 @@ function Build-Module {
             Write-Verbose "Target $($ModuleInfo.Target)"
             $NewestBuild = (Get-Item $RootModule -ErrorAction SilentlyContinue).LastWriteTime
             $IsNew = Get-ChildItem $ModuleInfo.ModuleBase -Recurse |
-                Where-Object LastWriteTime -gt $NewestBuild |
+                Where-Object LastWriteTime -GT $NewestBuild |
                 Select-Object -First 1 -ExpandProperty LastWriteTime
 
             if ($null -eq $IsNew) {
@@ -227,7 +229,7 @@ function Build-Module {
                 # SilentlyContinue because there don't *HAVE* to be public functions
                 if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue |
                             Where-Object BaseName -In $AllScripts.BaseName |
-                        Select-Object -ExpandProperty BaseName)) {
+                            Select-Object -ExpandProperty BaseName)) {
 
                     Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
                 }
@@ -251,7 +253,7 @@ function Build-Module {
                 }
             } elseif ($ModuleInfo.Prerelease) {
                 Write-Warning ("Cannot set Prerelease in module manifest. Add an empty Prerelease to your module manifest, like:`n" +
-                               '         PrivateData = @{ PSData = @{ Prerelease = "" } }')
+                    '         PrivateData = @{ PSData = @{ Prerelease = "" } }')
             }
 
             if ($ModuleInfo.BuildMetadata) {
@@ -293,7 +295,7 @@ function Build-Module {
 
                 if ($Custom = $ModuleInfo.Generators.Where{ $_.Generator -eq "Update-AliasesToExport" }) {
                     $UpdateAlias = $Custom
-                    $ModuleInfo.Generators = $ModuleInfo.Generators.Where{ $_.Generator -ne "Update-AliasesToExportUpdate-AliasesToExport" }
+                    $ModuleInfo.Generators = $ModuleInfo.Generators.Where{ $_.Generator -ne "Update-AliasesToExport" }
                 }
                 $ModuleInfo.Generators = @($MoveUsing) + @($ModuleInfo.Generators) + @($UpdateAlias)
             }

@@ -1,18 +1,17 @@
 @{
     # The module version should be SemVer.org compatible
-    ModuleVersion          = "0.0.0"
+    ModuleVersion          = "1.0.0"
 
     # PrivateData is where all third-party metadata goes
     PrivateData            = @{
         # PrivateData.PSData is the PowerShell Gallery data
         PSData             = @{
             # Prerelease string should be here, so we can set it
-            Prerelease     = 'source'
+            Prerelease     = ''
 
             # Release Notes have to be here, so we can update them
             ReleaseNotes   = '
-            Add Script Generators and convert our Move-UsingStatement and Update-AliasesToExport to generators
-            Add Merge-ScriptBlock and Add-Parameter generators to support extracting more common boilerplate code
+            A test module
             '
 
             # Tags applied to this module. These help with module discovery in online galleries.
@@ -30,17 +29,20 @@
     } # End of PrivateData
 
     # The main script module that is automatically loaded as part of this module
-    RootModule             = 'ModuleBuilder.psm1'
+    RootModule             = 'Source2.psm1'
 
     # Modules that must be imported into the global environment prior to importing this module
-    RequiredModules        = @('Configuration')
+    RequiredModules        = @()
+
+    # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
+    DefaultCommandPrefix = 'Source2'
 
     # Always define FunctionsToExport as an empty @() which will be replaced on build
     FunctionsToExport      = @()
     AliasesToExport        = @()
 
     # ID used to uniquely identify this module
-    GUID                   = '4775ad56-8f64-432f-8da7-87ddf7a34653'
+    GUID                   = 'a264e183-e0f7-4219-bc80-c30d14e0e98e'
     Description            = 'A module for authoring and building PowerShell modules'
 
     # Common stuff for all our modules:
@@ -52,4 +54,3 @@
     PowerShellVersion      = '5.1'
     CompatiblePSEditions = @('Core','Desktop')
 }
-

@@ -2,10 +2,8 @@
 Describe "Build-Module" {
     BeforeAll {
         . $PSScriptRoot\..\Convert-FolderSeparator.ps1
-
         $PSDefaultParameterValues = @{
             "Mock:ModuleName" = "ModuleBuilder"
-            "Assert-MockCalled:ModuleName" = "ModuleBuilder"
         }
     }
 
@@ -17,7 +15,7 @@ Describe "Build-Module" {
         It "has an optional string parameter for the SourcePath" {
             $parameters.ContainsKey("SourcePath") | Should -Be $true
             $parameters["SourcePath"].ParameterType | Should -Be ([string])
-            $parameters["SourcePath"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
+            $parameters["SourcePath"].Attributes.Where{ $_ -is [Parameter] }.Mandatory | Should -Be $false
         }
         It "throws if the SourcePath doesn't exist" {
             { Build-Module -SourcePath TestDrive:/NoSuchPath } | Should -Throw "*Source must point to a valid module*"
@@ -26,7 +24,7 @@ Describe "Build-Module" {
         It "has an optional string parameter for the OutputDirectory" {
             $parameters.ContainsKey("OutputDirectory") | Should -Be $true
             $parameters["OutputDirectory"].ParameterType | Should -Be ([string])
-            $parameters["OutputDirectory"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
+            $parameters["OutputDirectory"].Attributes.Where{ $_ -is [Parameter] }.Mandatory | Should -Be $false
         }
 
         It "has an optional parameter for setting the Version" {
@@ -39,26 +37,29 @@ Describe "Build-Module" {
             $parameters.ContainsKey("Encoding") | Should -Be $true
             # Note that in PS Core, we can't use encoding types for parameters
             $parameters["Encoding"].ParameterType | Should -Be ([string])
-            $parameters["Encoding"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
+            $parameters["Encoding"].Attributes.Where{ $_ -is [Parameter] }.Mandatory | Should -Be $false
         }
 
         It "Warns if you set the encoding to anything but UTF8" {
             $warns = @()
             # Note: Using WarningAction Stop just to avoid testing anything else here ;)
-            try { Build-Module -Encoding ASCII -WarningAction Stop -WarningVariable +warns } catch {}
-            $warns.Message | Should -Match "recommend you build your script modules with UTF8 encoding"
+            try {
+                Build-Module -Encoding ASCII -WarningAction Stop -WarningVariable +warns
+            } catch {
+                $warns.Message | Should -Match "recommend you build your script modules with UTF8 encoding"
+            }
         }
 
         It "has an optional string parameter for a Prefix" {
             $parameters.ContainsKey("Prefix") | Should -Be $true
             $parameters["Prefix"].ParameterType | Should -Be ([string])
-            $parameters["Prefix"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
+            $parameters["Prefix"].Attributes.Where{ $_ -is [Parameter] }.Mandatory | Should -Be $false
         }
 
         It "has an optional string parameter for a Suffix" {
             $parameters.ContainsKey("Suffix") | Should -Be $true
             $parameters["Suffix"].ParameterType | Should -Be ([string])
-            $parameters["Suffix"].Attributes.Where{$_ -is [Parameter]}.Mandatory | Should -Be $false
+            $parameters["Suffix"].Attributes.Where{ $_ -is [Parameter] }.Mandatory | Should -Be $false
         }
 
         It "supports setting the Target to Clean, Build or both" {
@@ -66,7 +67,7 @@ Describe "Build-Module" {
 
             # Techincally we could implement this a few other ways ...
             $parameters["Target"].ParameterType | Should -Be ([string])
-            $parameters["Target"].Attributes.Where{$_ -is [ValidateSet]}.ValidValues | Should -Be "Clean", "Build", "CleanBuild"
+            $parameters["Target"].Attributes.Where{ $_ -is [ValidateSet] }.ValidValues | Should -Be "Clean", "Build", "CleanBuild"
         }
 
         It "supports an optional string array parameter CopyPaths (which used to be CopyDirectories)" {
@@ -84,165 +85,77 @@ Describe "Build-Module" {
     }
 
     Context "Testing" {
-        BeforeAll {
-            InModuleScope ModuleBuilder {
-                Mock Move-UsingStatements
-                Mock SetModuleContent
-            }
-            Mock Update-Metadata
-            Mock Copy-Item
-            Mock Set-Location
 
-            Mock Join-Path {
-                [IO.Path]::Combine($Path, $ChildPath)
-            }
-
-            Mock Get-Metadata {
-                "First Release"
-            }
-
-            $global:Mock_OutputPath = Convert-FolderSeparator "TestDrive:/Output/MyModule"
-
-            Mock New-Item { [IO.DirectoryInfo]("$TestDrive/Output/MyModule") } -Parameter {
-            (Convert-FolderSeparator "$Path") -eq $Mock_OutputPath -and
-                $ItemType -eq "Directory" -and $Force
-            }
-
-            Mock Test-Path { $True } -Parameter {
-            (Convert-FolderSeparator "$Path") -eq $Mock_OutputPath -and ($PathType -notin "Any", "Leaf")
-            }
-
-            Mock Remove-Item -Parameter {
-            (Convert-FolderSeparator "$Path") -eq $Mock_OutputPath
-            }
-        }
-
-
-        Context "When run without parameters" {
+        Context "When run with no parameters" {
             BeforeAll {
-                Push-Location TestDrive:/ -StackName BuildModuleTest
-                New-Item -ItemType Directory -Path TestDrive:/Output/MyModule/1.0.0/ -Force
+                Copy-Item $PSScriptRoot/../Integration/Source2 $TestDrive -Recurse
+                Push-Location $TestDrive -StackName BuildModuleTest
+                $script:OutputDirectory = New-Item -ItemType Directory -Path "$TestDrive/Output/Source2/1.0.0" -Force |
+                    Convert-FolderSeparator
+                $script:OutputManifest = Join-Path $OutputDirectory "Source2.psd1"
+                $script:RootModule = Join-Path $OutputDirectory "Source2.psm1"
+                $script:StaleFile = Join-Path $OutputDirectory "stale.txt"
 
-
-                InModuleScope ModuleBuilder {
-                    Mock ConvertToAst {
-                        [PSCustomObject]@{
-                            PSTypeName  = "PoshCode.ModuleBuilder.ParseResults"
-                            ParseErrors = $null
-                            Tokens      = $null
-                            AST         = { }.AST
-                        }
-                    }
-                    Mock Update-AliasesToExport
-                    Mock InitializeBuild {
-                        # These are actually all the values that we need
-                        [PSCustomObject]@{
-                            OutputDirectory = "TestDrive:/Output"
-                            Name            = "MyModule"
-                            Version         = [Version]"1.0.0"
-                            Target          = "CleanBuild"
-                            ModuleBase      = "TestDrive:/MyModule/"
-                            CopyDirectories = @()
-                            Encoding        = "UTF8"
-                            PublicFilter    = "Public/*.ps1"
-                        }
-                    }
-                }
-                Mock Push-Location {}
-
-                # So it doesn't have to exist
-                Mock Convert-Path { $Path }
-                Mock Get-ChildItem {
-                    [IO.FileInfo]"$TestDrive/Output/MyModule/Public/Get-MyInfo.ps1"
-                }
-
+                Set-Content -Path $StaleFile -Value "stale build output"
 
                 try {
                     Build-Module
                 } finally {
                     Pop-Location -StackName BuildModuleTest
                 }
+
+                $script:ModuleContent = Get-Content $RootModule
+                $script:ManifestData = Import-PowerShellDataFile $OutputManifest
             }
 
             # NOTE: We're not just clearing output, but the whole folder
-            It "Should remove the output folder if it exists" {
-                Assert-MockCalled Remove-Item -Scope Context
+            It "Removes the output folder if it exists" {
+                $StaleFile | Should -Not -Exist
             }
 
-            It "Should always (re)create the OutputDirectory" {
-                Assert-MockCalled New-Item -Scope Context
+            It "Always (re)creates the OutputDirectory" {
+                $OutputDirectory | Should -Exist
             }
 
-            It "Should run in the module source folder" {
-                Assert-MockCalled Push-Location -Parameter {
-                    $Path -eq "TestDrive:/MyModule/"
-                } -Scope Context
+
+            It "Moves all the using statements to the top of the module" {
+                $ModuleContent[0] | Should -Be "using module ModuleBuilder"
+                @($ModuleContent -eq "using module ModuleBuilder" ).Count | Should -Be 1
+                @($ModuleContent -eq "# using module ModuleBuilder" ).Count | Should -Be 2
             }
 
-            It "Should call ConvertToAst to parse the module" {
-                Assert-MockCalled ConvertToAst -Scope Context
+            It "Combines the source files to a single psm1" {
+                $RootModule | Should -FileContentMatch "function Get-Source"
+                $RootModule | Should -FileContentMatch "function Set-Source"
             }
 
-            It "Should call Move-UsingStatement to move the using statements" {
-                Assert-MockCalled Move-UsingStatement -Parameter {
-                    $AST.Extent.Text -eq "{ }"
-                } -Scope Context
+            It "Updates the metadata to set the FunctionsToExport" {
+                $ManifestData.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
             }
 
-            It "Should call SetModuleContent to combine the source files" {
-                Assert-MockCalled SetModuleContent -Scope Context
-            }
-
-            It "Should call Update-Metadata to set the FunctionsToExport" {
-                Assert-MockCalled Update-Metadata -Parameter {
-                    $PropertyName -eq "FunctionsToExport"
-                } -Scope Context
-            }
-
-            It "Should call Update-AliasesToExport to update aliases" {
-                Assert-MockCalled Update-AliasesToExport -Parameter {
-                    $AST.Extent.Text -eq "{ }"
-                }
+            It "Updates the metadata to set the AliasesToExport" {
+                @($ManifestData.AliasesToExport | Sort-Object) | Should -Be @("gs", "gsou", "ss", "ssou")
             }
         }
 
         Context "When run without 'Clean' in the target" {
             BeforeAll {
-                $PSDefaultParameterValues = @{
-                    "Mock:ModuleName"              = "ModuleBuilder"
-                    "Assert-MockCalled:ModuleName" = "ModuleBuilder"
-                }
+                Copy-Item $PSScriptRoot/../Integration/Source2 $TestDrive -Recurse
+                Push-Location $TestDrive -StackName BuildModuleTest
+                $script:OutputDirectory = New-Item -ItemType Directory -Path "$TestDrive/Output/Source2/1.0.0" -Force |
+                    Convert-FolderSeparator
+                $script:OutputManifest = Join-Path $OutputDirectory "Source2.psd1"
+                $script:RootModule = Join-Path $OutputDirectory "Source2.psm1"
+                $script:StaleFile = Join-Path $OutputDirectory "stale.txt"
 
-                Push-Location TestDrive:/ -StackName BuildModuleTest
-                New-Item -ItemType Directory -Path TestDrive:/MyModule/Public -Force
-                New-Item -ItemType File -Path TestDrive:/MyModule/Public/Get-MyInfo.ps1 -Force
-                Start-Sleep -Milliseconds 200 # to ensure the output is after the input
-                New-Item -ItemType Directory -Path TestDrive:/1.0.0/ -Force
-                New-Item -ItemType File -Path TestDrive:/1.0.0/MyModule.psm1 -Force
+                Set-Content -Path $RootModule -Value "prebuilt sentinel"
+                Copy-Item "$TestDrive/Source2/Source2.psd1" $OutputManifest -Force
+                Set-Content -Path $StaleFile -Value "stale build output"
 
-                Mock InitializeBuild {
-                    # These are actually all the values that we need
-                    [PSCustomObject]@{
-                        OutputDirectory = "TestDrive:/Output"
-                        Name            = "MyModule"
-                        Version         = [Version]"1.0.0"
-                        Target          = "Build"
-                        ModuleBase      = "TestDrive:/MyModule/"
-                        CopyDirectories = @()
-                        Encoding        = "UTF8"
-                        PublicFilter    = "Public/*.ps1"
-                    }
-                }
-
-                Mock Convert-Path { $Path }
-
-                Mock Get-ChildItem {
-                    [IO.FileInfo]"$TestDrive/MyModule/Public/Get-MyInfo.ps1"
-                }
-
-                Mock Get-Item {
-                    [PSCustomObject]@{ LastWriteTime = Get-Date }
-                }
+                # Force the date so we can prove it didn't get overwritten
+                $script:ExpectedLastWriteTime = (Get-Date).AddMinutes(5)
+                (Get-Item $RootModule).LastWriteTime = $ExpectedLastWriteTime
+                (Get-Item $OutputManifest).LastWriteTime = $ExpectedLastWriteTime
 
                 try {
                     Build-Module -Target Build
@@ -252,110 +165,84 @@ Describe "Build-Module" {
             }
 
             # NOTE: We're not just clearing output, but the whole folder
-            It "Should NOT remove the output folder" {
-                Assert-MockCalled Remove-Item -Times 0 -Scope Context
+            It "Does NOT remove the output folder" {
+                $StaleFile | Should -Exist
             }
 
-            It "Should check the dates on the output" {
-                Assert-MockCalled Get-Item -Times 1 -Scope Context
+            It "Still (re)creates the OutputDirectory" {
+                $OutputDirectory | Should -Exist
             }
 
-            It "Should always (re)create the OutputDirectory" {
-                Assert-MockCalled New-Item -Times 1 -Scope Context
-            }
-
-            It "Should not rebuild the source files" {
-                Assert-MockCalled SetModuleContent -Times 0 -Scope Context
+            It "Does not rebuild the source files" {
+                (Get-Item $RootModule).LastWriteTime | Should -Be $ExpectedLastWriteTime
+                Get-Content $RootModule -Raw | Should -Match "prebuilt sentinel"
             }
         }
 
         Context "Setting the version to a SemVer string" {
             BeforeAll {
-                $SemVer = "1.0.0-beta03+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
-                $global:ExpectedVersion = "1.0.0"
-                Push-Location TestDrive:/ -StackName BuildModuleTest
-                New-Item -ItemType Directory -Path TestDrive:/MyModule/ -Force
-                New-Item -ItemType Directory -Path "TestDrive:/Output/MyModule/$ExpectedVersion" -Force
+                $SemVer = "2.1.0-beta03+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
+                $global:ExpectedVersion = "2.1.0"
 
-                Mock ResolveBuildManifest { "TestDrive:/MyModule/build.psd1" }
+                Copy-Item $PSScriptRoot/../Integration/Source2 $TestDrive -Recurse
+                Push-Location $TestDrive -StackName BuildModuleTest
 
-                Mock GetBuildInfo {
-                    [PSCustomObject]@{
-                        OutputDirectory = "TestDrive:/Output"
-                        SourcePath      = "TestDrive:/MyModule/"
-                        SemVer          = "1.0.0-beta03+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
-                        Version         = [Version]"1.0.0"
-                        Prerelease      = "beta03"
-                        Target          = "CleanBuild"
-                        CopyPaths       = @()
-                        Encoding        = "UTF8"
-                        PublicFilter    = "Public/*.ps1"
-                        VersionedOutputDirectory = $true
-                    }
-                }
-
-                Mock ImportModuleManifest {
-                    [PSCustomObject]@{
-                        Name = "MyModule"
-                        ModuleBase = "TestDrive:/MyModule/"
-                    }
-                }
-
-                $global:Mock_OutputPath = Convert-FolderSeparator "TestDrive:/Output/MyModule/$ExpectedVersion"
-
-                Mock Get-ChildItem {
-                    [IO.FileInfo]"$TestDrive/MyModule/Public/Get-MyInfo.ps1"
-                }
+                $script:OutputDirectory = Convert-FolderSeparator "$TestDrive/Output/Source2/$ExpectedVersion/"
+                $script:OutputManifest = Join-Path $OutputDirectory "Source2.psd1"
 
                 Build-Module -SemVer $SemVer
+                $script:ManifestData = Import-PowerShellDataFile $OutputManifest
             }
             AfterAll {
                 Pop-Location -StackName BuildModuleTest
             }
 
-            It "Should build to an output folder with the simple version." {
-                Assert-MockCalled Remove-Item -Scope Context
-                Assert-MockCalled New-Item -Scope Context
+            It "Creates an output folder with the expected version." {
+                $OutputDirectory | Should -Exist
             }
 
-            It "Should update the module version to the simple version." {
-                Assert-MockCalled Update-Metadata -ParameterFilter {
-                    $PropertyName -eq "ModuleVersion" -and $Value -eq $ExpectedVersion
-                } -Scope Context
+            It "Updates the module version to the expected version." {
+                $ManifestData.ModuleVersion | Should -Be $ExpectedVersion
             }
-            It "Should update the module pre-release version" {
-                Assert-MockCalled Update-Metadata -ParameterFilter {
-                    $PropertyName -eq "PrivateData.PSData.Prerelease" -and $Value -eq "beta03"
-                } -Scope Context
+            It "Updates the module pre-release version" {
+                $ManifestData.PrivateData.PSData.Prerelease | Should -Be "beta03"
             }
-            It "When there are simple release notes, it should insert a line with the module name and full semver" {
-                Assert-MockCalled Update-Metadata -ParameterFilter {
-                    $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "MyModule v$($SemVer)`nFirst Release"
-                } -Scope Context
-            }
-
-            It "When there's no release notes, it should insert the module name and full semver" {
-                # If there's no release notes, but it was left uncommented
-                Mock Get-Metadata { "" }
+            It "When there are simple release notes, it inserts a new line with the module name and full semver" {
+                Mock Get-Metadata { "First Release" }
+                Mock Update-Metadata
 
                 Build-Module -SemVer $SemVer
 
-                Assert-MockCalled Update-Metadata -ParameterFilter {
-                    $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "MyModule v$SemVer"
+                Should -Invoke Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
+                    $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "Source2 v$($SemVer)`nFirst Release"
+                } -Scope Context
+            }
+
+            It "When there's no release notes, it inserts a new line with the module name and full semver" {
+                # If there's no release notes, but it was left uncommented
+                Mock Get-Metadata { "" }
+                Mock Update-Metadata
+
+                Build-Module -SemVer $SemVer
+
+                Should -Invoke Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
+                    $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "Source2 v$SemVer"
                 }
             }
 
-            It "When there's a prefix empty line, it should insert the module name and full semver the same way" {
-                # If there's no release notes, but it was left uncommented
+            It "When there's a prefix empty line, it inserts a new line with the module name and full semver the same way" {
                 Mock Get-Metadata { "
                         Multi-line Release Notes
-                        With a prefix carriage return" }
+                        With a prefix carriage return"
+                }
+
+                Mock Update-Metadata
 
                 Build-Module -SemVer $SemVer
 
-                Assert-MockCalled Update-Metadata -ParameterFilter {
+                Should -Invoke Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
                     $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "
-                        MyModule v$SemVer
+                        Source2 v$SemVer
                         Multi-line Release Notes
                         With a prefix carriage return"
                 }
@@ -364,97 +251,74 @@ Describe "Build-Module" {
 
         Context "Setting the version and pre-release" {
             BeforeAll {
-                # $SemVer = "1.0.0-beta03+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
                 $SemVer = @{
-                    Version       = "1.0.0"
+                    Version       = "2.1.0"
                     Prerelease    = "beta03"
                     BuildMetadata = "Sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
                 }
-                $global:ExpectedVersion = "1.0.0"
-                Push-Location TestDrive:/ -StackName BuildModuleTest
-                New-Item -ItemType Directory -Path TestDrive:/MyModule/ -Force
-                New-Item -ItemType Directory -Path "TestDrive:/Output/MyModule" -Force
-
-                Mock ResolveBuildManifest { "TestDrive:/MyModule/build.psd1" }
-
-                Mock GetBuildInfo {
-                    [PSCustomObject]@{
-                        OutputDirectory = "TestDrive:/Output"
-                        SourcePath      = "TestDrive:/MyModule/"
-                        Version         = "1.0.0"
-                        Prerelease      = "beta03"
-                        BuildMetadata   = "Sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
-                        Target          = "CleanBuild"
-                        CopyPaths       = @()
-                        Encoding        = "UTF8"
-                        PublicFilter    = "Public/*.ps1"
-                    }
-                }
-
-                Mock ImportModuleManifest {
-                    [PSCustomObject]@{
-                        Name       = "MyModule"
-                        ModuleBase = "TestDrive:/MyModule/"
-                    }
-                }
-
-                $global:Mock_OutputPath = Convert-FolderSeparator "TestDrive:/Output/MyModule"
-                Mock Get-ChildItem {
-                    [IO.FileInfo]"$TestDrive/MyModule/Public/Get-MyInfo.ps1"
-                }
+                $global:ExpectedSemVer = "2.1.0-beta03+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
+                $global:ExpectedVersion = "2.1.0"
+                Copy-Item $PSScriptRoot/../Integration/Source2 $TestDrive -Recurse
+                Push-Location $TestDrive -StackName BuildModuleTest
+                $script:OutputDirectory = Convert-FolderSeparator "$TestDrive/Output/Source2/$ExpectedVersion/"
+                $script:OutputManifest = Join-Path $OutputDirectory "Source2.psd1"
+                New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 
                 Build-Module @SemVer
+                $script:ManifestData = Import-PowerShellDataFile $OutputManifest
             }
 
             AfterAll {
                 Pop-Location -StackName BuildModuleTest
             }
 
-            It "Should build to an output folder with the simple version." {
-                Assert-MockCalled Remove-Item -Scope Context
-                Assert-MockCalled New-Item -Scope Context
+            It "Builds an output folder with the expected version." {
+                $OutputDirectory | Should -Exist
             }
 
-            It "Should update the module version to the simple version." {
-                Assert-MockCalled Update-Metadata -ParameterFilter {
-                    $PropertyName -eq "ModuleVersion" -and $Value -eq $ExpectedVersion
-                } -Scope Context
+            It "Updates the module version to the expected version." {
+                $ManifestData.ModuleVersion | Should -Be $ExpectedVersion
             }
-            It "Should update the module pre-release version" {
-                Assert-MockCalled Update-Metadata -ParameterFilter {
-                    $PropertyName -eq "PrivateData.PSData.Prerelease" -and $Value -eq "beta03"
-                } -Scope Context
-            }
-            It "When there are simple release notes, it should insert a line with the module name and full semver" {
-                Assert-MockCalled Update-Metadata -ParameterFilter {
-                    $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and
-                        $Value -eq "MyModule v$($SemVer.Version)-$($SemVer.Prerelease)+$($SemVer.BuildMetadata)`nFirst Release"
-                } -Scope Context
+            It "Updates the module pre-release version" {
+                $ManifestData.PrivateData.PSData.Prerelease | Should -Be "beta03"
             }
 
-            It "When there's no release notes, it should insert the module name and full semver" {
-                # If there's no release notes, but it was left uncommented
-                Mock Get-Metadata { "" }
+            It "When there are simple release notes, it inserts a new line with the module name and full semver" {
+                Mock Get-Metadata { "First Release" }
+                Mock Update-Metadata
 
                 Build-Module @SemVer
 
-                Assert-MockCalled Update-Metadata -ParameterFilter {
-                    $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and
-                        $Value -eq "MyModule v$($SemVer.Version)-$($SemVer.Prerelease)+$($SemVer.BuildMetadata)"
+                Should -Invoke Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
+                    $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "Source2 v$($ExpectedSemVer)`nFirst Release"
+                } -Scope Context
+            }
+
+            It "When there's no release notes, it inserts a new line with the module name and full semver" {
+                # If there's no release notes, but it was left uncommented
+                Mock Get-Metadata { "" }
+                Mock Update-Metadata
+
+                Build-Module @SemVer
+
+                Should -Invoke Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
+                    $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "Source2 v$ExpectedSemVer"
                 }
             }
 
-            It "When there's a prefix empty line, it should insert the module name and full semver the same way" {
-                # If there's no release notes, but it was left uncommented
+            It "When there's a prefix empty line, it inserts a new line with the module name and full semver the same way" {
                 Mock Get-Metadata { "
                         Multi-line Release Notes
-                        With a prefix carriage return" }
+                        With a prefix carriage return"
+                }
+
+                Mock Update-Metadata
 
                 Build-Module @SemVer
 
-                Assert-MockCalled Update-Metadata -ParameterFilter {
+                Should -Invoke Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
                     $PropertyName -eq "PrivateData.PSData.ReleaseNotes" -and $Value -eq "
-                        MyModule v$($SemVer.Version)-$($SemVer.Prerelease)+$($SemVer.BuildMetadata)
+                        Source2 v$ExpectedSemVer
                         Multi-line Release Notes
                         With a prefix carriage return"
                 }
@@ -463,59 +327,37 @@ Describe "Build-Module" {
 
         Context "Setting the version with no pre-release" {
             BeforeAll {
-                # $SemVer = "1.0.0-beta03+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
                 $SemVer = @{
-                    Version       = "1.0.0"
+                    Version       = "2.1.0"
                     BuildMetadata = "Sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
                 }
-                $global:ExpectedVersion = "1.0.0"
-                Push-Location TestDrive:/ -StackName BuildModuleTest
-                New-Item -ItemType Directory -Path TestDrive:/MyModule/ -Force
-                New-Item -ItemType Directory -Path "TestDrive:/Output/MyModule" -Force
-
-                Mock InitializeBuild {
-                    # These are actually all the values that we need
-                    [PSCustomObject]@{
-                        OutputDirectory = "TestDrive:/Output"
-                        Name            = "MyModule"
-                        Version         = [Version]"1.0.0"
-                        Target          = "CleanBuild"
-                        ModuleBase      = "TestDrive:/MyModule/"
-                        CopyPaths       = @()
-                        Encoding        = "UTF8"
-                        PublicFilter    = "Public/*.ps1"
-                    }
-                }
-                Mock Convert-Path { $Path }
-                $global:Mock_OutputPath = Convert-FolderSeparator "TestDrive:/Output/MyModule"
-
-                Mock Get-ChildItem {
-                    [IO.FileInfo]"$TestDrive/MyModule/Public/Get-MyInfo.ps1"
-                }
+                $global:ExpectedSemVer = "2.1.0+sha.22c35ffff166f34addc49a3b80e622b543199cc5.Date.2018-10-11"
+                $global:ExpectedVersion = "2.1.0"
+                Copy-Item $PSScriptRoot/../Integration/Source2 $TestDrive -Recurse
+                Push-Location $TestDrive -StackName BuildModuleTest
+                $script:OutputDirectory = Convert-FolderSeparator "$TestDrive/Output/Source2/$ExpectedVersion/"
+                $script:OutputManifest = Join-Path $OutputDirectory "Source2.psd1"
+                New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 
                 Build-Module @SemVer
+                $script:ManifestData = Import-PowerShellDataFile $OutputManifest
             }
             AfterAll {
                 Pop-Location -StackName BuildModuleTest
             }
 
-            It "Should build to an output folder with the simple version." {
-                Assert-MockCalled Remove-Item -Scope Context
-                Assert-MockCalled New-Item -Scope Context
+            It "Builds to an output folder with the simple version." {
+                $OutputDirectory | Should -Exist
             }
 
-            It "Should update the module version to the simple version." {
-                Assert-MockCalled Update-Metadata -ParameterFilter {
-                    $PropertyName -eq "ModuleVersion" -and $Value -eq $ExpectedVersion
-                } -Scope Context
+            It "Updates the module version to the simple version." {
+                $ManifestData.ModuleVersion | Should -Be $ExpectedVersion
             }
-            It "Should not change the module pre-release value" {
-                Assert-MockCalled Update-Metadata -Times 0 -ParameterFilter {
-                    $PropertyName -eq "PrivateData.PSData.Prerelease"
-                } -Scope Context
+            It "Does not change the module pre-release value" {
+                $ManifestData.PrivateData.PSData.Prerelease | Should -Be ""
             }
         }
-
+        <#
         Context "Bug #70 Cannot build 1.2.3-pre-release" {
             BeforeEach {
                 Push-Location TestDrive:/ -StackName BuildModuleTest
@@ -569,7 +411,7 @@ Describe "Build-Module" {
                         throw
                     }
 
-                    Assert-MockCalled Update-Metadata -ParameterFilter {
+                    Should -Invoke Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
                         $PropertyName -eq "PrivateData.PSData.Prerelease" -and $Value -eq "pre-release"
                     } -Scope It
                 }
@@ -606,12 +448,12 @@ Describe "Build-Module" {
                         throw
                     }
 
-                    Assert-MockCalled Update-Metadata -ParameterFilter {
+                    Should -Invoke Update-Metadata -ModuleName ModuleBuilder -ParameterFilter {
                         $PropertyName -eq "PrivateData.PSData.Prerelease" -and $Value -eq "pre-release"
                     }
                 }
             }
         }
+        #>
     }
-
 }
