@@ -1,9 +1,13 @@
 name: CI
 
 on:
-  push: {}
+  push:
+    branches: [ main ]
   pull_request:
     branches: [ main ]
+
+permissions:
+  contents: write # to tag the repository
 
 jobs:
   build:
@@ -11,22 +15,24 @@ jobs:
     env:
       FORCE_COLOR: 1
     steps:
-    - uses: earthly/actions-setup@v1
+    - name: Install EarthBuild
+      uses: EarthBuild/actions-setup@v2.0.0
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
+        version: 'latest' # or pin to an specific version, e.g. "0.8.1"
 
     - uses: actions/checkout@v4
       with:
         submodules: true
         fetch-depth: 0
 
-    - name: earthly +test
+    - name: earth +test
       if: github.ref != 'refs/heads/main'
-      run: earthly --strict +test
+      run: earth --strict +test
 
-    - name: earthly +push
+    - name: earth +push
       if: github.ref == 'refs/heads/main'
-      run: earthly --push --secret NUGET_API_KEY --secret PSGALLERY_API_KEY --strict +all
+      run: earth --push --secret NUGET_API_KEY --secret PSGALLERY_API_KEY --strict +all
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
@@ -63,7 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
     steps:
     - name: Download build.requires.psd1
       uses: actions/download-artifact@v4
