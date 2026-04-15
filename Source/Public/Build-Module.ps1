@@ -37,6 +37,7 @@ function Build-Module {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseCmdletCorrectly", "")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSReviewUnusedParameter", "", Justification = "Parameter handling is in InitializeBuild")]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidDefaultValueSwitchParameter", "", Justification = "VersionedOutputDirectory is Deprecated")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidDefaultValueForMandatoryParameter", "Version", Justification = "Default is used in alternate ParameterSet")]
     [CmdletBinding(DefaultParameterSetName = "SemanticVersion")]
     [Alias("build")]
     param(
