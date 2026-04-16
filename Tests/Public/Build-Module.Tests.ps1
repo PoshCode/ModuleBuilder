@@ -1,4 +1,3 @@
-#requires -Module ModuleBuilder
 Describe "Build-Module" {
     BeforeAll {
         . $PSScriptRoot\..\Convert-FolderSeparator.ps1

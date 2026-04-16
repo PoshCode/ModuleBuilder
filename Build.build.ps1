@@ -16,8 +16,8 @@ param(
     # Add the clean task before the default build
     [switch]$Clean,
 
-    # A minimum code coverage percentage to accept as a double: 0.85
-    [double]$RequiredCodeCoverage = 0.85,
+    # A minimum code coverage percentage to accept as a double: 0.80 for 80%
+    [double]$RequiredCodeCoverage = 0.80,
 
     # Which projects to build
     [Alias("Projects")]

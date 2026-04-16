@@ -111,16 +111,17 @@ filter Merge-ScriptBlock {
                     } else {
                         $StartOffset = $Extent.StartOffset
                     }
-                    Write-Debug "Adding Boilerplate for $($Ast.BlockKind)"
+
+                    # Write-Debug "Adding Boilerplate for $($Ast.BlockKind)"
                     $this.Replacements.Add(@{
-                        StartOffset = $StartOffset
-                        EndOffset   = $Extent.EndOffset
-                        # We end up having to normalize the template to be named blocks...
-                        # Just in case the InputObject has named blocks
-                        Text        = "$($Ast.BlockKind) {`n" +
-                                        $this.GetExtentText($Template).Replace("Use-OriginalBlock", $this.GetExtentText($Ast)) +
-                                        "`n}"
-                    })
+                            StartOffset = $StartOffset
+                            EndOffset   = $Extent.EndOffset
+                            # We end up having to normalize the template to be named blocks...
+                            # Just in case the InputObject has named blocks
+                            Text        = "$($Ast.BlockKind) {`n" +
+                            $this.GetExtentText($Template).Replace("Use-OriginalBlock", $this.GetExtentText($Ast)) +
+                            "`n}"
+                        })
                 }
             }
 
@@ -129,7 +130,8 @@ filter Merge-ScriptBlock {
                 if (!$Ast.Where($this.FunctionFilter)) {
                     return [AstVisitAction]::SkipChildren
                 }
-                Write-Debug "Merging $($Ast.Name) with boilerplate"
+
+                # Write-Debug "Merging $($Ast.Name) with boilerplate"
                 $this.Replace($this.BeginBlockTemplate, $Ast.Body.BeginBlock)
                 $this.Replace($this.ProcessBlockTemplate, $Ast.Body.ProcessBlock)
                 $this.Replace($this.EndBlockTemplate, $Ast.Body.EndBlock)

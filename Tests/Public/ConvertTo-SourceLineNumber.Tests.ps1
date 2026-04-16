@@ -1,4 +1,3 @@
-#requires -Module ModuleBuilder
 Describe "ConvertTo-SourceLineNumber" {
     # use the integration test code
     BeforeAll {

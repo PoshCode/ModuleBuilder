@@ -6,14 +6,32 @@ function ConvertTo-Script {
         .SYNOPSIS
             A Script Generator which converts a module to a script
         .DESCRIPTION
-            ConvertTo-Script takes a script module (which may include dotnet assemblies),
-            and generates a script file with the module and libraries embedded and ready to run.
+            ConvertTo-Script takes a script module (which may include assemblies), and the name of a function in that
+            module, and generates a script file with the same name as the function -- that actually contains the full
+            module (including assemblies), so you can share it as a single-file script.
 
-            You should provide the name of a function from the module that will be invoked when the script is run.
+            It actually copies over the param block and any comments in it, so you get full help for the script.
 
-            In this way you can package any module into a script which invokes a specific command in that module.
+            NOTE: This Script Generator, only generates NEW FILES, so it does not output any TextReplacements.
+        .EXAMPLE
+            # The normal way to use ConvertTo-Script is to set it in the build manifest for your module, so you get a
+            # module, and a script that you can run directly (and upload to the gallery as a script) at the same time.
 
-            This function never outputs any TextReplacements.
+            # Set the Generator to ConvertTo-Script, and pass the function name you want to turn into a script
+            # You can also pass a GUID to use for the script if you want to make sure future versions use the same ID
+            @{
+                ModuleManifest  = "./Source/ModuleBuilder.psd1"
+                CopyDirectories = @('en-US')
+                Generators      = @(
+                    @{ Generator = "ConvertTo-Script"; Function = "Build-Module"; GUID = '6b8e5f3a-2c1d-4e7b-9a4f-1c3e5d7b9a2f' }
+                )
+            }
+
+            # Now, when we build the module with Build-Module it will generate a Build-Module.ps1 script in the output directory!
+        .EXAMPLE
+            # You can also use it through Invoke-ScriptGenerator if you just want to convert an existing function in a module to a script without building it:
+
+            $null = Invoke-ScriptGenerator -Path "ModuleBuilder/3.2.0/ModuleBuilder.psm1" -Generator "ConvertTo-Script" -Parameters @{ Function = "Build-Module" }
     #>
     [CmdletBinding()]
     [OutputType([TextReplacement])]
@@ -44,6 +62,10 @@ function ConvertTo-Script {
             [string]$FunctionName
             [CommentHelpInfo]$HelpInfo
 
+            ParamBlockExtractor([string]$FunctionName) {
+                $this.FunctionName = $FunctionName
+            }
+
             [AstVisitAction] VisitParamBlock([ParamBlockAst]$ast) {
                 if ($ast.Parameters) {
                     $this.ParamBlock = @(@($ast.Attributes.Extent.Text) + $ast.Extent.Text) -join "`n"
@@ -63,9 +85,7 @@ function ConvertTo-Script {
     }
     process {
         Write-Debug "    ENTER: ConvertTo-Script PROCESS $Path $FunctionName"
-        $Visitor = [ParamBlockExtractor]@{
-            FunctionName = $FunctionName
-        }
+        $Visitor = [ParamBlockExtractor]::new($FunctionName)
         $ScriptModule.Visit($Visitor)
 
         Write-Debug "      Parse Module Manifest: $Path"
