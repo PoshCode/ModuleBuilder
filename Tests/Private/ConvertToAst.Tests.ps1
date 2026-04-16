@@ -26,7 +26,21 @@ Describe "ConvertToAst" {
     Context "It parses piped in commands" {
         BeforeAll {
             $ParseResult = InModuleScope ModuleBuilder {
-                Get-Command ConvertToAst | ConvertToAst
+                Get-Command ResolveBuildManifest, ResolveOutputFolder | ConvertToAst
+            }
+        }
+
+        It "Returns a ParseResult object with the AST" {
+            $ParseResult[0].PSTypeNames[0] | Should -Match .*\.ParseResult
+            $ParseResult[1].PSTypeNames[0] | Should -Match .*\.ParseResult
+            $ParseResult.AST | Should -BeOfType [System.Management.Automation.Language.Ast]
+        }
+    }
+
+    Context "It parses piped in modules" {
+        BeforeAll {
+            $ParseResult = InModuleScope ModuleBuilder {
+                Get-Module ModuleBuilder | ConvertToAst
             }
         }
 
@@ -36,10 +50,23 @@ Describe "ConvertToAst" {
         }
     }
 
-    Context "It parses piped in modules" {
+    Context "It parses scriptblocks" {
         BeforeAll {
             $ParseResult = InModuleScope ModuleBuilder {
-                Get-Module ModuleBuilder | ConvertToAst
+                ConvertToAst -Code { Get-Date }
+            }
+        }
+
+        It "Returns a ParseResult object with the AST" {
+            $ParseResult.PSTypeNames[0] | Should -Match .*\.ParseResult
+            $ParseResult.AST | Should -BeOfType [System.Management.Automation.Language.Ast]
+        }
+    }
+
+    Context "It parses code strings" {
+        BeforeAll {
+            $ParseResult = InModuleScope ModuleBuilder {
+                ConvertToAst -Code "param([string]`$Name)"
             }
         }
 

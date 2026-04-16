@@ -11,8 +11,7 @@ function Add-Parameter {
 
             Note that THIS generator does not add parameters to script files directly, but only to functions defined in the InputObject.
         .EXAMPLE
-        # Or use a file path instead
-        $Boilerplate = @'
+        $Boilerplate = {
             param(
                 # The Foreground Color (name, #rrggbb, etc)
                 [Alias('Fg')]
@@ -25,10 +24,10 @@ function Add-Parameter {
             $ForegroundColor.ToVt() + $BackgroundColor.ToVt($true) + (
             Use-OriginalBlock
             ) +"`e[0m" # Reset colors
-        '@
+        }
 
-        # Or use a file path instead
-        $Source = @'
+
+        $Source = {
         function Show-Date {
             param(
                 # The text to display
@@ -36,7 +35,7 @@ function Add-Parameter {
             )
             Get-Date -Format $Format
         }
-        '@
+        }
 
         Invoke-ScriptGenerator $Source -Generator Add-Parameter -Parameters @{ FunctionName = "*"; Boilerplate = $Boilerplate } -OutVariable Source
 
@@ -150,7 +149,9 @@ function Add-Parameter {
                 [ParameterExtractor]$ExistingParameters = $ast
 
                 Write-Debug "Existing parameters in $($ast.Name): $($ExistingParameters.Parameters.Name -join ', ')"
+                $global:ParameterSource = $this.ParameterSource
                 $Additional = $this.ParameterSource.Parameters.Where{ $_.Name -notin $ExistingParameters.Parameters.Name }
+                Write-Debug "Additional parameters from boilerplate: $($Additional.Count)"
                 if (($Text = $Additional.Text -join ",`n`n")) {
                     Write-Debug "Adding parameters to $($ast.Name): $($Additional.Name -join ', ')"
                     $this.Replacements.Add(@{

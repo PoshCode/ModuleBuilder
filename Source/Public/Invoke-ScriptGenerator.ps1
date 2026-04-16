@@ -105,7 +105,7 @@ function Invoke-ScriptGenerator {
                 Write-Debug "Template = $($Parameters.Template)"
             }
         } catch {
-            Write-Debug "Could not resolve the Boilerplate/Template"
+            Write-Debug "Could not resolve the Boilerplate/Template as a file path. Assuming it's literal content."
         }
 
         if (-not $Generator) {
@@ -134,12 +134,14 @@ function Invoke-ScriptGenerator {
             # Update the AST
             $ParseResults = ConvertToAst -Code $Builder.ToString() -Path $ParseResults.Path
             # In case a Generator tries to use the actual files, update the content
-            Set-Content $ParseResults.Path $Builder
+            if ($Overwrite -and $ParseResults.Path -and $ParseResults.Path -ne "scriptblock") {
+                Set-Content $ParseResults.Path $Builder
+            }
         }
     }
     end {
-        Write-Debug "Overwrite: $Overwrite and it's a file: $([bool]$ParseResults.Path) (Content is $($Builder.Length) long)"
-        if ($Overwrite -and $ParseResults.Path) {
+        Write-Debug "Overwrite: $Overwrite and it's a file: $(([bool]$ParseResults.Path) -and $ParseResults.Path -ne "scriptblock") (Content is $($Builder.Length) long)"
+        if ($Overwrite -and $ParseResults.Path -and $ParseResults.Path -ne "scriptblock") {
             Set-Content $ParseResults.Path $Builder
         } else {
             $Builder.ToString()

@@ -1,4 +1,4 @@
-VERSION 0.8
+VERSION --try 0.8
 IMPORT github.com/poshcode/tasks
 FROM mcr.microsoft.com/dotnet/sdk:9.0
 WORKDIR /work
@@ -43,12 +43,13 @@ build:
 
 test:
     FROM +build
-    RUN ["pwsh", "-Command", "Invoke-Build", "-Task", "Test", "-File", "Build.build.ps1"]
-
-    # re-output the build output so we can rely on running just +test locally
     SAVE ARTIFACT $OUTPUT_ROOT/$MODULE_NAME AS LOCAL ./Modules/$MODULE_NAME
-    SAVE ARTIFACT $TEST_ROOT AS LOCAL ./Modules/$MODULE_NAME-TestResults
-
+    TRY
+        RUN ["pwsh", "-Command", "Invoke-Build", "-Task", "Test", "-File", "Build.build.ps1"]
+    FINALLY
+        # re-output the build output so we can rely on running just +test locally
+        SAVE ARTIFACT /Tests/coverage.xml AS LOCAL ./Modules/coverage.xml
+    END
 all:
     # If we only reference with FROM (or COPY) the outputs will not be produced
     BUILD +test

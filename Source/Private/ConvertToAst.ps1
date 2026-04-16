@@ -32,12 +32,13 @@ function ConvertToAst {
                 } catch {
                     Write-Debug ("      Exception resolving $Path as Path " + $_.Exception.Message)
                 }
-                if ($Provider.Name -eq "FileSystem") {
+                if ($Path -and $Provider.Name -eq "FileSystem") {
                     Write-Debug "      Parse File Path: $Path"
                     $AST = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$Tokens, [ref]$ParseErrors)
                 } else {
-                    Write-Debug "      Parse Code $(($Path -split "[\r\n]")[0])"
-                    $AST = [System.Management.Automation.Language.Parser]::ParseInput($Path, [ref]$Tokens, [ref]$ParseErrors)
+                    Write-Debug "      Parse Path as Code $(($PSBoundParameters.Path -split "[\r\n]")[0])"
+                    $AST = [System.Management.Automation.Language.Parser]::ParseInput($PSBoundParameters.Path, [ref]$Tokens, [ref]$ParseErrors)
+                    $Path = "scriptblock"
                 }
             }
             "Command" {
@@ -50,7 +51,7 @@ function ConvertToAst {
             "Code" {
                 Write-Debug "      Parse Code as ScriptBlock"
                 if ($Code -is [System.Management.Automation.ScriptBlock]) {
-                    $Code = $Code.GetNewClosure().Invoke().ToString()
+                    $Code = $Code.GetNewClosure().ToString()
 
                     if (!$Path) {
                         $Path = "scriptblock"
@@ -63,11 +64,11 @@ function ConvertToAst {
                     } catch {
                         Write-Debug ("      Failed to resolve Code as Path " + $_.Exception.Message)
                     }
-                    if ($Provider.Name -eq "FileSystem") {
+                    if ($Path -and $Provider.Name -eq "FileSystem") {
                         Write-Debug "      Parse File Path: $Path"
                         $AST = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$Tokens, [ref]$ParseErrors)
                     } else {
-                        Write-Debug "      Parse Code $(($Path -split "[\r\n]")[0])"
+                        Write-Debug "      Parse Code $(($Code -split "[\r\n]")[0])"
                         $AST = [System.Management.Automation.Language.Parser]::ParseInput($Code, [ref]$Tokens, [ref]$ParseErrors)
                     }
                 }
