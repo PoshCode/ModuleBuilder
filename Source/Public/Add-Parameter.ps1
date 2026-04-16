@@ -11,23 +11,22 @@ function Add-Parameter {
 
             Note that THIS generator does not add parameters to script files directly, but only to functions defined in the InputObject.
         .EXAMPLE
-        $Boilerplate = {
-            param(
-                # The Foreground Color (name, #rrggbb, etc)
-                [Alias('Fg')]
-                [PoshCode.Pansies.RgbColor]$ForegroundColor,
+            # The normal way to use Add-Parameter is to set it in the build manifest for your module,
+            # to add a common set of parameters to certain functions in the module by wildcard name.
+            #
+            # Set the Generator to Add-Parameter and pass a file to copy parameters from as `boilerplate`
+            # Finally, pass the names of the functions you want to copy them to:
+            @{
+                ModuleManifest  = "./source/TerminalBlocks.psd1"
+                Generators      = @(
+                    @{ Generator = "Add-Parameter"; Boilerplate = "NewTerminalBlock.ps1"; Function = "Show-*", "New-TerminalBlock" }
+                )
+            }
+        .EXAMPLE
+        # You can also use it through Invoke-ScriptGenerator to add parameters to a function in the wild!
+        # The BoilerPlate must have a param block with parameters, whether it's a string, script, file path, function, or scriptblock ...
+        # Remember, Add-Parameter will not replace parameters, so if a parameter name already exists, it will not be touched.
 
-                # The Background Color (name, #rrggbb, etc)
-                [Alias('Bg')]
-                [PoshCode.Pansies.RgbColor]$BackgroundColor
-            )
-            $ForegroundColor.ToVt() + $BackgroundColor.ToVt($true) + (
-            Use-OriginalBlock
-            ) +"`e[0m" # Reset colors
-        }
-
-
-        $Source = {
         function Show-Date {
             param(
                 # The text to display
@@ -35,15 +34,11 @@ function Add-Parameter {
             )
             Get-Date -Format $Format
         }
-        }
 
-        Invoke-ScriptGenerator $Source -Generator Add-Parameter -Parameters @{ FunctionName = "*"; Boilerplate = $Boilerplate } -OutVariable Source
-
-        function Show-Date {
+        ${function:Show-Date} = Invoke-ScriptGenerator ${function:Show-Date} -Generator Add-Parameter -Parameters @{
+            FunctionName = "*";
+            Boilerplate = {
             param(
-                # The text to display
-                [string]$Format,
-
                 # The Foreground Color (name, #rrggbb, etc)
                 [Alias('Fg')]
                 [PoshCode.Pansies.RgbColor]$ForegroundColor,
@@ -52,14 +47,33 @@ function Add-Parameter {
                 [Alias('Bg')]
                 [PoshCode.Pansies.RgbColor]$BackgroundColor
             )
-            Get-Date -Format $Format
+            }
         }
+
+        Get-Command Show-Date | Format-List
+
+        Name        : Show-Date
+        CommandType : Function
+        Definition  :
+                                param(
+                                    # The text to display
+                                    [string]$Format,
+
+                                    # The Foreground Color (name, #rrggbb, etc)
+                                    [Alias('Fg')]
+                                    [PoshCode.Pansies.RgbColor]$ForegroundColor,
+
+                                    # The Background Color (name, #rrggbb, etc)
+                                    [Alias('Bg')]
+                                    [PoshCode.Pansies.RgbColor]$BackgroundColor
+                                )
+                                Get-Date -Format $Format
     #>
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
-        <#RuleId#>'PSReviewUnusedParameter',
-        <#ParameterName#>'FunctionName',
-        Justification = 'This parameter IS used, the rule does not understand scopes'
-    )]
+    # [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    #     <#RuleId#>'PSReviewUnusedParameter',
+    #     <#ParameterName#>'FunctionName',
+    #     Justification = 'This parameter IS used, the rule does not understand scopes'
+    # )]
     [CmdletBinding()]
     [OutputType([TextReplacement])]
     param(
@@ -143,33 +157,44 @@ function Add-Parameter {
 
             [AstVisitAction] VisitFunctionDefinition([FunctionDefinitionAst]$ast) {
                 if (!$ast.Where($this.FunctionFilter)) {
+                    Write-Debug "Skipping function $($ast.Name) because it does not match the filter"
                     return [AstVisitAction]::SkipChildren
                 }
+                Write-Debug "Processing function $($ast.Name)"
+                return [AstVisitAction]::Continue
+            }
 
-                [ParameterExtractor]$ExistingParameters = $ast
+            [AstVisitAction] VisitParamBlock([ParamBlockAst]$ast) {
 
-                Write-Debug "Existing parameters in $($ast.Name): $($ExistingParameters.Parameters.Name -join ', ')"
+                # [ParameterExtractor]$ExistingParameters = $ast
+                $InsertOffset = if ($Ast.Parameters) {
+                    $ast.Parameters[-1].Extent.EndOffset
+                } else {
+                    $ast.Extent.EndOffset - 1
+                }
+
+                Write-Debug "Existing parameters: $($Ast.Parameters.Name -join ', ')"
                 $global:ParameterSource = $this.ParameterSource
-                $Additional = $this.ParameterSource.Parameters.Where{ $_.Name -notin $ExistingParameters.Parameters.Name }
+                $Additional = $this.ParameterSource.Parameters.Where{ $_.Name -notin ([string[]]$Ast.Parameters.Name) }
                 Write-Debug "Additional parameters from boilerplate: $($Additional.Count)"
                 if (($Text = $Additional.Text -join ",`n`n")) {
-                    Write-Debug "Adding parameters to $($ast.Name): $($Additional.Name -join ', ')"
+                    Write-Debug "Adding parameters: $($Additional.Name -join ', ')"
                     $this.Replacements.Add(@{
-                        StartOffset = $ExistingParameters.InsertOffset
-                        EndOffset   = $ExistingParameters.InsertOffset
-                        Text        = if ($ExistingParameters.Parameters.Count -gt 0) {
+                            StartOffset = $InsertOffset
+                            EndOffset   = $InsertOffset
+                            Text        = if ($Ast.Parameters.Count -gt 0) {
                                 ",`n`n" + $Text
                             } else {
                                 "`n" + $Text
                             }
-                    })
+                        })
                 }
                 return [AstVisitAction]::SkipChildren
             }
         }
     }
     process {
-        # Write-Debug "Add-Parameter $($InputObject.Extent.File ?? ( "L:" + $InputObject.Extent.StartLineNumber + ".." + $InputObject.Extent.EndLineNumber + " C:" + $InputObject.Extent.StartColumnNumber + ".." + $InputObject.Extent.EndColumnNumber)) $FunctionName $Boilerplate"
+        Write-Debug "Add-Parameter $($InputObject.Extent.File -ne "scriptblock" ? $InputObject.Extent.File : ( "L:" + $InputObject.Extent.StartLineNumber + ".." + $InputObject.Extent.EndLineNumber + " C:" + $InputObject.Extent.StartColumnNumber + ".." + $InputObject.Extent.EndColumnNumber)) $FunctionName $Boilerplate"
 
         $Generator = [ParameterGenerator]@{
             FunctionFilter  = { $Func = $_; $FunctionName.ForEach({ $Func.Name -like $_ }) -contains $true }.GetNewClosure()

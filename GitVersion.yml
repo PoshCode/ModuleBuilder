@@ -1,46 +1,79 @@
-mode: mainline
+#  Each merged branch against main will increment the version unless otherwise specified in a commit message
+# TrunkBased is the only workflow where each commit to a feature changes the pre-release tag
+workflow: GitHubFlow/v1
+# No pre-release versions from mainline
+mode: ContinuousDeployment
+# No dashes in date
 commit-date-format: "yyyyMMddTHHmmss"
-assembly-file-versioning-format: "{Major}.{Minor}.{Patch}.{env:GITHUB_RUN_NUMBER ?? 0}"
-
-# This repo needs to use NuGetVersionV2 for compatibility with PowerShellGallery
-assembly-informational-format: "{NuGetVersionV2}+Build.{env:GITHUB_RUN_NUMBER ?? local}.Branch.{EscapedBranchName}.Sha.{Sha}.Date.{CommitDate}"
+# Use BUILD_COUNT environment variable with fallback of zero
+assembly-versioning-format: '{Major}.{Minor}.{Patch}.{env:BUILD_COUNT ?? 0}'
+# NOTE: Normally I prefer:
+# '{Major}.{Minor}.{Patch}{PreReleaseTagWithDash}+Build.{env:BUILD_COUNT ?? 0}.Date.{CommitDate}.Branch.{BranchName ?? unknown}.Sha.{Sha}'
+assembly-informational-format: '{Major}.{Minor}.{Patch}{PreReleaseTagWithDash}+Build.{env:BUILD_COUNT ?? 0}.Branch.{BranchName ?? unknown}.Sha.{ShortSha}'
+# Version bump messages in git trailers format
 major-version-bump-message: 'semver:\s?(breaking|major)'
 minor-version-bump-message: 'semver:\s?(feature|minor)'
 patch-version-bump-message: 'semver:\s?(fix|patch)'
 no-bump-message: 'semver:\s?(none|skip)'
 commit-message-incrementing: Enabled
+# semantic-version-format: Loose
+strategies:
+- Mainline
+- TaggedCommit
+- VersionInBranchName
+- TrackReleaseBranches
+- MergeMessage
 
 branches:
   main:
-    tag: "" # explicitly no tag for main builds
-    regex: ^main$
+    # tracks-release-branches: true
     increment: Patch
-    is-mainline: true
-    tracks-release-branches: true
-  hotfix:
-    tag: rc
-    regex: hotfix(es)?/\d+\.\d+\.\d+
-    increment: None
-    is-release-branch: true
-    prevent-increment-of-merged-branch-version: true
-    source-branches: [ "main" ]
+    prevent-increment:
+      # If false, rebuilds of the same code will increment the version!
+      when-current-commit-tagged: true
   release:
-    tag: rc
-    regex: releases?/\d+\.\d+\.\d+
+    mode: ContinuousDelivery
+    label: rc
     increment: None
+    prevent-increment:
+      of-merged-branch: true
+      when-current-commit-tagged: false
+    track-merge-target: false
     is-release-branch: true
-    prevent-increment-of-merged-branch-version: true
-    source-branches: [ "main" ]
-  pull-request:
-    regex: pull/
-    tag: pr
-    tag-number-pattern: '[/-](?<number>\d+)'
-    increment: Patch
-    source-branches: [ "main", "feature", "release", "hotfix" ]
+    # A hotfix is just a release with bad habits
+    regex: ^(?:releases?)/(?<BranchName>\d+\.\d+(\.\d+)?)$
+
+  hotfix:
+    mode: ContinuousDelivery
+    label: rc
+    regex: ^(?:hotfix(?:es)?)/(?<BranchName>\d+\.\d+(\.\d+)?)$
+    increment: None
+    prevent-increment:
+      of-merged-branch: true
+      when-current-commit-tagged: false
+    track-merge-target: false
+    is-release-branch: true
+
   feature:
-    regex: .*/
-    tag: useBranchName
-    source-branches: [ "main", "feature" ]
+    mode: ContinuousDelivery
+    # any branch name that starts with feature
+    # (with any number of / separated segments)
+    # we use the last segment as the BranchName label...
+    regex: ^features?[/-](.+[/-])*(?<BranchName>[^/-]+)$
+    # label: alpha.{BranchName}.
+    # Since we *know* it's a feature, then we can increment the minor version
+    increment: Minor
+    source-branches: [ "main", "feature", "release" ]
+  pull-request:
+    label: pr{BranchName}
+    regex: ^pull/(?<BranchName>[^/-]+)/merge$
+  unknown:
+    mode: ContinuousDelivery
+    # we usually don't distinguish feature from fix in our branch names
+    # So EVERYTHING ELSE just increments the patch version
+    regex: ^.*[-/](?<BranchName>[^/-]+)$
+    increment: Patch
+    # label: alpha.{BranchName}.
+    source-branches: [ "main", "release", "feature" ]
     track-merge-target: true
     tracks-release-branches: true
-    increment: Patch

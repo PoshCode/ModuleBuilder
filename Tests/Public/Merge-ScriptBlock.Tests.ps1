@@ -1,4 +1,4 @@
-Describe "Add-Parameter" {
+Describe "Merge-ScriptBlock" {
     Context "Example 1. Adding parameters to functions" {
         It "Adds boilerplate parameters to functions" {
             $boilerplate = {
@@ -11,6 +11,9 @@ Describe "Add-Parameter" {
                     [Alias('Bg')]
                     [PoshCode.Pansies.RgbColor]$BackgroundColor
                 )
+                $ForegroundColor.ToVt() + $BackgroundColor.ToVt($true) + (
+                    Use-OriginalBlock
+                ) + "`e[0m" # Reset colors
             }
 
             $source = {
@@ -28,19 +31,11 @@ Describe "Add-Parameter" {
                     param()
                     [Environment]::UserName
                 }
-
-                function Get-Date {
-                    param(
-                        # The Date Format String
-                        [string]$Format = "o"
-                    )
-                    [DateTime]::Now.ToString($Format)
-                }
             }
 
-            # Use Invoke-ScriptGenerator instead of calling Add-Parameter directly, to get the result of the transformation as text
-            $result = Invoke-ScriptGenerator -Code $source -Generator Add-Parameter -Parameters @{
-                FunctionName = "Show-*"
+            # Use Invoke-ScriptGenerator instead of calling Merge-ScriptBlock directly, to get the result of the transformation as text
+            $result = Invoke-ScriptGenerator -Code $source -Generator Merge-ScriptBlock -Parameters @{
+                FunctionName = "*"
                 Boilerplate  = $boilerplate
             }
 
@@ -65,22 +60,26 @@ Describe "Add-Parameter" {
 
 
             $showDate | Should -Not -BeNullOrEmpty
-            $showDate.Body.ParamBlock.Parameters.Name.VariablePath.UserPath
-            | Should -Be @('Format', 'ForegroundColor', 'BackgroundColor')
+            $showDate.Body.EndBlock -split "`n"
+            | ForEach-Object { $_.Trim() }
+            | Select-Object -Skip 1
+            | Select-Object -First 3
+            | Should -Be @(
+                "`$ForegroundColor.ToVt() + `$BackgroundColor.ToVt(`$true) + ("
+                "Get-Date -Format `$Format"
+                ") + `"``e[0m`""
+            )
 
             $showUserName | Should -Not -BeNullOrEmpty
-            $showUserName.Body.ParamBlock.Parameters.Name.VariablePath.UserPath
-            | Should -Be @('ForegroundColor', 'BackgroundColor')
-
-            # Get-Date Should not be modified, since it does not match the FunctionName filter
-            $getDate = $Ast.Find({
-                    param($node)
-                    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
-                    $node.Name -eq 'Get-Date'
-                }, $true)
-            $getDate | Should -Not -BeNullOrEmpty
-            $getDate.Body.ParamBlock.Parameters.Name.VariablePath.UserPath
-            | Should -Be @('Format')
+            $showUserName.Body.EndBlock -split "`n"
+            | ForEach-Object { $_.Trim() }
+            | Select-Object -Skip 1
+            | Select-Object -First 3
+            | Should -Be @(
+                "`$ForegroundColor.ToVt() + `$BackgroundColor.ToVt(`$true) + ("
+                "[Environment]::UserName"
+                ") + `"``e[0m`""
+            )
         }
     }
 }
