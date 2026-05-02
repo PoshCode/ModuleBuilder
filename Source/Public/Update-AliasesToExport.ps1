@@ -10,7 +10,7 @@ function Update-AliasesToExport {
 
             This function never outputs any TextReplacements
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     [OutputType([TextReplacement])]
     param(
         # The AST of the root script module to find aliases in
@@ -143,7 +143,7 @@ function Update-AliasesToExport {
     process {
         $Visitor = [AliasExportGenerator]::new()
         $ScriptModule.Visit($Visitor)
-        Update-Metadata -Path $ModuleManifest -PropertyName AliasesToExport -Value $Visitor.Aliases
+        Update-Metadata -Path $ModuleManifest -PropertyName AliasesToExport -Value $Visitor.Aliases -WhatIf:$WhatIfPreference -Confirm:($ConfirmPreference -eq 'Low')
     }
 }
 

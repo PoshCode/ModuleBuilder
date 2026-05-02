@@ -174,7 +174,7 @@ function Add-Parameter {
                 }
 
                 Write-Debug "Existing parameters: $($Ast.Parameters.Name -join ', ')"
-                $global:ParameterSource = $this.ParameterSource
+                # $global:ParameterSource = $this.ParameterSource
                 $Additional = $this.ParameterSource.Parameters.Where{ $_.Name -notin ([string[]]$Ast.Parameters.Name) }
                 Write-Debug "Additional parameters from boilerplate: $($Additional.Count)"
                 if (($Text = $Additional.Text -join ",`n`n")) {
