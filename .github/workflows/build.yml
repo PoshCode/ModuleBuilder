@@ -43,13 +43,13 @@ jobs:
       with:
         name: Modules
         path: |
-          Modules/*
-          !Modules/*-TestResults
+          Output/*
+          !Output/results/*
 
     - uses: actions/upload-artifact@v4
       with:
         name: TestResults
-        path: Modules/ModuleBuilder-TestResults
+        path: Output/results
 
     # These ones are just for the test matrix
     - name: Upload Tests
@@ -84,7 +84,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: Modules
-        path: Modules # /home/runner/work/ModuleBuilder/ModuleBuilder/Modules
+        path: Output # /home/runner/work/ModuleBuilder/ModuleBuilder/Output
     - name: Install Output Modules
       shell: pwsh
       run: | # PowerShell
@@ -95,7 +95,7 @@ jobs:
             Join-Path $HOME '.local/share/powershell/Modules'
         }
 
-        Get-ChildItem -Directory Modules -OutVariable Modules
+        Get-ChildItem -Directory Output -OutVariable Modules
         | Move-Item -Destination { Join-Path $ModuleDestination $_.Name } -Force
 
         Write-Host "Installing $($Modules -join ', ') to $ModuleDestination"

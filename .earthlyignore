@@ -1,5 +1,11 @@
-# ignore Modules (because we output there now)
-/Modules/*
+.earthlyignore
+.editorconfig
+.github/*
+.vscode/*
+build.earth
+# ignore Output (because we output there now)
+/Output/*
 # These aren't part of the module (yet)
 /PotentialContribution/*
 /Content/*
+
