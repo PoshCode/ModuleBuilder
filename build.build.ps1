@@ -1,4 +1,3 @@
-#Requires -Modules @{ ModuleName = 'InvokeBuild'; ModuleVersion = '5.14.0' }
 <#
 .SYNOPSIS
     ./project.build.ps1
@@ -19,10 +18,7 @@ param(
 
 ## Self-contained build script - can be invoked directly or via Invoke-Build
 if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
-    Write-Information "Bootstrap Build Dependencies" -Tag "InvokeBuild"
-    . (Convert-Path ../*BuildTasks/scripts/Bootstrap.ps1)
-
-    Invoke-Build -File $MyInvocation.MyCommand.Path @PSBoundParameters -Result Result
+    . (Convert-Path ../../[tT]asks/scripts/Invoke-Build.ps1) -File $MyInvocation.MyCommand.Path @PSBoundParameters -Result Result
 
     if ($Result.Error) {
         $Error[-1].ScriptStackTrace | Out-Host
