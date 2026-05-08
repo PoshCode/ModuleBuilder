@@ -21,7 +21,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         version: 'latest' # or pin to an specific version, e.g. "0.8.1"
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
         fetch-depth: 0
@@ -39,30 +39,31 @@ jobs:
         PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
 
     - name: Upload Built Modules
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: Modules
-        path: |
-          Output/*
-          !Output/results/*
+        name: ModuleBuilder
+        path: Output/ModuleBuilder
+        if-no-files-found: ignore
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: TestResults
         path: Output/results
+        if-no-files-found: ignore
 
     # These ones are just for the test matrix
     - name: Upload Tests
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: PesterTests
         path: ${{github.workspace}}/Tests
 
     - name: Upload build.requires.psd1
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: build.requires.psd1
         path: ${{github.workspace}}/build.requires.psd1
+
   test:
     needs: build
     runs-on: ${{ matrix.os }}
@@ -108,6 +109,7 @@ jobs:
         | Set-Content build.requires.psd1
     - name: ⚡ Install Required Modules
       uses: JustinGrote/ModuleFast-action@v0.0.1
+
     - name: Invoke Pester Tests
       id: pester
       uses: zyborg/pester-tests-report@v1
@@ -119,7 +121,7 @@ jobs:
         report_title: My Module Tests
         github_token: ${{ secrets.GITHUB_TOKEN }}
         tests_fail_step: true
-        skip_check_run: true # Our test results are too large
+        skip_check_run: false # Our test results are too large
     - name: Summarize test results
       shell: pwsh
       run: | # PowerShell
