@@ -1,7 +1,6 @@
 # All of these folders are (or were) build outputs
 [0-9]*/
-Modules/
-Output/
-obj/
-Tools/
+[Mm]odules/
+[Oo]utput/
+[Tt]ools/
 coverage.xml

@@ -46,7 +46,7 @@ build:
     RUN -- pwsh -File "${IB_TASK_ROOT}/scripts/Invoke-Build.ps1" Build
 
     # SAVE ARTIFACT [--keep-ts] [--keep-own] [--if-exists] [--force] <src> [<artifact-dest-path>] [AS LOCAL <local-path>]
-    SAVE ARTIFACT $IB_OUTPUT_ROOT/$IB_MODULE_NAME AS LOCAL ./Output/$IB_MODULE_NAME
+    SAVE ARTIFACT $IB_OUTPUT_ROOT/$IB_MODULE_NAME AS LOCAL ./output/$IB_MODULE_NAME
 
 # test runs the tests and probably fails if the tests fail
 test:
@@ -54,7 +54,7 @@ test:
     BUILD +build
     FROM +build
     RUN -- pwsh -File "${IB_TASK_ROOT}/scripts/Invoke-Build.ps1" Test
-    SAVE ARTIFACT $IB_RESULTS_ROOT AS LOCAL ./Output$IB_RESULTS_ROOT
+    SAVE ARTIFACT $IB_RESULTS_ROOT AS LOCAL ./output$IB_RESULTS_ROOT
 
 # publish runs publish and push tasks if the tests pass and --push was specified.
 # It needs the API keys to be passed in as secrets

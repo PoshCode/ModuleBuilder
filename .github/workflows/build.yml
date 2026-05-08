@@ -42,14 +42,12 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: ModuleBuilder
-        path: Output/ModuleBuilder
-        if-no-files-found: ignore
+        path: output/ModuleBuilder
 
     - uses: actions/upload-artifact@v7
       with:
         name: TestResults
-        path: Output/results
-        if-no-files-found: ignore
+        path: output/results
 
     # These ones are just for the test matrix
     - name: Upload Tests
@@ -84,8 +82,8 @@ jobs:
     - name: Download Build Output
       uses: actions/download-artifact@v4
       with:
-        name: Modules
-        path: Output # /home/runner/work/ModuleBuilder/ModuleBuilder/Output
+        name: ModuleBuilder
+        path: output/ModuleBuilder # /home/runner/work/ModuleBuilder/ModuleBuilder/output/ModuleBuilder
     - name: Install Output Modules
       shell: pwsh
       run: | # PowerShell
@@ -96,7 +94,7 @@ jobs:
             Join-Path $HOME '.local/share/powershell/Modules'
         }
 
-        Get-ChildItem -Directory Output -OutVariable Modules
+        Get-ChildItem -Directory output -OutVariable Modules
         | Move-Item -Destination { Join-Path $ModuleDestination $_.Name } -Force
 
         Write-Host "Installing $($Modules -join ', ') to $ModuleDestination"
