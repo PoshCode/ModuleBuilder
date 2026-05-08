@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write # to tag the repository
+  checks: write # to create the check runs results (from zyborg/pester-tests-report)
 
 jobs:
   build:
