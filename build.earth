@@ -22,7 +22,8 @@ initialize:
     # I'm using Invoke-Build tasks from this other repo which rarely changes
     COPY tasks+tasks/* $IB_TASK_ROOT
     # Dealing with dependencies first allows them to be cached
-    COPY build.* .
+    COPY build.build.ps1 .
+    COPY build.requires.psd1 .
     COPY --if-exists dotnet-tools.json .
     COPY --if-exists .config/dotnet-tools.json .
     # COPY --if-exists **/*.csproj .

@@ -63,43 +63,77 @@ A good build framework needs to support [incremental builds](https://docs.micros
 
 A good build framework should also include pre-defined tasks for most common build targets, including restoring dependencies, cleaning old output, building and assembling a module from source, testing that module, and publishing the module for public consumption.  Our `Build-Module` command, for instance, is just one task of several which would be needed for a build target for a PowerShell script module.
 
-We are currently using the [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [earthly](https://docs.earthly.dev/) to build this module.
-
 ### Building from source
 
 [![Build Status](https://github.com/PoshCode/ModuleBuilder/actions/workflows/build.yml/badge.svg)](https://github.com/PoshCode/ModuleBuilder/actions/workflows/build.yml)
 
-The easiest, fastest build uses [earthly](https://docs.earthly.dev/). Earthly builds use containers to ensure tools are available, parallelize steps, and to cache their output. On Windows, it requires WSL2, Docker Desktop, and of course, the earthly CLI. If you already have those installed, you can just check out this repository and run `earthly +test` to build and run the tests.
+The easiest, fastest build uses [Earthbuild](https://docs.earthbuild.dev/). Earthbuilds use containers to ensure tools are available, to parallelize steps, and to cache output. On Windows, it requires WSL2, Docker Desktop, and of course, the Earthbuild CLI. If you already have those installed, you can just check out this repository and run `earth +test` to build and run the tests.
 
 ```powershell
 git clone https://github.com/PoshCode/ModuleBuilder.git
 cd ModuleBuilder
-earthly +test
+earth +test
 ```
 
-#### Building without earthly
+#### Building without Earthbuild
 
-The full ModuleBuilder build has a lot of dependencies which are handled _for you_, in the Earthly build, like dotnet, gitversion, and several PowerShell modules. To build without it you will need to clone the PoshCode shared "Tasks" repository which contains shared Invoke-Build tasks into the same parent folder, so that the `Tasks` folder is a sibling of the `ModuleBuilder` folder:
+The full ModuleBuilder build depends on the [dotnet](https://dotnet.microsoft.com) SDK, and has a few other build-time dependencies, including [Invoke-Build](https://github.com/nightroman/Invoke-Build) for orchestrating the build steps, [Pester](https://github.com/Pester/Pester) to test it, and [Install-ModuleFast](https://github.com/JustinGrote/ModuleFast) to install the rest of the dependencies. All of those (including dotnet) are handled _for you_ in the Earthbuild build, but without it you need to install dotnet separately.
+
+To build without Earthbuild, you will need to install dotnet, and then clone this repository and our shared [Tasks](https://github.com/PoshCode/Tasks) repository such that the `Tasks` folder is a sibling of the `ModuleBuilder` folder:
 
 ```powershell
 git clone https://github.com/PoshCode/ModuleBuilder.git
 git clone https://github.com/PoshCode/Tasks.git
 ```
 
-Once you've cloned both, the `Build.build.ps1` script will use the shared [Tasks\_Bootstrap.ps1](https://github.com/PoshCode/Tasks/blob/main/_Bootstrap.ps1) to install the other dependencies (see [build.requires.psd1](https://github.com/PoshCode/ModuleBuilder/blob/main/build.requires.psd1)), including [dotnet](https://dot.net), and will use [Invoke-Build](https://github.com/nightroman/Invoke-Build) and [Pester](https://github.com/Pester/Pester) to build and test the module.
+Once you've cloned both, the `build.build.ps1` script will install the other dependencies (see [build.requires.psd1](https://github.com/PoshCode/ModuleBuilder/blob/main/build.requires.psd1)), and will build and test the module.
 
 ```powershell
 cd ModuleBuilder
-./Build.build.ps1
+./build.build.ps1
 ```
 
-This _should_ work on Windows, Linux, or MacOS. I test the build process on Windows, and in CI we run it in the Linux containers via earthly, and we run the full Pester test suit on all three platforms.
+This _should_ work on Windows, Linux, or MacOS. I test the build process on Windows, and in CI we run it in the Linux containers via Earthbuild, and we run _the full Pester test suite_ on all three platforms.
 
 ## Most recent releases
 
 ### 3.2.0 - Script Generators
 
 Script Generators let developers modify their module's source code as it is being built. A generator can create new script functions on the fly, such that whole functions are added to the built module. A generator can also inject boilerplate code like error handling, logging, tracing and timing at build-time, so this code can be maintained once, and be automatically added (and updated) in all the places where it's needed when the module is built. The generators run during the build and can inspect existing functions, data files, or even data from an API, and produce code that is output into the module (and clearly marked as generated).
+
+The normal way to use Script Generators is to just pass configuration when calling `Build-Module`. For example, look at how [FromGitHub](https://github.com/Jaykul/FromGitHub) passes `Generators` to `Build-Module` in its `build.psd1` file so that it produces both a FromGitHub module, and a Install-FromGitHub script:
+
+```PowerShell
+    Generators = @(
+        @{ Generator = "ConvertTo-Script"; Function = "Install-FromGitHub"; GUID = '23addf96-d1d7-4f51-b97f-c4f0189263b6' }
+    )
+```
+
+There are a pair of built-in generators included in ModuleBuilder, which are designed around Aspect-Oriented Programming (AOP) principles, and another pair that were extracted from the existing ModuleBuilder functionality, as well as one that came from my old `RequiredModules` project. You can write custom generators to do almost anything you can imagine. The built-in generators are implemented as public functions so that you can `Get-Help` to get examples of how to use them, and of course, their source code is available for you to read and learn from.
+
+The bottom line is that each Script Generator will get called by `Build-Module` at the end of the build process, and will be passed any configuration, as well as the AST of the module as it exists so far. The generators then output `TestReplacement` objects which represent the changes they want to make to the code, and the `Invoke-ScriptGenerator` handles applying those changes and updating the code and AST before calling the next generator.
+
+Of course, you should be careful if you're using generators, because they're still PowerShell scripts, and they can do whatever they want. One of the included examples generates a totally new script file, and another modifies the manifest instead of the actual module code.
+
+#### Merge-ScriptBlock
+
+This generator takes `boilerplate` code that can be wrapped around the content of the begin/process/end script blocks of the functions in a module. You can specify one or more wildcard patterns to determine which functions are affected. This is generally used for adding cross-cutting concerns like error handling, logging, tracing and timing to all your functions without having to maintain that code separately in each function.
+
+#### Add-Parameter
+
+This generator goes along with Merge-ScriptBlock. It copies parameters from one script function to another. The idea is to allow the creation of common parameter sets across your modules, with any implementation details encapsulated in the code you would add with Merge-ScriptBlock. Have a look at [TerminalBlocks](https://github.com/Jaykul/TerminalBlocks/blob/feature/simplify/build.psd1) for an example of this -- it allowed me to write _very simple_ functions, but code-generate a large part of the implementation as common parameters and common rendering code.
+
+#### Move-UsingStatement
+
+This simple generator comments out `using` statements in the source files, sorts them, and puts a unique copy of each statement at the top of the final module file. This allows you to have `using` statements in each function in your source files, but have them consolidated at the top of the Build-Module output module.
+
+#### Update-AliasesToExport
+
+This generator is a real edge case example. It doesn't actually modify the source code at all -- but rather modifies the module manifest to update the list of exported aliases based on the `[Alias()]` attributes and `New-Alias` and `Set-Alias` (and`Remove-Alias`) commands. In ModuleBuilder, this ensures that any aliases you declare in the source files get properly exported from the final module when you use Build-Module.
+
+### ConvertTo-Script
+
+This generator is a type of packaging script. It takes a full module (including assemblies), and the name of a single function from that module. Then it outputs a script file named for that function (with the same parameters as the function), that contains the entire module embedded within it, such that the single script file can be distributed alone, and even run from a network share without needing to install the module. I wrote this when I was working on `Install-RequiredModules` and `Install-FromGitHub`.
 
 ### 3.1.0 - Supports help outside the top of script commands
 
