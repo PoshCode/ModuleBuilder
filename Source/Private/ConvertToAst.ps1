@@ -3,33 +3,84 @@ function ConvertToAst {
         .SYNOPSIS
             Parses the given code and returns an object with the AST, Tokens and ParseErrors
     #>
+    [CmdletBinding(DefaultParameterSetName = "Path")]
     param(
         # The script content, or script or module file path to parse
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
-        [Alias("Path", "PSPath", "Definition", "ScriptBlock", "Module")]
-        $Code
+        [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = "Code", Position = 0)]
+        [Alias("ScriptBlock")]
+        $Code,
+
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = "Command", Position = 0)]
+        [System.Management.Automation.FunctionInfo]$Command,
+
+        [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = "Path", Position = 0)]
+        [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = "Command", Position = 1)]
+        [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = "Code", Position = 1)]
+        [Alias("PSPath", "File", "Definition")]
+        [string]$Path
     )
     process {
-        Write-Debug "    ENTER: ConvertToAst $Code"
+        Write-Debug "    ENTER: ConvertToAst $Path $(("$Command$Code" -split "[\r\n]")[0])"
         $ParseErrors = $null
         $Tokens = $null
-        if ($Code | Test-Path -ErrorAction SilentlyContinue) {
-            Write-Debug "      Parse Code as Path"
-            $AST = [System.Management.Automation.Language.Parser]::ParseFile(($Code | Convert-Path), [ref]$Tokens, [ref]$ParseErrors)
-        } elseif ($Code -is [System.Management.Automation.FunctionInfo]) {
-            Write-Debug "      Parse Code as Function"
-            $String = "function $($Code.Name) { $($Code.Definition) }"
-            $AST = [System.Management.Automation.Language.Parser]::ParseInput($String, [ref]$Tokens, [ref]$ParseErrors)
-        } else {
-            Write-Debug "      Parse Code as String"
-            $AST = [System.Management.Automation.Language.Parser]::ParseInput([String]$Code, [ref]$Tokens, [ref]$ParseErrors)
+
+        switch($PSCmdlet.ParameterSetName) {
+            "Path" {
+                $Provider = $null
+                try {
+                    $Path = $ExecutionContext.SessionState.Path.GetResolvedProviderPathFromPSPath($Path, [ref]$Provider)[0]
+                } catch {
+                    Write-Debug ("      Exception resolving $Path as Path " + $_.Exception.Message)
+                }
+                if ($Path -and $Provider.Name -eq "FileSystem") {
+                    Write-Debug "      Parse File Path: $Path"
+                    $AST = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$Tokens, [ref]$ParseErrors)
+                } else {
+                    Write-Debug "      Parse Path as Code $(($PSBoundParameters.Path -split "[\r\n]")[0])"
+                    $AST = [System.Management.Automation.Language.Parser]::ParseInput($PSBoundParameters.Path, [ref]$Tokens, [ref]$ParseErrors)
+                    $Path = "scriptblock"
+                }
+            }
+            "Command" {
+                Write-Debug "      Parse Function"
+                if (!$Path) {
+                    $Path = "function:$($Command.Name)"
+                }
+                $AST = [System.Management.Automation.Language.Parser]::ParseInput($Command.Definition, $Path, [ref]$Tokens, [ref]$ParseErrors)
+            }
+            "Code" {
+                Write-Debug "      Parse Code as ScriptBlock"
+                if ($Code -is [System.Management.Automation.ScriptBlock]) {
+                    $Code = $Code.GetNewClosure().ToString()
+
+                    if (!$Path) {
+                        $Path = "scriptblock"
+                    }
+                    $AST = [System.Management.Automation.Language.Parser]::ParseInput($Code, $Path, [ref]$Tokens, [ref]$ParseErrors)
+                } else {
+                    $Provider = $null
+                    try {
+                        $Path = $ExecutionContext.SessionState.Path.GetResolvedProviderPathFromPSPath($Code, [ref]$Provider)[0]
+                    } catch {
+                        Write-Debug ("      Failed to resolve Code as Path " + $_.Exception.Message)
+                    }
+                    if ($Path -and $Provider.Name -eq "FileSystem") {
+                        Write-Debug "      Parse File Path: $Path"
+                        $AST = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$Tokens, [ref]$ParseErrors)
+                    } else {
+                        Write-Debug "      Parse Code $(($Code -split "[\r\n]")[0])"
+                        $AST = [System.Management.Automation.Language.Parser]::ParseInput($Code, [ref]$Tokens, [ref]$ParseErrors)
+                    }
+                }
+            }
         }
 
-        Write-Debug "    EXIT: ConvertToAst"
+        Write-Debug "    EXIT: ConvertToAst $Path"
         [PSCustomObject]@{
             PSTypeName  = "PoshCode.ModuleBuilder.ParseResults"
             ParseErrors = $ParseErrors
             Tokens      = $Tokens
+            Path        = $Path
             AST         = $AST
         }
     }

@@ -1,19 +1,29 @@
 {
-    "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true,
-    "editor.tabSize": 4,
-    "editor.insertSpaces": true,
-    "files.encoding": "utf8",
-    "powershell.codeFormatting.preset": "OTBS",
-    "powershell.codeFormatting.ignoreOneLineBlock": false,
-    "powershell.codeFormatting.newLineAfterCloseBrace": false,
-    "powershell.codeFormatting.pipelineIndentationStyle": "IncreaseIndentationForFirstPipeline",
-    "powershell.codeFormatting.alignPropertyValuePairs": true,
-    "powershell.codeFormatting.autoCorrectAliases": true,
-    "powershell.codeFormatting.useCorrectCasing": true,
-    "powershell.scriptAnalysis.settingsPath": "ScriptAnalyzerSettings.psd1",
-    "files.associations": {
-        "*.ps1xml": "xml",
-        ".earthlyignore": "ignore"
-    }
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "files.encoding": "utf8",
+  "powershell.codeFormatting.preset": "OTBS",
+  "powershell.codeFormatting.ignoreOneLineBlock": false,
+  "powershell.codeFormatting.newLineAfterCloseBrace": false,
+  "powershell.codeFormatting.pipelineIndentationStyle": "IncreaseIndentationForFirstPipeline",
+  "powershell.codeFormatting.alignPropertyValuePairs": true,
+  "powershell.codeFormatting.autoCorrectAliases": true,
+  "powershell.codeFormatting.useCorrectCasing": true,
+  "powershell.scriptAnalysis.settingsPath": "ScriptAnalyzerSettings.psd1",
+  "files.associations": {
+    "*.ps1xml": "xml",
+    ".earthlyignore": "ignore"
+  },
+  "coverage-gutters.coverageFileNames": ["coverage.xml"],
+  "coverage-gutters.coverageBaseDir": "**"
 }
+
+
+
+
+
+
+
+

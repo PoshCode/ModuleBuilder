@@ -1,9 +1,14 @@
 name: CI
 
 on:
-  push: {}
+  push:
+    branches: [ main ]
   pull_request:
     branches: [ main ]
+
+permissions:
+  contents: write # to tag the repository
+  checks: write # to create the check runs results
 
 jobs:
   build:
@@ -11,74 +16,75 @@ jobs:
     env:
       FORCE_COLOR: 1
     steps:
-    - uses: earthly/actions-setup@v1
+    - name: Install EarthBuild
+      uses: EarthBuild/actions-setup@v2.0.0
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
+        version: 'latest' # or pin to an specific version, e.g. "0.8.1"
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
         fetch-depth: 0
 
-    - name: earthly +test
+    - name: earth +test
       if: github.ref != 'refs/heads/main'
-      run: earthly --strict +test
+      run: earth --strict +test
 
-    - name: earthly +push
+    - name: earth +push
       if: github.ref == 'refs/heads/main'
-      run: earthly --push --secret NUGET_API_KEY --secret PSGALLERY_API_KEY --strict +all
+      run: earth --push --secret NUGET_API_KEY --secret PSGALLERY_API_KEY --strict +all
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
 
     - name: Upload Built Modules
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: Modules
-        path: |
-          Modules/*
-          !Modules/*-TestResults
+        name: ModuleBuilder
+        path: output/ModuleBuilder
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: TestResults
-        path: Modules/ModuleBuilder-TestResults
+        path: output/results
 
     # These ones are just for the test matrix
     - name: Upload Tests
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: PesterTests
         path: ${{github.workspace}}/Tests
 
     - name: Upload build.requires.psd1
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: build.requires.psd1
         path: ${{github.workspace}}/build.requires.psd1
+
   test:
     needs: build
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
     steps:
     - name: Download build.requires.psd1
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: build.requires.psd1
+    - name: Download Build Output
+      uses: actions/download-artifact@v8
+      with:
+        name: ModuleBuilder
+        path: output/ModuleBuilder # /home/runner/work/ModuleBuilder/ModuleBuilder/output/ModuleBuilder
     - name: Download Pester Tests
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: PesterTests
         path: PesterTests
-    - name: Download Build Output
-      uses: actions/download-artifact@v4
-      with:
-        name: Modules
-        path: Modules # /home/runner/work/ModuleBuilder/ModuleBuilder/Modules
     - name: Install Output Modules
       shell: pwsh
       run: | # PowerShell
@@ -89,7 +95,7 @@ jobs:
             Join-Path $HOME '.local/share/powershell/Modules'
         }
 
-        Get-ChildItem -Directory Modules -OutVariable Modules
+        Get-ChildItem -Directory output -OutVariable Modules
         | Move-Item -Destination { Join-Path $ModuleDestination $_.Name } -Force
 
         Write-Host "Installing $($Modules -join ', ') to $ModuleDestination"
@@ -97,30 +103,28 @@ jobs:
         Write-Host "PSModulePath:"
         $Env:PSModulePath -split ([IO.Path]::PathSeparator) | Out-Host
 
+        # Avoid installing ModuleBuilder with ModuleFast, so there's only one copy
         @(Get-Content build.requires.psd1)
         | Where { $_ -notmatch "ModuleBuilder"}
         | Set-Content build.requires.psd1
     - name: ⚡ Install Required Modules
       uses: JustinGrote/ModuleFast-action@v0.0.1
-    - name: Invoke Pester Tests
-      id: pester
-      uses: zyborg/pester-tests-report@v1
-      with:
-        # include_paths: tests
-        # exclude_paths: tests/powershell1,tests/powershell2
-        # exclude_tags: skip_ci
-        report_name: ${{ matrix.os }}_validation
-        report_title: My Module Tests
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        tests_fail_step: true
-        skip_check_run: true # Our test results are too large
-    - name: Summarize test results
+    - name: Invoke-Pester
       shell: pwsh
       run: | # PowerShell
-        Write-ActionInfo 'Total Tests Executed...:  ${{ steps.pester.outputs.total_count }}'
-        Write-ActionInfo 'Total Tests Passed.....:  ${{ steps.pester.outputs.passed_count }}'
-        if (${{ steps.pester.outputs.failed_count }} -gt 0) {
-          Set-ActionFailed 'Total Tests Failed.....:  ${{ steps.pester.outputs.failed_count }}'
-        } else {
-          Write-ActionInfo 'Total Tests Failed.....:  ${{ steps.pester.outputs.failed_count }}'
+        # For the cross-platform matrix we don't need to do coverage or anything complicated
+        $Result = Invoke-Pester . -PassThru
+        @(
+        "## Pester Tests for ${{ matrix.os }}"
+        ""
+        $Result.Duration.ToString()
+        "| Total | Passed | Failed |"
+        "|------:|-------:|-------:|"
+        "| $($Result.TotalCount) | $($Result.PassedCount) | $($Result.FailedCount) |"
+        ""
+        "| Duration | Total | Passed | Failed | Skipped | Name |"
+        "|---------:|------:|-------:|-------:|--------:|:-----|"
+        @($Result.Containers).ForEach{
+          "| $($_.Duration) | $($_.TotalCount) | $($_.PassedCount) | $($_.FailedCount) | $($_.SkippedCount) | $($_.Name) |"
         }
+        ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY

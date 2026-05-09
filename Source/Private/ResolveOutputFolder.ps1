@@ -29,7 +29,7 @@ function ResolveOutputFolder {
         # Controls whether or not there is a build or cleanup performed
         [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
         [ValidateSet("Clean", "Build", "CleanBuild")]
-        [string]$Target = "CleanBuild"
+        [string]$Target
     )
     process {
         Write-Verbose "Resolve OutputDirectory path: $OutputDirectory"

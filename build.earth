@@ -1,0 +1,67 @@
+VERSION 0.8
+IMPORT github.com/poshcode/tasks:feature/ld AS tasks
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+WORKDIR /earth
+
+# These are my common paths, used in my shared /Tasks repo
+ARG --global IB_OUTPUT_ROOT=/output
+ARG --global IB_RESULTS_ROOT=/results
+ARG --global IB_TEMP_ROOT=/temp
+ARG --global IB_TASK_ROOT=/tasks
+# These are Build args, used by powershell/base in my shared /Tasks repo
+ARG --global IB_MODULE_NAME=ModuleBuilder
+ARG --global IB_CONFIGURATION=Release
+
+# initialize installs build dependencies and packages
+initialize:
+    # Dotnet tools and scripts installed by PSGet
+    ENV PATH=$HOME/.dotnet/tools:$HOME/.local/share/powershell/Scripts:$PATH
+    RUN mkdir $IB_TASK_ROOT $IB_OUTPUT_ROOT $IB_RESULTS_ROOT $IB_TEMP_ROOT \
+        && git config --global user.email "Jaykul@HuddledMasses.org" \
+        && git config --global user.name "Earth Build"
+    # I'm using Invoke-Build tasks from this other repo which rarely changes
+    COPY tasks+tasks/* $IB_TASK_ROOT
+    # Dealing with dependencies first allows them to be cached
+    COPY build.build.ps1 .
+    COPY build.requires.psd1 .
+    COPY --if-exists dotnet-tools.json .
+    COPY --if-exists .config/dotnet-tools.json .
+    # COPY --if-exists **/*.csproj .
+    RUN -- pwsh -File "${IB_TASK_ROOT}/scripts/Invoke-Build.ps1" Initialize
+
+# version calculates the version
+version:
+    FROM +initialize
+    # Copy .git because we use GitVersion in the build to calculate the version
+    COPY .git .
+    COPY GitVersion.yml .
+    RUN -- pwsh -File "${IB_TASK_ROOT}/scripts/Invoke-Build.ps1" Get-Version
+
+# build produces the main output but does not package or test it
+build:
+    # These are defined to make them available as information for the build scripts
+    ARG EARTHLY_GIT_BRANCH
+    FROM +version
+    # make sure you have output folders (like bin, obj, Modules) in .earthlyignore
+    COPY . .
+    RUN -- pwsh -File "${IB_TASK_ROOT}/scripts/Invoke-Build.ps1" Build
+
+    # SAVE ARTIFACT [--keep-ts] [--keep-own] [--if-exists] [--force] <src> [<artifact-dest-path>] [AS LOCAL <local-path>]
+    SAVE ARTIFACT $IB_OUTPUT_ROOT/$IB_MODULE_NAME AS LOCAL ./output/$IB_MODULE_NAME
+
+# test runs the tests and probably fails if the tests fail
+test:
+    ARG EARTHLY_GIT_BRANCH
+    BUILD +build
+    FROM +build
+    RUN -- pwsh -File "${IB_TASK_ROOT}/scripts/Invoke-Build.ps1" Test
+    SAVE ARTIFACT $IB_RESULTS_ROOT AS LOCAL ./output$IB_RESULTS_ROOT
+
+# publish runs publish and push tasks if the tests pass and --push was specified.
+# It needs the API keys to be passed in as secrets
+publish:
+    # If we only reference with FROM (or COPY) the outputs will not be produced
+    BUILD +test
+    FROM +build
+    RUN --push --secret NUGET_API_KEY --secret PSGALLERY_API_KEY -- \
+        pwsh -File "${IB_TASK_ROOT}/scripts/Invoke-Build.ps1" Publish, Push -Verbose

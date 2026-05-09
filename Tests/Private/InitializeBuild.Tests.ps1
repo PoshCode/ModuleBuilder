@@ -75,4 +75,106 @@ Describe "InitializeBuild" {
             $Result.Result.VersionedOutputDirectory | Should -Be $false
         }
     }
+
+    Context "Semver 2.0 to Semver 1.0" {
+        BeforeAll {
+            # Note that "Path" is an alias for "SourcePath"
+            New-Item "TestDrive:\build.psd1" -Type File -Force -Value '@{
+                Path = ".\Source\MyModule.psd1"
+                SourceDirectories = @("Classes", "Private", "Public")
+            }'
+
+            New-Item "TestDrive:\Source\" -Type Directory
+
+            New-ModuleManifest "TestDrive:\Source\MyModule.psd1" -RootModule "MyModule.psm1" -Author "Test Manager" -ModuleVersion "1.0.0"
+
+            $Result = @{}
+        }
+
+        It "Handles Semver 2.0 prerelease values" {
+            Push-Location TestDrive:\
+            $Result.Result = InModuleScope -ModuleName ModuleBuilder {
+                function Test-Build {
+                    [CmdletBinding()]
+                    param(
+                        [Alias("ModuleManifest", "Path")]
+                        $SourcePath = "./Source",
+                        $SourceDirectories = @("Enum", "Classes", "Private", "Public"),
+                        $OutputDirectory = "./Output",
+                        $VersionedOutputDirectory = $true,
+                        $UnversionedOutputDirectory = $false,
+                        # ^ those are required for InitializeBuild to not throw
+                        # v these are what we're testing
+                        [string]$SemVer = "1.0.0-alpha.1+build.12.sha.abcdef",
+                        [version]$Version = "1.0.0",
+                        [string]$Prerelease = "alpha.1",
+                        [string]$BuildMetadata = "build.12.sha.abcdef",
+                        [int]$ZeroPadLegacy = 4
+                    )
+                    try {
+                        Write-Warning $($MyInvocation.MyCommand | Out-String)
+                        InitializeBuild -SourcePath $SourcePath
+                    } catch {
+                        $_
+                    }
+                }
+
+                Test-Build 'TestDrive:\'
+            }
+            Pop-Location
+
+            $Result.Result | Should -Not -BeOfType [System.Management.Automation.ErrorRecord]
+        }
+
+        It "Converts the dots to _ in the Prerelease " {
+            $Result.Result.Prerelease | Should -Match "alpha_"
+        }
+
+        It "ZeroPads the prerelease numbers to make them sort correctly" {
+            $Result.Result.Prerelease | Should -Be "alpha_0001"
+        }
+
+        It "Handles multiple numeric sections" {
+            Push-Location TestDrive:\
+            $Result.Result = InModuleScope -ModuleName ModuleBuilder {
+                function Test-Build {
+                    [CmdletBinding()]
+                    param(
+                        [Alias("ModuleManifest", "Path")]
+                        $SourcePath = "./Source",
+                        $SourceDirectories = @("Enum", "Classes", "Private", "Public"),
+                        $OutputDirectory = "./Output",
+                        $VersionedOutputDirectory = $true,
+                        $UnversionedOutputDirectory = $false,
+                        # ^ those are required for InitializeBuild to not throw
+                        # v these are what we're testing
+                        [string]$SemVer = "1.0.0-alpha.1+build.12.sha.abcdef",
+                        [version]$Version = "1.0.0",
+                        [string]$Prerelease = "alpha.1.2",
+                        [string]$BuildMetadata = "build.12.sha.abcdef",
+                        [int]$ZeroPadLegacy = 4
+                    )
+                    try {
+                        Write-Warning $($MyInvocation.MyCommand | Out-String)
+                        InitializeBuild -SourcePath $SourcePath
+                    } catch {
+                        $_
+                    }
+                }
+
+                Test-Build 'TestDrive:\'
+            }
+            Pop-Location
+
+            $Result.Result | Should -Not -BeOfType [System.Management.Automation.ErrorRecord]
+        }
+
+        It "Converts the dots to _ in the Prerelease " {
+            $Result.Result.Prerelease | Should -Match "alpha_"
+        }
+
+        It "ZeroPads the prerelease numbers to make them sort correctly" {
+            $Result.Result.Prerelease | Should -Be "alpha_0001_0002"
+        }
+    }
 }

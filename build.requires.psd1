@@ -8,4 +8,5 @@
     PSScriptAnalyzer = ":[1.21.0, 2.0)"
     InvokeBuild      = ":[5.10.4, 6.0)"
     GitHubActions    = ":[1.1.0,  2.0)"
+    ConvertToSARIF   = ":[1.0.0,  2.0)"
 }

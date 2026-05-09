@@ -1,10 +1,6 @@
 #requires -Module ModuleBuilder
 Describe "ResolveOutputFolder" {
-    BeforeAll {
-        . $PSScriptRoot\..\Convert-FolderSeparator.ps1
-        $CommandInTest = InModuleScope ModuleBuilder { Get-Command ResolveOutputFolder }
-        filter ToTestDrive { "$_".Replace($TestDrive, "TestDrive:") }
-
+    BeforeDiscovery {
         $TestCases = [Hashtable[]]@(
             @{  # Be like Jaykul
                 Source = "ModuleName/Source"
@@ -56,9 +52,19 @@ Describe "ResolveOutputFolder" {
             }
         )
     }
+    BeforeAll {
+        . $PSScriptRoot\..\Convert-FolderSeparator.ps1
+        $CommandInTest = InModuleScope ModuleBuilder { Get-Command ResolveOutputFolder }
+        filter ToTestDrive {
+            "$_".Replace($TestDrive, "TestDrive:")
+        }
+    }
     Context "Build ModuleName" {
         It "From '<Source>' to '<Output>' creates '<Result>'" -TestCases $TestCases {
             param($Source, $Output, $Result)
+            if (!$Source -or !$Output -or !$Result) {
+                throw "Test Scope is Broken"
+            }
 
             $Parameters = @{
                 Source = Convert-FolderSeparator "$TestDrive/$Source"
