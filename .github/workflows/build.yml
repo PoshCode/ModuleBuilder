@@ -33,11 +33,11 @@ jobs:
 
     - name: earth +push
       if: github.ref == 'refs/heads/main'
-      run: earth --push --secret NUGET_API_KEY --secret PSGALLERY_API_KEY --strict +all
+      run: earth --push --secret NUGET_API_KEY --secret IB_PS_PUBLISH_KEY --strict +all
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        IB_PS_PUBLISH_KEY: ${{ secrets.PSGALLERY_API_KEY }}
 
     - name: Upload Built Modules
       uses: actions/upload-artifact@v7

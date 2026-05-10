@@ -3,6 +3,9 @@ IMPORT github.com/poshcode/tasks:feature/ld AS tasks
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 WORKDIR /earth
 
+# My build scripts use this to detect they're running in Earthly
+ARG --global EARTHLY_VERSION
+ARG --global EARTHLY_PUSH
 # These are my common paths, used in my shared /Tasks repo
 ARG --global IB_OUTPUT_ROOT=/output
 ARG --global IB_RESULTS_ROOT=/results
@@ -59,9 +62,10 @@ test:
 
 # publish runs publish and push tasks if the tests pass and --push was specified.
 # It needs the API keys to be passed in as secrets
-publish:
+all:
+    ARG EARTHLY_GIT_BRANCH
     # If we only reference with FROM (or COPY) the outputs will not be produced
     BUILD +test
     FROM +build
-    RUN --push --secret NUGET_API_KEY --secret PSGALLERY_API_KEY -- \
-        pwsh -File "${IB_TASK_ROOT}/scripts/Invoke-Build.ps1" Publish, Push -Verbose
+    RUN --push --secret IB_PS_PUBLISH_KEY \
+        -- pwsh -Command "${IB_TASK_ROOT}/scripts/Invoke-Build.ps1" "Publish,Push" -Verbose

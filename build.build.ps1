@@ -15,6 +15,7 @@ param(
     )]
     $Extends
 )
+Write-Information "$($PSStyle.Foreground.BrightMagenta)build.build.ps1$($PSStyle.Reset)"
 
 ## Self-contained build script - can be invoked directly or via Invoke-Build
 if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
@@ -26,6 +27,8 @@ if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
     }
     exit 0
 }
+
+Write-Information "$($PSStyle.Foreground.BrightMagenta)Define Tasks$($PSStyle.Reset)"
 
 # Define your preferred default build for local dev:
 Add-BuildTask . Initialize, Build, Test
