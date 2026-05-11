@@ -19,13 +19,13 @@
             Tags           = 'Authoring','Build','Development','BestPractices'
 
             # A URL to the license for this module.
-            LicenseUri     = 'https://github.com/PoshCode/ModuleBuilder/blob/master/LICENSE'
+            LicenseUri     = 'https://github.com/PoshCode/ModuleBuilder/blob/main/LICENSE'
 
             # A URL to the main website for this project.
             ProjectUri     = 'https://github.com/PoshCode/ModuleBuilder'
 
             # A URL to an icon representing this module.
-            IconUri        = 'https://github.com/PoshCode/ModuleBuilder/blob/resources/ModuleBuilder.png?raw=true'
+            IconUri        = 'https://github.com/PoshCode/ModuleBuilder/blob/main/resources/ModuleBuilder.png?raw=true'
         } # End of PSData
     } # End of PrivateData
 

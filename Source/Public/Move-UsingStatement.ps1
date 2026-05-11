@@ -3,7 +3,7 @@ using namespace System.Management.Automation.Language
 function Move-UsingStatement {
     <#
         .SYNOPSIS
-            A Script Generator that commetnts out using statements and copies them to the top of the file
+            A Script Generator that comments out using statements and copies them to the top of the file
         .DESCRIPTION
             Move-UsingStatement supports having using statements repeated in multiple files that are merged by ModuleBuilder.
             When all the files are merged together, the using statements from individual files
