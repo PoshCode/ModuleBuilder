@@ -4,7 +4,7 @@ Describe "CompressToBase64" {
     Context "It compresses and encodes a file for embedding into a script" {
         BeforeAll {
             $Base64 = InModuleScope ModuleBuilder {
-                CompressToBase64 $PSCommandPath
+                CompressToBase64 (Join-Path $PSScriptRoot CompressToBase64.Tests.ps1)
             }
         }
 
@@ -22,14 +22,14 @@ Describe "CompressToBase64" {
             $OutputStream.Seek(0, "Begin")
             $Source = [System.IO.StreamReader]::new($OutputStream, $true).ReadToEnd()
 
-            $Source | Should -Be (Get-Content $PSCommandPath -Raw)
+            $Source | Should -Be (Get-Content (Join-Path $PSScriptRoot CompressToBase64.Tests.ps1) -Raw)
         }
     }
 
     Context "It wraps the Base64 encoded content in the specified command" {
         BeforeAll {
             $Base64 = InModuleScope ModuleBuilder {
-                CompressToBase64 $PSCommandPath -ExpandScriptName ImportBase64Module
+                CompressToBase64 (Join-Path $PSScriptRoot CompressToBase64.Tests.ps1) -ExpandScriptName ImportBase64Module
             }
         }
 
@@ -49,7 +49,7 @@ Describe "CompressToBase64" {
     Context "It wraps the Base64 encoded content in the specified scriptblock" {
         BeforeAll {
             $Base64 = InModuleScope ModuleBuilder {
-                Get-ChildItem $PSCommandPath | CompressToBase64 -ExpandScript { ImportBase64Module }
+                Get-ChildItem (Join-Path $PSScriptRoot CompressToBase64.Tests.ps1) | CompressToBase64 -ExpandScript { ImportBase64Module }
             }
         }
 

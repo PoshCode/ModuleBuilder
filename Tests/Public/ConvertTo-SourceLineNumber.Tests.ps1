@@ -35,29 +35,26 @@ Describe "ConvertTo-SourceLineNumber" {
     }
 
     It "Should throw if the SourceFile doesn't exist" {
-        { Convert-LineNumber -SourceFile TestDrive:/NoSuchFile -SourceLineNumber 10 } |
-            Should -Throw "'TestDrive:/NoSuchFile' does not exist"
+        { ConvertTo-SourceLineNumber -SourceFile TestDrive:${\}NoSuchFile -SourceLineNumber 10 } |
+            Should -Throw "'TestDrive:${\}NoSuchFile' does not exist"
     }
 
     It 'Should work with an error PositionMessage' {
         $line = Select-String -Path $Convert_LineNumber_ModulePath 'function Set-Source {' | ForEach-Object LineNumber
 
-        $SourceLocation = "At ${Convert_LineNumber_ModulePath}:$line char:17" | Convert-LineNumber
-        # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
+        $SourceLocation = "At ${Convert_LineNumber_ModulePath}:$line char:17" | ConvertTo-SourceLineNumber
         $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Set-Source.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 1
     }
 
     It 'Should work with ScriptStackTrace messages' {
 
-        $SourceFile = Join-Path $Convert_LineNumber_ModuleSource Public/Set-Source.ps1 | Convert-Path
+        $SourceFile = Join-Path $Convert_LineNumber_ModuleSource (Join-Path Public Set-Source.ps1) | Convert-Path
 
-        $outputLine = Select-String -Path $Convert_LineNumber_ModulePath "sto͞o′pĭd" | % LineNumber
-        $sourceLine = Select-String -Path $SourceFile "sto͞o′pĭd" | % LineNumber
+        $outputLine = Select-String -Path $Convert_LineNumber_ModulePath "sto͞o′pĭd" | ForEach-Object LineNumber
+        $sourceLine = Select-String -Path $SourceFile "sto͞o′pĭd" | ForEach-Object LineNumber
 
-        $SourceLocation = "At Set-Source, ${Convert_LineNumber_ModulePath}: line $outputLine" | Convert-LineNumber
-
-        # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
+        $SourceLocation = "At Set-Source, ${Convert_LineNumber_ModulePath}: line $outputLine" | ConvertTo-SourceLineNumber
         $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Set-Source.ps1"
         $SourceLocation.SourceLineNumber | Should -Be $sourceLine
     }
