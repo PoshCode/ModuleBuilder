@@ -194,7 +194,7 @@ function Add-Parameter {
         }
     }
     process {
-        Write-Debug "Add-Parameter $($InputObject.Extent.File -ne "scriptblock" ? $InputObject.Extent.File : ( "L:" + $InputObject.Extent.StartLineNumber + ".." + $InputObject.Extent.EndLineNumber + " C:" + $InputObject.Extent.StartColumnNumber + ".." + $InputObject.Extent.EndColumnNumber)) $FunctionName $Boilerplate"
+        Write-Debug "Add-Parameter $(if ($InputObject.Extent.File -ne "scriptblock") { $InputObject.Extent.File } else { "L:" + $InputObject.Extent.StartLineNumber + ".." + $InputObject.Extent.EndLineNumber + " C:" + $InputObject.Extent.StartColumnNumber + ".." + $InputObject.Extent.EndColumnNumber }) $FunctionName $Boilerplate"
 
         $Generator = [ParameterGenerator]@{
             FunctionFilter  = { $Func = $_; $FunctionName.ForEach({ $Func.Name -like $_ }) -contains $true }.GetNewClosure()
