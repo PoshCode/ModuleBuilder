@@ -114,9 +114,11 @@ function Invoke-ScriptGenerator {
         }
 
         # Find that generator...
-        $GeneratorCmd = Get-Command -Name ${Generator} -ParameterType Ast -ErrorAction Ignore <# -CommandType Function #>
-        | Where-Object { $_.OutputType.Name -eq "TextReplacement" -or ($_.CommandType -eq "Alias" -and $_.Definition -like "PesterMock*" ) }
-        | Select-Object -First 1
+        $GeneratorCmd = Get-Command -Name ${Generator} -ParameterType Ast -ErrorAction Ignore <# -CommandType Function #> |
+            Where-Object {
+                $_.OutputType.Name -eq "TextReplacement" -or ($_.CommandType -eq "Alias" -and $_.Definition -like "PesterMock*" )
+            } |
+            Select-Object -First 1
 
         if (-not $GeneratorCmd) {
             Write-Error "Generator missconfiguration. Unable to find Generator = '$Generator'"

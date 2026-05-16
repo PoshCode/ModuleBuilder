@@ -70,6 +70,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ windows-latest, ubuntu-latest, macos-latest ]
+        shell: [ pwsh ]
+        include:
+        - os: windows-latest
+          shell: powershell
     steps:
     - name: Download build.requires.psd1
       uses: actions/download-artifact@v8
@@ -79,39 +83,53 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         name: ModuleBuilder
-        path: output/ModuleBuilder # /home/runner/work/ModuleBuilder/ModuleBuilder/output/ModuleBuilder
+        path: Modules/ModuleBuilder # /home/runner/work/ModuleBuilder/ModuleBuilder/output/ModuleBuilder
     - name: Download Pester Tests
       uses: actions/download-artifact@v8
       with:
         name: PesterTests
         path: PesterTests
-    - name: Install Output Modules
+    # Avoid installing ModuleBuilder with ModuleFast, so there's only one copy
+    - name: Remove ModuleBuilder from build.requires
       shell: pwsh
       run: | # PowerShell
-        # https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-powershell#powershell-module-locations
-        $ModuleDestination = if ($IsWindows) {
-            Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell/Modules'
-        } else {
-            Join-Path $HOME '.local/share/powershell/Modules'
-        }
-
-        Get-ChildItem -Directory output -OutVariable Modules
-        | Move-Item -Destination { Join-Path $ModuleDestination $_.Name } -Force
-
-        Write-Host "Installing $($Modules -join ', ') to $ModuleDestination"
-        Get-ChildItem -Directory $ModuleDestination
-        Write-Host "PSModulePath:"
-        $Env:PSModulePath -split ([IO.Path]::PathSeparator) | Out-Host
-
-        # Avoid installing ModuleBuilder with ModuleFast, so there's only one copy
-        @(Get-Content build.requires.psd1)
-        | Where { $_ -notmatch "ModuleBuilder"}
-        | Set-Content build.requires.psd1
+        @(Get-Content build.requires.psd1).Where({ $_ -notmatch "ModuleBuilder"}) | Set-Content build.requires.psd1
     - name: ⚡ Install Required Modules
       uses: JustinGrote/ModuleFast-action@v0.0.1
+      env:
+        MODULEFAST_DESTINATION: ${{ github.workspace }}/Modules
     - name: Invoke-Pester
-      shell: pwsh
+      if: matrix.shell == 'powershell'
+      shell: powershell
+      env:
+        MODULEFAST_DESTINATION: ${{ github.workspace }}/Modules
       run: | # PowerShell
+        $Env:PSModulePath = $Env:MODULEFAST_DESTINATION + [IO.Path]::PathSeparator + $Env:PSModulePath
+
+        # For the cross-platform matrix we don't need to do coverage or anything complicated
+        $Result = Invoke-Pester . -PassThru
+        @(
+        "## Pester Tests for ${{ matrix.os }}"
+        ""
+        $Result.Duration.ToString()
+        "| Total | Passed | Failed |"
+        "|------:|-------:|-------:|"
+        "| $($Result.TotalCount) | $($Result.PassedCount) | $($Result.FailedCount) |"
+        ""
+        "| Duration | Total | Passed | Failed | Skipped | Name |"
+        "|---------:|------:|-------:|-------:|--------:|:-----|"
+        @($Result.Containers).ForEach{
+          "| $($_.Duration) | $($_.TotalCount) | $($_.PassedCount) | $($_.FailedCount) | $($_.SkippedCount) | $($_.Name) |"
+        }
+        ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY
+    - name: Invoke-Pester
+      if: matrix.shell == 'pwsh'
+      shell: pwsh
+      env:
+        MODULEFAST_DESTINATION: ${{ github.workspace }}/Modules
+      run: | # PowerShell
+        $Env:PSModulePath = $Env:MODULEFAST_DESTINATION + [IO.Path]::PathSeparator + $Env:PSModulePath
+
         # For the cross-platform matrix we don't need to do coverage or anything complicated
         $Result = Invoke-Pester . -PassThru
         @(
