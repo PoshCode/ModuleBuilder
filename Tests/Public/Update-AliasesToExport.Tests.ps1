@@ -1,7 +1,7 @@
 #requires -Module ModuleBuilder
 Describe "Update-AliasesToExport" {
     BeforeAll {
-        $ManifestPath = "$TestDrive\TestModule.psd1"
+        $ManifestPath = Join-Path $TestDrive "TestModule.psd1"
     }
 
     Context "Parsing [Alias()] attributes on functions" {
@@ -234,25 +234,22 @@ Describe "Update-AliasesToExport" {
         It "Writes a warning and does not throw" {
             # Minimal manifest without AliasesToExport
             New-ModuleManifest -Path $ManifestPath
-            (Get-Content $ManifestPath).ForEach{
-                if ($_ -match 'AliasesToExport') {
-                    '# ' + $_
-                } else {
-                    $_
-                }
-            } | Set-Content $ManifestPath
+            (Get-Content $ManifestPath) -replace "^(.*AliasesToExport.*)$", '# $1' | Set-Content $ManifestPath
 
-            try {
-                Invoke-ScriptGenerator -Code {
-                    function Test-Alias {
-                        [Alias("TA")] param()
-                    }
-                } -Generator Update-AliasesToExport -Parameters @{ ModuleManifest = $ManifestPath } -WarningAction Stop
-            } catch {
-                $FAILURE = $_
-            }
-            $FAILURE | Should -Match 'the preference variable "WarningPreference" or common parameter is set to Stop'
-            $FAILURE | Should -Match "Can't update AliasesToExport"
+            Mock Write-Warning -ModuleName ModuleBuilder
+            Mock Update-Metadata -ModuleName ModuleBuilder
+
+            Invoke-ScriptGenerator -Code {
+                function Test-Alias {
+                    [Alias("TA")] param()
+                }
+            } -Generator Update-AliasesToExport -Parameters @{ ModuleManifest = $ManifestPath }
+
+            Assert-MockCalled Write-Warning -ModuleName ModuleBuilder -Exactly 1 -Scope It
+            # It does not even try to update the metadata
+            Assert-MockCalled Update-Metadata -ModuleName ModuleBuilder -Exactly 0 -Scope It
+            # It does not, in fact, update the AliasesToExport
+            Get-Metadata -Path $ManifestPath -PropertyName AliasesToExport -ErrorAction Ignore | Should -BeNullOrEmpty
         }
     }
 

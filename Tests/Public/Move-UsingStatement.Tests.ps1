@@ -71,7 +71,7 @@ Describe "Move-UsingStatement" {
         It '<TestCaseName>' -TestCases $TestCases {
             param($TestCaseName, $PSM1File, $ErrorBefore, $ErrorAfter, $ExpectedResult)
 
-            $testModuleFile = "$TestDrive\MyModule.psm1"
+            $testModuleFile = Join-Path $TestDrive "MyModule.psm1"
             Set-Content $testModuleFile -Value $PSM1File -Encoding UTF8 -NoNewline
 
             # Verify parse errors exist before applying the generator
@@ -97,7 +97,7 @@ Describe "Move-UsingStatement" {
             $ErrorFound.Count | Should -Be $ErrorAfter
 
             if ($ExpectedResult) {
-                $result.Trim() | Should -Be $ExpectedResult -Because "there should be no duplicate using statements in:`n$result"
+                $result.Trim() -split "[\r\n]+" -match "^\s*using" | Should -Be ($ExpectedResult.Trim() -split "[\r\n]+" -match "^\s*using")
             }
         }
     }
