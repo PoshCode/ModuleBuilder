@@ -20,7 +20,14 @@ function Update-AliasesToExport {
 
         # The path to the module manifest that should contain the aliases
         [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
-        [string]$ModuleManifest
+        [string]$ModuleManifest,
+
+        # Controls what to set AliasesToExport to when no aliases are found by static analysis.
+        # DoNotSet: (default) leave the manifest unchanged.
+        # Wildcard: set AliasesToExport = '*'.
+        # EmptyArray: set AliasesToExport = @().
+        [ValidateSet("DoNotSet", "Wildcard", "EmptyArray")]
+        [string]$WhenNoAliases = "DoNotSet"
     )
     begin {
         # This is used only to parse the parameters to New|Set|Remove-Alias
@@ -141,9 +148,29 @@ function Update-AliasesToExport {
         }
     }
     process {
+        $null = Get-Metadata -Path $ModuleManifest -PropertyName AliasesToExport -ErrorAction SilentlyContinue -ErrorVariable Failed
+        if ($Failed) {
+            Write-Warning "Can't update AliasesToExport in '$ModuleManifest' unless it's already set."
+            return
+        }
+
         $Visitor = [AliasExportGenerator]::new()
         $ScriptModule.Visit($Visitor)
-        Update-Metadata -Path $ModuleManifest -PropertyName AliasesToExport -Value $Visitor.Aliases -WhatIf:$WhatIfPreference -Confirm:($ConfirmPreference -eq 'Low')
+        if ($Visitor.Aliases.Count -gt 0) {
+            $newValue = $Visitor.Aliases
+        } else {
+            switch ($WhenNoAliases) {
+                "DoNotSet" {
+                    return
+                }
+                "Wildcard" {
+                    $newValue = '*'
+                }
+                "EmptyArray" {
+                    $newValue = @()
+                }
+            }
+        }
+        Update-Metadata -Path $ModuleManifest -PropertyName AliasesToExport -Value $newValue -WhatIf:$WhatIfPreference -Confirm:($ConfirmPreference -eq 'Low')
     }
 }
-
