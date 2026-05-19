@@ -79,11 +79,6 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         name: build.requires.psd1
-    - name: Download Build Output
-      uses: actions/download-artifact@v8
-      with:
-        name: ModuleBuilder
-        path: Modules/ModuleBuilder # /home/runner/work/ModuleBuilder/ModuleBuilder/output/ModuleBuilder
     - name: Download Pester Tests
       uses: actions/download-artifact@v8
       with:
@@ -95,9 +90,15 @@ jobs:
       run: | # PowerShell
         @(Get-Content build.requires.psd1).Where({ $_ -notmatch "ModuleBuilder"}) | Set-Content build.requires.psd1
     - name: ⚡ Install Required Modules
-      uses: JustinGrote/ModuleFast-action@v0.0.1
+      uses: JustinGrote/ModuleFast-action@v1.0.1
       env:
         MODULEFAST_DESTINATION: ${{ github.workspace }}/Modules
+    # Copy over the build output AFTER Install-ModuleFast, because it's caching my build output :(
+    - name: Download Build Output
+      uses: actions/download-artifact@v8
+      with:
+        name: ModuleBuilder
+        path: Modules/ModuleBuilder # /home/runner/work/ModuleBuilder/ModuleBuilder/output/ModuleBuilder
     - name: Invoke-Pester
       if: matrix.shell == 'powershell'
       shell: powershell
