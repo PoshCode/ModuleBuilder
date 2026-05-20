@@ -306,7 +306,7 @@ function Build-Module {
                 Join-Path -Path $ModuleInfo.ModuleBase -ChildPath $_ | Convert-Path -ErrorAction SilentlyContinue
             }
 
-            $ModuleInfo.Generators | Invoke-ScriptGenerator -Path $RootModule -Overwrite
+            $ModuleInfo.Generators | Invoke-ScriptGenerator -Path $RootModule -Overwrite -Encoding $ModuleInfo.Encoding
 
 
             # This is mostly for testing ...

@@ -68,15 +68,21 @@ function Invoke-ScriptGenerator {
 
         # If set, will overwrite the Source with the generated content.
         # Use with care, as this will modify the source file!
-        [switch]$Overwrite
+        [switch]$Overwrite,
+
+        # The encoding defaults to UTF8 (or UTF8Bom on Core)
+        [Parameter()]
+        [string]$Encoding = $(if($IsCoreCLR) { "UTF8Bom" } else { "UTF8" })
     )
     begin {
         $AstParam = @{} + $PSBoundParameters
         $null = $AstParam.Remove("Overwrite")
         $null = $AstParam.Remove("Generator")
         $null = $AstParam.Remove("Parameters")
+        $null = $AstParam.Remove("Encoding")
         $ParseResults = ConvertToAst @AstParam
         [StringBuilder]$Builder = $ParseResults.Ast.Extent.Text
+        $SetContentCmd = $ExecutionContext.InvokeCommand.GetCommand('Microsoft.PowerShell.Management\Set-Content', [System.Management.Automation.CommandTypes]::Cmdlet)
     }
     process {
         if (-not $PSBoundParameters.ContainsKey("Generator") -and $Parameters.ContainsKey("Generator")) {
@@ -115,10 +121,10 @@ function Invoke-ScriptGenerator {
 
         # Find that generator...
         $GeneratorCmd = Get-Command -Name ${Generator} -ParameterType Ast -ErrorAction Ignore <# -CommandType Function #> |
-            Where-Object {
-                $_.OutputType.Name -eq "TextReplacement" -or ($_.CommandType -eq "Alias" -and $_.Definition -like "PesterMock*" )
-            } |
-            Select-Object -First 1
+        Where-Object {
+            $_.OutputType.Name -eq "TextReplacement" -or ($_.CommandType -eq "Alias" -and $_.Definition -like "PesterMock*" )
+        } |
+        Select-Object -First 1
 
         if (-not $GeneratorCmd) {
             Write-Error "Generator missconfiguration. Unable to find Generator = '$Generator'"
@@ -137,14 +143,14 @@ function Invoke-ScriptGenerator {
             $ParseResults = ConvertToAst -Code $Builder.ToString() -Path $ParseResults.Path
             # In case a Generator tries to use the actual files, update the content
             if ($Overwrite -and $ParseResults.Path -and $ParseResults.Path -ne "scriptblock") {
-                Set-Content $ParseResults.Path $Builder
+                & $SetContentCmd -Path $ParseResults.Path -Value $Builder -Encoding $Encoding
             }
         }
     }
     end {
         Write-Debug "Overwrite: $Overwrite and it's a file: $(([bool]$ParseResults.Path) -and $ParseResults.Path -ne "scriptblock") (Content is $($Builder.Length) long)"
         if ($Overwrite -and $ParseResults.Path -and $ParseResults.Path -ne "scriptblock") {
-            Set-Content $ParseResults.Path $Builder
+            & $SetContentCmd -Path $ParseResults.Path -Value $Builder -Encoding $Encoding
         } else {
             $Builder.ToString()
         }

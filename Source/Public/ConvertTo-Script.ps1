@@ -53,7 +53,12 @@ function ConvertTo-Script {
         # This is used to find the module manifest,
         # But the the script will be saved in the same location
         [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
-        [string]$Path
+        [string]$Path,
+
+        # File encoding for output RootModule (defaults to UTF8)
+        # Converted to System.Text.Encoding for PowerShell 6 (and something else for PowerShell 5)
+        [ValidateSet("UTF8", "UTF8Bom", "UTF8NoBom", "UTF7", "ASCII", "Unicode", "UTF32")]
+        [string]$Encoding = $(if ($IsCoreCLR) { "UTF8Bom" } else { "UTF8" })
     )
     begin {
         Write-Debug "    ENTER: ConvertTo-Script BEGIN $Path $FunctionName"
@@ -81,6 +86,8 @@ function ConvertTo-Script {
                 return [AstVisitAction]::Continue
             }
         }
+
+        $SetContentCmd = $ExecutionContext.InvokeCommand.GetCommand('Microsoft.PowerShell.Management\Set-Content', [System.Management.Automation.CommandTypes]::Cmdlet)
         Write-Debug "    EXIT: ConvertTo-Script BEGIN"
     }
     process {
@@ -131,7 +138,7 @@ function ConvertTo-Script {
                 Get-Item $Path
             ) | CompressToBase64 -ExpandScriptName ImportBase64Module
             "$FunctionName @PSBoundParameters"
-        ) | Set-Content "$FunctionName.ps1"
+        ) | & $SetContentCmd -Path "$FunctionName.ps1" -Encoding $Encoding
 
         Update-ScriptFileInfo "$FunctionName.ps1" -Version $Manifest.ModuleVersion -Author $Manifest.Author -CompanyName $Manifest.CompanyName -Copyright $Manifest.Copyright -Tags $Manifest.PrivateData.PSData.Tags -ProjectUri $Manifest.PrivateData.PSData.ProjectUri -LicenseUri $Manifest.PrivateData.PSData.LicenseUri -IconUri $Manifest.PrivateData.PSData.IconUri -ReleaseNotes $Manifest.PrivateData.PSData.ReleaseNotes
 
