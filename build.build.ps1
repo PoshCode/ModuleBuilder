@@ -19,7 +19,7 @@ Write-Information "$($PSStyle.Foreground.BrightMagenta)build.build.ps1$($PSStyle
 
 ## Self-contained build script - can be invoked directly or via Invoke-Build
 if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
-    . (Convert-Path ../../[tT]asks/scripts/Invoke-Build.ps1) -File $MyInvocation.MyCommand.Path @PSBoundParameters -Result Result
+    & (Convert-Path ../../[tT]asks/scripts/Invoke-Build.ps1) -File $MyInvocation.MyCommand.Path @PSBoundParameters -Result Result
 
     if ($Result.Error) {
         $Error[-1].ScriptStackTrace | Out-Host

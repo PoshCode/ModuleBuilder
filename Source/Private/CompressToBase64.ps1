@@ -36,12 +36,21 @@ function CompressToBase64 {
     process {
         foreach ($File in $Path | Convert-Path) {
             $Source = [System.IO.MemoryStream][System.IO.File]::ReadAllBytes($File)
-            $OutputStream = [System.IO.Compression.DeflateStream]::new(
-                [System.IO.MemoryStream]::new(),
-                [System.IO.Compression.CompressionMode]::Compress)
-            $Source.CopyTo($OutputStream)
-            $OutputStream.Flush()
-            $ByteArray = $OutputStream.BaseStream.ToArray()
+            # Write-Debug "Read $($Source.Length) bytes from $File"
+
+            $MemoryStream = [System.IO.MemoryStream]::new()
+            $DeflateStream = [System.IO.Compression.DeflateStream]::new(
+                $MemoryStream,
+                [System.IO.Compression.CompressionMode]::Compress,
+                $true)
+            $Source.CopyTo($DeflateStream)
+            # Framework 4.x (Windows PS) doesn't flush until we close the DeflateStream
+            $DeflateStream.Dispose()
+            $ByteArray = $MemoryStream.ToArray()
+            $MemoryStream.Dispose()
+            $Source.Dispose()
+            # Write-Debug "Compressed to $($ByteArray.Length) bytes"
+
             if (!$ExpandScript) {
                 [Convert]::ToBase64String($ByteArray)
             } else {

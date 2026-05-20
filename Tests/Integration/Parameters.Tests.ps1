@@ -11,15 +11,14 @@ Describe "Parameters" -Tag Integration {
         New-Item $PSScriptRoot/Result3/Parameters/3.0.0/DeleteMe.md -ItemType File -Force
 
         Write-Host "Module Under Test:"
-        Get-Command Build-Module
-        | Get-Module -Name { $_.Source }
-        | Get-Item
-        | Out-Host
+        Get-Command Build-Module |
+            Get-Module -Name { $_.Source } |
+            Get-Item |
+            Out-Host
     }
 
     It "Passthru is read from the build manifest" {
-        Build-Module (Convert-FolderSeparator "$PSScriptRoot/Parameters/build.psd1") -Verbose -OutVariable Output
-        | Out-Host
+        Build-Module (Convert-FolderSeparator "$PSScriptRoot/Parameters/build.psd1") -Verbose -OutVariable Output | Out-Host
 
         $Output | Should -Not -BeNullOrEmpty
         $Output.Path | Convert-FolderSeparator | Should -Be (Convert-FolderSeparator "$PSScriptRoot/Result3/Parameters/3.0.0/Parameters.psd1")

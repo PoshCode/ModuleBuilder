@@ -52,11 +52,11 @@ Describe "InitializeBuild" {
             $Result.Result.Name | Should -Be "MyModule"
             $Result.Result.SourceDirectories | Should -Be @("Classes", "Private", "Public")
 
-            (Convert-FolderSeparator $Result.Result.ModuleBase)
-            | Should -Be (Convert-FolderSeparator "TestDrive:\Source")
+            (Convert-FolderSeparator $Result.Result.ModuleBase) |
+                Should -Be (Convert-FolderSeparator "TestDrive:\Source")
 
-            (Convert-FolderSeparator $Result.Result.SourcePath)
-            | Should -Be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
+            (Convert-FolderSeparator $Result.Result.SourcePath) |
+                Should -Be (Convert-FolderSeparator "TestDrive:\Source\MyModule.psd1")
         }
 
         It "Returns default values from the Build Command" {

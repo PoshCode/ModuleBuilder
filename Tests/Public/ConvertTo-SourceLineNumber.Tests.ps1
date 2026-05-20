@@ -1,19 +1,22 @@
-Describe "ConvertTo-SourceLineNumber" {
+﻿Describe "ConvertTo-SourceLineNumber" {
+    BeforeDiscovery {
+        ${global:\} = [io.path]::DirectorySeparatorChar
+        $TestCases = @(
+            @{ outputLine = 40; sourceFile = ".${\}Private${\}TestUnExportedAliases.ps1"; sourceLine = 13 }
+            @{ outputLine = 48; sourceFile = ".${\}Public${\}Get-Source.ps1"; sourceLine = 5 }
+            @{ outputLine = 56; sourceFile = ".${\}Public${\}Set-Source.ps1"; sourceLine = 3 }
+        )
+    }
     # use the integration test code
     BeforeAll {
+        $DebugPreference = "Continue"
         Build-Module $PSScriptRoot/../Integration/Source1/build.psd1 -Passthru
+        $DebugPreference = "SilentlyContinue"
         Push-Location $PSScriptRoot -StackName ConvertTo-SourceLineNumber
 
         $global:Convert_LineNumber_ModulePath = Convert-Path "./../Integration/Result1/Source1/1.0.0/Source1.psm1"
         $global:Convert_LineNumber_ModuleSource = Convert-Path "./../Integration/Source1"
         $global:Convert_LineNumber_ModuleContent = Get-Content $global:Convert_LineNumber_ModulePath
-        ${global:\} = [io.path]::DirectorySeparatorChar
-
-        $global:TestCases = @(
-            @{ outputLine = 40; sourceFile = ".${\}Private${\}TestUnExportedAliases.ps1"; sourceLine = 13 }
-            @{ outputLine = 48; sourceFile = ".${\}Public${\}Get-Source.ps1"; sourceLine = 5 }
-            @{ outputLine = 56; sourceFile = ".${\}Public${\}Set-Source.ps1"; sourceLine = 3 }
-        )
     }
     AfterAll {
         Pop-Location -StackName ConvertTo-SourceLineNumber
@@ -28,36 +31,38 @@ Describe "ConvertTo-SourceLineNumber" {
 
         $line = (Get-Content (Join-Path $Convert_LineNumber_ModuleSource $SourceLocation.SourceFile))[$SourceLocation.SourceLineNumber - 1]
         try {
-            $Convert_LineNumber_ModuleContent[$outputLine -1] | Should -Be $line
+            $Convert_LineNumber_ModuleContent[$outputLine - 1] | Should -Be $line
         } catch {
             throw "Failed to match module line $outputLine to $($SourceLocation.SourceFile) line $($SourceLocation.SourceLineNumber).`nExpected $Line`nBut got  $($Convert_LineNumber_ModuleContent[$outputLine -1])"
         }
     }
 
     It "Should throw if the SourceFile doesn't exist" {
-        { Convert-LineNumber -SourceFile TestDrive:/NoSuchFile -SourceLineNumber 10 } |
-            Should -Throw "'TestDrive:/NoSuchFile' does not exist"
+        { ConvertTo-SourceLineNumber -SourceFile TestDrive:${\}NoSuchFile -SourceLineNumber 10 } |
+            Should -Throw "'TestDrive:${\}NoSuchFile' does not exist"
     }
 
     It 'Should work with an error PositionMessage' {
-        $line = Select-String -Path $Convert_LineNumber_ModulePath 'function Set-Source {' | ForEach-Object LineNumber
+        $line = (Select-String -Path $Convert_LineNumber_ModulePath 'function Set-Source {').LineNumber
 
-        $SourceLocation = "At ${Convert_LineNumber_ModulePath}:$line char:17" | Convert-LineNumber
-        # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
+        $SourceLocation = "At ${Convert_LineNumber_ModulePath}:$line char:17" | ConvertTo-SourceLineNumber
         $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Set-Source.ps1"
         $SourceLocation.SourceLineNumber | Should -Be 1
     }
 
     It 'Should work with ScriptStackTrace messages' {
 
-        $SourceFile = Join-Path $Convert_LineNumber_ModuleSource Public/Set-Source.ps1 | Convert-Path
+        $SourceFile = Join-Path $Convert_LineNumber_ModuleSource (Join-Path Public Set-Source.ps1) | Convert-Path
 
-        $outputLine = Select-String -Path $Convert_LineNumber_ModulePath "sto͞o′pĭd" | % LineNumber
-        $sourceLine = Select-String -Path $SourceFile "sto͞o′pĭd" | % LineNumber
+        $outputLine = (Select-String -Path $Convert_LineNumber_ModulePath "sto͞o′pĭd").LineNumber
+        $sourceLine = (Select-String -Path $SourceFile "sto͞o′pĭd").LineNumber
 
-        $SourceLocation = "At Set-Source, ${Convert_LineNumber_ModulePath}: line $outputLine" | Convert-LineNumber
+        Get-Content $Convert_LineNumber_ModulePath | Out-Host
 
-        # This test is assuming you built the code on Windows. Should Convert-LineNumber convert the path?
+        $sourceLine | Should -BeGreaterThan 0 -Because "the test string 'sto͞o′pĭd' is definitely found in '$SourceFile'"
+        $outputLine | Should -BeGreaterThan 0 -Because "the test string 'sto͞o′pĭd' should be found in the module '$Convert_LineNumber_ModulePath'"
+
+        $SourceLocation = "At Set-Source, ${Convert_LineNumber_ModulePath}: line $outputLine" | ConvertTo-SourceLineNumber
         $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Set-Source.ps1"
         $SourceLocation.SourceLineNumber | Should -Be $sourceLine
     }

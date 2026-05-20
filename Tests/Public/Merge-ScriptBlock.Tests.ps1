@@ -60,24 +60,24 @@ Describe "Merge-ScriptBlock" {
 
 
             $showDate | Should -Not -BeNullOrEmpty
-            $showDate.Body.EndBlock -split "`n"
-            | ForEach-Object { $_.Trim() }
-            | Select-Object -Skip 1
-            | Select-Object -First 3
-            | Should -Be @(
-                "`$ForegroundColor.ToVt() + `$BackgroundColor.ToVt(`$true) + ("
-                "Get-Date -Format `$Format"
-                ") + `"``e[0m`""
-            )
+            $showDate.Body.EndBlock -split "`n" |
+                ForEach-Object { $_.Trim() } |
+                Select-Object -Skip 1 |
+                Select-Object -First 3 |
+                Should -Be @(
+                    "`$ForegroundColor.ToVt() + `$BackgroundColor.ToVt(`$true) + ("
+                    "Get-Date -Format `$Format"
+                    ") + `"``e[0m`""
+                )
 
             $showUserName | Should -Not -BeNullOrEmpty
-            $showUserName.Body.EndBlock -split "`n"
-            | ForEach-Object { $_.Trim() }
-            | Select-Object -Skip 1
-            | Select-Object -First 3
-            | Should -Be @(
-                "`$ForegroundColor.ToVt() + `$BackgroundColor.ToVt(`$true) + ("
-                "[Environment]::UserName"
+            $showUserName.Body.EndBlock -split "`n" |
+                ForEach-Object { $_.Trim() } |
+                Select-Object -Skip 1 |
+                Select-Object -First 3 |
+                Should -Be @(
+                    "`$ForegroundColor.ToVt() + `$BackgroundColor.ToVt(`$true) + ("
+                    "[Environment]::UserName"
                 ") + `"``e[0m`""
             )
         }

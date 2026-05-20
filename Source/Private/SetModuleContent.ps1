@@ -1,7 +1,7 @@
 function SetModuleContent {
     <#
         .SYNOPSIS
-            A wrapper for Set-Content that handles arrays of file paths
+            A wrapper for Set-Content that copies lists of files
         .DESCRIPTION
             The implementation here is strongly dependent on Build-Module doing the right thing
             Build-Module can optionally pass a PREFIX or SUFFIX, but otherwise only passes files
@@ -15,7 +15,7 @@ function SetModuleContent {
     [CmdletBinding()]
     param(
         # Where to write the joined output
-        [Parameter(Position=0, Mandatory)]
+        [Parameter(Position = 0, Mandatory)]
         [string]$OutputPath,
 
         # Input files, the scripts that will be copied to the output path
@@ -28,12 +28,13 @@ function SetModuleContent {
         # The working directory (allows relative paths for other values)
         [string]$WorkingDirectory = $pwd,
 
-        # The encoding defaults to UTF8 (or UTF8NoBom on Core)
+        # The encoding defaults to UTF8 (or UTF8Bom on Core)
         [Parameter(DontShow)]
         [string]$Encoding = $(if($IsCoreCLR) { "UTF8Bom" } else { "UTF8" })
     )
     begin {
         Write-Debug "SetModuleContent WorkingDirectory $WorkingDirectory"
+        Write-Debug "Encoding $Encoding"
         Push-Location $WorkingDirectory -StackName SetModuleContent
         $ContentStarted = $false # There has been no content yet
 

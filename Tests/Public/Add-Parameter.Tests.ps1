@@ -65,12 +65,12 @@ Describe "Add-Parameter" {
 
 
             $showDate | Should -Not -BeNullOrEmpty
-            $showDate.Body.ParamBlock.Parameters.Name.VariablePath.UserPath
-            | Should -Be @('Format', 'ForegroundColor', 'BackgroundColor')
+            $showDate.Body.ParamBlock.Parameters.Name.VariablePath.UserPath |
+                Should -Be @('Format', 'ForegroundColor', 'BackgroundColor')
 
             $showUserName | Should -Not -BeNullOrEmpty
-            $showUserName.Body.ParamBlock.Parameters.Name.VariablePath.UserPath
-            | Should -Be @('ForegroundColor', 'BackgroundColor')
+            $showUserName.Body.ParamBlock.Parameters.Name.VariablePath.UserPath |
+                Should -Be @('ForegroundColor', 'BackgroundColor')
 
             # Get-Date Should not be modified, since it does not match the FunctionName filter
             $getDate = $Ast.Find({
@@ -79,8 +79,8 @@ Describe "Add-Parameter" {
                     $node.Name -eq 'Get-Date'
                 }, $true)
             $getDate | Should -Not -BeNullOrEmpty
-            $getDate.Body.ParamBlock.Parameters.Name.VariablePath.UserPath
-            | Should -Be @('Format')
+            $getDate.Body.ParamBlock.Parameters.Name.VariablePath.UserPath |
+                Should -Be @('Format')
         }
     }
 }
