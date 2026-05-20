@@ -9,7 +9,9 @@
     }
     # use the integration test code
     BeforeAll {
+        $DebugPreference = "Continue"
         Build-Module $PSScriptRoot/../Integration/Source1/build.psd1 -Passthru
+        $DebugPreference = "SilentlyContinue"
         Push-Location $PSScriptRoot -StackName ConvertTo-SourceLineNumber
 
         $global:Convert_LineNumber_ModulePath = Convert-Path "./../Integration/Result1/Source1/1.0.0/Source1.psm1"

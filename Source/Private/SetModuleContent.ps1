@@ -34,6 +34,7 @@ function SetModuleContent {
     )
     begin {
         Write-Debug "SetModuleContent WorkingDirectory $WorkingDirectory"
+        Write-Debug "Encoding $Encoding"
         Push-Location $WorkingDirectory -StackName SetModuleContent
         $ContentStarted = $false # There has been no content yet
 
