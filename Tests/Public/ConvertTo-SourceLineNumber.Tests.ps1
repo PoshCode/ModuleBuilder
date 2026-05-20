@@ -55,7 +55,7 @@
         $outputLine = (Select-String -Path $Convert_LineNumber_ModulePath "sto͞o′pĭd").LineNumber
         $sourceLine = (Select-String -Path $SourceFile "sto͞o′pĭd").LineNumber
 
-        Get-Content $SourceFile
+        Get-Content $Convert_LineNumber_ModulePath | Out-Host
 
         $sourceLine | Should -BeGreaterThan 0 -Because "the test string 'sto͞o′pĭd' is definitely found in '$SourceFile'"
         $outputLine | Should -BeGreaterThan 0 -Because "the test string 'sto͞o′pĭd' should be found in the module '$Convert_LineNumber_ModulePath'"
