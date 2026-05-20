@@ -1,4 +1,4 @@
-Describe "ConvertTo-SourceLineNumber" {
+﻿Describe "ConvertTo-SourceLineNumber" {
     BeforeDiscovery {
         ${global:\} = [io.path]::DirectorySeparatorChar
         $TestCases = @(
@@ -55,8 +55,10 @@ Describe "ConvertTo-SourceLineNumber" {
         $outputLine = (Select-String -Path $Convert_LineNumber_ModulePath "sto͞o′pĭd").LineNumber
         $sourceLine = (Select-String -Path $SourceFile "sto͞o′pĭd").LineNumber
 
-        $sourceLine | Should -BeGreaterThan 0 -Because "the test string 'sto͞o′pĭd' is definitely found in the source file"
-        $outputLine | Should -BeGreaterThan 0 -Because "the test string 'sto͞o′pĭd' should be found in the module"
+        Get-Content $SourceFile
+
+        $sourceLine | Should -BeGreaterThan 0 -Because "the test string 'sto͞o′pĭd' is definitely found in '$SourceFile'"
+        $outputLine | Should -BeGreaterThan 0 -Because "the test string 'sto͞o′pĭd' should be found in the module '$Convert_LineNumber_ModulePath'"
 
         $SourceLocation = "At Set-Source, ${Convert_LineNumber_ModulePath}: line $outputLine" | ConvertTo-SourceLineNumber
         $SourceLocation.SourceFile | Should -Be ".${\}Public${\}Set-Source.ps1"
