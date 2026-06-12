@@ -39,5 +39,5 @@ Add-BuildTask . Initialize, Build, Test
 Add-BuildTask Initialize $script:InitializeTasks
 Add-BuildTask Build $script:BuildTasks
 Add-BuildTask Test $script:TestTasks
-Add-BuildTask Publish $script:PublishTasks
+Add-BuildTask Pack $script:PackTasks
 Add-BuildTask Push $script:PushTasks
