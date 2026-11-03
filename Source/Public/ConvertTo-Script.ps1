@@ -87,6 +87,10 @@ function ConvertTo-Script {
             }
         }
 
+        # Windows PowerShell's Set-Content has no UTF8Bom encoding, but its UTF8 encoding writes a BOM
+        if (-not $IsCoreCLR -and $Encoding -eq "UTF8Bom") {
+            $Encoding = "UTF8"
+        }
         $SetContentCmd = $ExecutionContext.InvokeCommand.GetCommand('Microsoft.PowerShell.Management\Set-Content', [System.Management.Automation.CommandTypes]::Cmdlet)
         Write-Debug "    EXIT: ConvertTo-Script BEGIN"
     }

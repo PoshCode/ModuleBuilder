@@ -23,5 +23,12 @@ Describe "ConvertTo-Script" {
             $ScriptFileCommand = Get-Command $ScriptFile
             $ScriptFileCommand.Parameters.Keys | Sort-Object | Should -Be ($BuildModuleCommand.Parameters.Keys | Sort-Object)
         }
+
+        It "Accepts UTF8Bom encoding on every edition" {
+            Remove-Item $ScriptFile -ErrorAction Ignore
+            $null = Invoke-ScriptGenerator -Path $ModuleBuilder.Path -Generator "ConvertTo-Script" -Parameters @{ FunctionName = "Build-Module"; Encoding = "UTF8Bom" } -ErrorAction Stop
+
+            $ScriptFile | Should -Exist
+        }
     }
 }

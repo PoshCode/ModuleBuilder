@@ -34,6 +34,10 @@ function SetModuleContent {
     )
     begin {
         Write-Debug "SetModuleContent WorkingDirectory $WorkingDirectory"
+        # Windows PowerShell's Set-Content has no UTF8Bom encoding, but its UTF8 encoding writes a BOM
+        if (-not $IsCoreCLR -and $Encoding -eq "UTF8Bom") {
+            $Encoding = "UTF8"
+        }
         Write-Debug "Encoding $Encoding"
         Push-Location $WorkingDirectory -StackName SetModuleContent
         $ContentStarted = $false # There has been no content yet
