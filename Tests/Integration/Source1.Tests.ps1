@@ -359,3 +359,35 @@ Describe "Regression test for #125: SourceDirectories supports wildcards" -Tag I
         $Metadata.FunctionsToExport | Should -Be @("Get-Source", "Set-Source")
     }
 }
+
+Describe "Regression test for UTF8Bom encoding on Windows PowerShell" -Tag Integration, Regression {
+    BeforeAll {
+        # The non-ASCII string returned by Source1's Set-Source
+        $NonAscii = "sto$([char]0x35E)o$([char]0x2032)p$([char]0x12D)d"
+
+        Copy-Item $PSScriptRoot\Source1 TestDrive:\Utf8BomParameter -Recurse
+        $ParameterOutput = Build-Module TestDrive:\Utf8BomParameter -Encoding UTF8Bom -OutputDirectory "$TestDrive\Utf8BomParameterOutput" -Passthru -ErrorAction Stop
+        $ParameterModule = [IO.Path]::ChangeExtension($ParameterOutput.Path, "psm1")
+
+        # Values from build.psd1 are not checked by the Encoding parameter's ValidateSet
+        Copy-Item $PSScriptRoot\Source1 TestDrive:\Utf8BomManifest -Recurse
+        $metadata = Import-Metadata TestDrive:\Utf8BomManifest\build.psd1
+        $metadata["Encoding"] = "UTF8Bom"
+        $metadata["OutputDirectory"] = "$TestDrive\Utf8BomManifestOutput"
+        $metadata | Export-Metadata TestDrive:\Utf8BomManifest\build.psd1
+        $ManifestOutput = Build-Module TestDrive:\Utf8BomManifest -Passthru -ErrorAction Stop
+        $ManifestModule = [IO.Path]::ChangeExtension($ManifestOutput.Path, "psm1")
+    }
+
+    It "Writes a BOM and UTF-8 content when UTF8Bom is passed as a parameter" {
+        $Bytes = [IO.File]::ReadAllBytes($ParameterModule)
+        $Bytes[0..2] | Should -Be @(0xEF, 0xBB, 0xBF)
+        [IO.File]::ReadAllText($ParameterModule, [Text.Encoding]::UTF8) | Should -Match ([regex]::Escape($NonAscii))
+    }
+
+    It "Writes a BOM and UTF-8 content when UTF8Bom is set in build.psd1" {
+        $Bytes = [IO.File]::ReadAllBytes($ManifestModule)
+        $Bytes[0..2] | Should -Be @(0xEF, 0xBB, 0xBF)
+        [IO.File]::ReadAllText($ManifestModule, [Text.Encoding]::UTF8) | Should -Match ([regex]::Escape($NonAscii))
+    }
+}
